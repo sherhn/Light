@@ -80,7 +80,7 @@ def notices(sbcl_version):
     lines = [
         "# Third-party notices",
         "",
-        "Light itself is dual licensed MIT OR Apache-2.0.",
+        "Light itself is licensed under MIT; see `LICENSE`.",
         "",
         "## Bundled software",
         "",
@@ -143,6 +143,7 @@ def main():
         third_party += bundle_windows_git(dist, arch, a.git_dir)
     (dist / "THIRD_PARTY_NOTICES.md").write_text(third_party, encoding="utf-8")
     shutil.copy2(ROOT / "README.md", dist / "README.md")
+    shutil.copy2(ROOT / "LICENSE", dist / "LICENSE")
     # the modules (languages, run commands, project templates, covers) that can be installed without a network
     registry = ROOT / "registry"
     if not (registry / "index.json").is_file():
