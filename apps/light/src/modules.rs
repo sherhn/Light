@@ -589,6 +589,30 @@ mod tests {
     }
 
     #[test]
+    fn lisp_settings_follow_module_install_enable_disable_and_remove() {
+        let fixture = Fixture::new();
+        let store = ModuleStore::at(fixture.0.join("modules"));
+        let mut app = App::new(Settings::default());
+        app.mods.store = Some(store);
+        let visible = |app: &App| crate::ui_settings::page_visible(crate::ui_settings::LISP_PAGE, app.lisp_enabled());
+        app.modules_reload();
+        assert!(!visible(&app));
+        app.mods.store.as_ref().unwrap().install_bytes("lisp", &[("module.json", LISP_MODULE_JSON), ("cover.png", LISP_MODULE_COVER)]).unwrap();
+        app.modules_reload();
+        assert!(visible(&app));
+        app.mods.store.as_ref().unwrap().set_enabled("lisp", false).unwrap();
+        app.modules_reload();
+        assert!(!visible(&app));
+        app.mods.store.as_ref().unwrap().set_enabled("lisp", true).unwrap();
+        app.modules_reload();
+        assert!(visible(&app));
+        app.mods.store.as_ref().unwrap().remove("lisp").unwrap();
+        app.modules_reload();
+        assert!(!visible(&app));
+        assert!(crate::ui_settings::page_visible(crate::ui_settings::WSL_PAGE, app.lisp_enabled()));
+    }
+
+    #[test]
     fn documents_without_a_path_use_plain_text_even_with_lisp_enabled() {
         let mut app = App::new(Settings::default());
         app.mods.lisp = true;

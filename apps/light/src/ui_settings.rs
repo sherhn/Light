@@ -15,6 +15,11 @@ use crate::widgets::{self, TextField};
 /// The settings pages; `WSL_PAGE` is the index of the Linux (WSL) one.
 pub const PAGES: [(&str, Icon); 7] = [("Appearance", Icon::Palette), ("Editor", Icon::Code), ("Lisp & REPL", Icon::Repl), ("Linux (WSL)", Icon::Linux), ("Modules", Icon::Puzzle), ("Version Control", Icon::Branch), ("Keymap", Icon::Keyboard)];
 pub const WSL_PAGE: usize = 3;
+pub const LISP_PAGE: usize = 2;
+
+pub(crate) fn page_visible(page: usize, lisp_enabled: bool) -> bool {
+    page < PAGES.len() && (page != LISP_PAGE || lisp_enabled)
+}
 
 const DIALOG_W: f32 = 860.0;
 const DIALOG_H: f32 = 560.0;
@@ -110,7 +115,7 @@ impl App {
         let pal = self.pal;
         let Popup::Settings { mut lisp_path, mut detected, mut filter, mut page } = std::mem::replace(&mut self.popup, Popup::None) else { return };
         let lisp_enabled = self.lisp_enabled();
-        if page == 2 && !lisp_enabled {
+        if !page_visible(page, lisp_enabled) {
             page = 0;
         }
         let mut close = ctx.input(|i| i.key_pressed(Key::Escape));
@@ -126,7 +131,7 @@ impl App {
 
                 // ---------------------------------------------------------------- sidebar
                 ui.painter().text(pos2(full.min.x + 28.0, full.min.y + 38.0), Align2::LEFT_CENTER, tr("Settings"), fonts::semibold(18.0), pal.text);
-                for (row, (i, (name, icon))) in PAGES.iter().enumerate().filter(|(i, _)| *i != 2 || lisp_enabled).enumerate() {
+                for (row, (i, (name, icon))) in PAGES.iter().enumerate().filter(|(i, _)| page_visible(*i, lisp_enabled)).enumerate() {
                     let r = Rect::from_min_size(pos2(full.min.x + 12.0, full.min.y + 78.0 + row as f32 * 40.0), vec2(SIDEBAR_W - 24.0, 38.0));
                     let resp = ui.interact(r, egui::Id::unique(("settings_page", i)), Sense::click());
                     widgets::row_background(ui, &pal, r.expand2(vec2(8.0, 1.0)), i == page, resp.hovered());
