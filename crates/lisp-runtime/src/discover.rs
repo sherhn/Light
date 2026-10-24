@@ -129,7 +129,7 @@ pub fn candidates(configured: &str) -> Vec<PathBuf> {
     if !configured.trim().is_empty() {
         v.push(PathBuf::from(configured.trim()));
     }
-    if let Ok(p) = std::env::var("AIR_SBCL") {
+    if let Ok(p) = std::env::var("LIGHT_SBCL").or_else(|_| std::env::var("AIR_SBCL")) {
         v.push(PathBuf::from(p));
     }
     if let Some(paths) = std::env::var_os("PATH") {
@@ -157,9 +157,9 @@ pub fn candidates(configured: &str) -> Vec<PathBuf> {
     v
 }
 
-/// Directory of the SBCL that ships with Air: `AIR_BUNDLE_DIR`, else the installed bundle.
+/// Directory of the SBCL that ships with Light: `LIGHT_BUNDLE_DIR`, else the installed bundle.
 pub fn bundle_dir() -> Option<PathBuf> {
-    if let Ok(d) = std::env::var("AIR_BUNDLE_DIR") {
+    if let Ok(d) = std::env::var("LIGHT_BUNDLE_DIR").or_else(|_| std::env::var("AIR_BUNDLE_DIR")) {
         return Some(PathBuf::from(d));
     }
     runtime_dir_for(&std::env::current_exe().ok()?)
@@ -176,13 +176,13 @@ fn runtime_dir_for(executable: &Path) -> Option<PathBuf> {
     Some(directory.join("lisp"))
 }
 
-/// Find SBCL: the explicit setting, `AIR_SBCL`, the bundled one, `PATH`, then well-known install locations.
+/// Find SBCL: the explicit setting, `LIGHT_SBCL`, the bundled one, `PATH`, then well-known install locations.
 pub fn find_sbcl(configured: &str) -> Option<Implementation> {
     let mut explicit = Vec::new();
     if !configured.trim().is_empty() {
         explicit.push(PathBuf::from(configured.trim()));
     }
-    if let Ok(p) = std::env::var("AIR_SBCL") {
+    if let Ok(p) = std::env::var("LIGHT_SBCL").or_else(|_| std::env::var("AIR_SBCL")) {
         explicit.push(PathBuf::from(p));
     }
     if let Some(p) = explicit.into_iter().find(|p| is_file(p)) {
@@ -207,14 +207,14 @@ mod tests {
 
     #[test]
     fn runtime_is_next_to_portable_executables() {
-        assert_eq!(runtime_dir_for(Path::new("portable/air")), Some(PathBuf::from("portable/lisp")));
+        assert_eq!(runtime_dir_for(Path::new("portable/light")), Some(PathBuf::from("portable/lisp")));
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn app_bundles_keep_runtime_data_in_resources() {
-        for executable in ["Air.app/Contents/MacOS/air", "Air.app/Contents/MacOS/air-cli"] {
-            assert_eq!(runtime_dir_for(Path::new(executable)), Some(PathBuf::from("Air.app/Contents/Resources/lisp")));
+        for executable in ["Light.app/Contents/MacOS/light", "Light.app/Contents/MacOS/light-cli"] {
+            assert_eq!(runtime_dir_for(Path::new(executable)), Some(PathBuf::from("Light.app/Contents/Resources/lisp")));
         }
     }
 
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn bundled_requires_executable_and_core() {
-        let dir = std::env::temp_dir().join(format!("air-bundle-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("light-bundle-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         assert!(Implementation::bundled(&dir).is_none());
         std::fs::write(dir.join(exe_name()), b"x").unwrap();

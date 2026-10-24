@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">Light</title>
+  <desc id="desc">A continuous folded white ribbon: its lower plane passes beneath the upper plane, with a pale mint and blue tip on a transparent background.</desc>
+  <defs>
+    <path id="upper" d="M314 795 L314 626 C312 598 322 578 349 563 L944 241 C964 230 983 226 979 252 L942 417 C937 439 930 452 909 464 L346 775 C331 783 320 790 314 799 Z"/>
+    <path id="lower" d="M365 607 L807 756 C841 767 861 791 861 823 L861 974 C862 1002 848 1019 825 1009 L369 854 C334 841 313 824 314 796 C313 735 335 660 365 607 Z"/>
+    <clipPath id="upper-clip"><use href="#upper" xlink:href="#upper"/></clipPath>
+    <clipPath id="lower-clip"><use href="#lower" xlink:href="#lower"/></clipPath>
+    <linearGradient id="white-plane" gradientUnits="userSpaceOnUse" x1="319" y1="758" x2="815" y2="419">
+      <stop stop-color="#eeeeee"/>
+      <stop offset=".24" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <radialGradient id="ice" gradientUnits="userSpaceOnUse" cx="953" cy="392" r="249" gradientTransform="translate(953 392) rotate(-25) scale(.8 1) translate(-953 -392)">
+      <stop stop-color="#caedff" stop-opacity=".94"/>
+      <stop offset=".55" stop-color="#dcefff" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mint" gradientUnits="userSpaceOnUse" cx="969" cy="230" r="242" gradientTransform="translate(969 230) scale(1 .9) translate(-969 -230)">
+      <stop stop-color="#c2ffe3"/>
+      <stop offset=".35" stop-color="#d4ffed" stop-opacity=".88"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="return-plane" gradientUnits="userSpaceOnUse" x1="364" y1="776" x2="807" y2="988">
+      <stop stop-color="#e0e0e0"/>
+      <stop offset=".34" stop-color="#f5f5f5"/>
+      <stop offset=".68" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8f8f8"/>
+    </linearGradient>
+    <radialGradient id="fold" gradientUnits="userSpaceOnUse" cx="327" cy="784" r="245" gradientTransform="translate(327 784) rotate(-23) scale(1 .53) translate(-327 -784)">
+      <stop stop-color="#777777" stop-opacity=".5"/>
+      <stop offset=".42" stop-color="#a4a4a4" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#d6d6d6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="overlap-shadow" x="-.1" y="-.1" width="1.2" height="1.2" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+  <g>
+    <use href="#lower" xlink:href="#lower" fill="url(#return-plane)"/>
+    <g clip-path="url(#lower-clip)">
+      <rect x="310" y="600" width="560" height="420" fill="url(#fold)"/>
+      <use href="#upper" xlink:href="#upper" transform="translate(0 10)" fill="#3c3c3c" opacity=".18" filter="url(#overlap-shadow)"/>
+    </g>
+    <use href="#upper" xlink:href="#upper" fill="url(#white-plane)"/>
+    <g clip-path="url(#upper-clip)">
+      <rect x="310" y="220" width="680" height="590" fill="url(#ice)"/>
+      <rect x="310" y="220" width="680" height="590" fill="url(#mint)"/>
+    </g>
+  </g>
+</svg>

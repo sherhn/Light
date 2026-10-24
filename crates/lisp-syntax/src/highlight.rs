@@ -30,7 +30,7 @@ pub enum Class {
     /// A bracket. Carries rainbow depth via `Span::depth`.
     Bracket,
     Error,
-    // ---- classes of the languages that modules bring (see the `air-lang` crate)
+    // ---- classes of the languages that modules bring (see the `light-lang` crate)
     /// A type or class name.
     Type,
     /// `#include`, `#define`, assembler directives.

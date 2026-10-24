@@ -71,13 +71,13 @@ jobs:
             Linux)
               sudo apt-get install -y ./target/dist/*.deb
               python tools/verify_install.py target/dist/*.deb
-              air-cli help
-              sudo apt-get remove -y air-ide
+              light-cli help
+              sudo apt-get remove -y light-ide
               ;;
           esac
       - uses: actions/upload-artifact@v4
         with:
-          name: air-${{ runner.os }}-${{ runner.arch }}
+          name: light-${{ runner.os }}-${{ runner.arch }}
           path: |
             target/dist/*.zip
             target/dist/*.tar.gz
@@ -114,7 +114,7 @@ jobs:
           for pattern, label in [('*-Setup.exe', 'Windows x64'), ('*macos-arm64.dmg', 'macOS: Apple Silicon'), ('*macos-x64.dmg', 'macOS: Intel'), ('*.deb', 'Ubuntu / Debian x64')]:
               for path in sorted(Path('dist').glob(pattern)):
                   print(f"- **{label}**: [{path.name}]({base}/{quote(path.name)})")
-          print("\nWindows: run Setup. macOS: open the disk image and drag Air to Applications. Ubuntu / Debian: open the .deb in your software installer, or use `sudo apt install ./Air-*.deb`.\n")
+          print("\nWindows: run Setup. macOS: open the disk image and drag Light to Applications. Ubuntu / Debian: open the .deb in your software installer, or use `sudo apt install ./Light-*.deb`.\n")
           print("The IDE, CLI, offline language modules and bundled runtime are included; Windows also includes Git. Project-specific compilers and interpreters are separate tools.\n")
           print("These builds do not yet have a Windows publisher signature or Apple notarization. macOS may require approval in System Settings > Privacy & Security. Portable archives are also attached for users who prefer them.")
           PY
@@ -125,4 +125,4 @@ jobs:
         run: |
           flags=(--generate-notes)
           [[ "$GITHUB_REF_NAME" == *-* ]] && flags+=(--prerelease)
-          gh release create "$GITHUB_REF_NAME" dist/* --title "Air ${GITHUB_REF_NAME#v}" --notes-file RELEASE_NOTES.md "${flags[@]}"
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Light ${GITHUB_REF_NAME#v}" --notes-file RELEASE_NOTES.md "${flags[@]}"

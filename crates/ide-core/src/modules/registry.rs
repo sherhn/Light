@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::manifest::Detect;
 
 /// Where the modules of this release are published (the `registry` folder of the repository).
-pub const DEFAULT_URL: &str = "https://raw.githubusercontent.com/sherhn/AirLisp/main/registry";
+pub const DEFAULT_URL: &str = "https://raw.githubusercontent.com/sherhn/Light/main/registry";
 
 /// Largest file a module may have, in bytes.
 pub const MAX_FILE: u64 = 20 * 1024 * 1024;
@@ -144,7 +144,7 @@ pub fn fetch_index(sources: &[Source]) -> Result<(Index, Source), String> {
 /// A file from the web with the system's `curl`.
 fn curl_get(url: &str) -> Result<Vec<u8>, String> {
     let mut c = Command::new("curl");
-    c.args(["-fsSL", "--connect-timeout", "15", "--max-time", "180", "--max-filesize", &MAX_FILE.to_string(), "-A", "Air", url]);
+    c.args(["-fsSL", "--connect-timeout", "15", "--max-time", "180", "--max-filesize", &MAX_FILE.to_string(), "-A", "Light", url]);
     c.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     #[cfg(windows)]
     {
@@ -159,11 +159,11 @@ fn curl_get(url: &str) -> Result<Vec<u8>, String> {
     Ok(out.stdout)
 }
 
-/// The registries to try, best first: the one set in `AIR_REGISTRY` or in the settings, the published one, and the
+/// The registries to try, best first: the one set in `LIGHT_REGISTRY` or in the settings, the published one, and the
 /// copy that is shipped next to the program (so modules can be added without a network).
 pub fn default_sources(custom: &str, bundled: Option<&Path>) -> Vec<Source> {
     let mut v = Vec::new();
-    if let Ok(s) = std::env::var("AIR_REGISTRY")
+    if let Ok(s) = std::env::var("LIGHT_REGISTRY").or_else(|_| std::env::var("AIR_REGISTRY"))
         && !s.trim().is_empty()
     {
         v.push(Source::parse(&s));
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn the_registries_to_try() {
-        // (AIR_REGISTRY is not set by the tests)
+        // (LIGHT_REGISTRY is not set by the tests)
         let v = default_sources("", None);
         assert_eq!(v, [Source::Url(DEFAULT_URL.into())]);
         let d = crate::testutil::TempDir::new("bundled");

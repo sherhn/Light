@@ -12,8 +12,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 2323,
-          "sha256": "9f925510565aa60fd6019d97501c1a00748292fd139fecca0e19bb9ef024e7d0"
+          "size": 2327,
+          "sha256": "2d2d08fe5578d9b3cfbeb1c7c4c5a98841acb52c615f2638da1b116f6c06b701"
         },
         {
           "name": "cover.png",
@@ -48,8 +48,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 13571,
-          "sha256": "b8a7880bbd5947f6caf40093703ac920d4658458dcb05949db30f444fcf1f775"
+          "size": 13577,
+          "sha256": "43d3ef6b8bc39388cbf1ebecaa8b6bd4d476fffe64c2ad574ed8457d97a228a0"
         },
         {
           "name": "cover.png",
@@ -88,8 +88,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 7936,
-          "sha256": "d73e38ed6d0f4d87eb59e7e9cd1099ecc9e16da49ff55487e73ddd004f8381c7"
+          "size": 7940,
+          "sha256": "96e75fa31c845b9fe7ca8a2896c3734c599d59a42a4ee42a694adb9de8abf219"
         },
         {
           "name": "cover.png",
@@ -121,8 +121,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 18046,
-          "sha256": "728b6926dafe2c343b6030f4d2a133349debf606fdcfc792b593f5c3b98fd6ef"
+          "size": 18050,
+          "sha256": "10cede97d4f3c5c8758f2dda76bfe135e16f69ca8630e10e84a3f1f6bf9c39bb"
         },
         {
           "name": "cover.png",
@@ -150,8 +150,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 37236,
-          "sha256": "19237a7b044bd577c8c53d60d8b177d0e084305dc5a846aa4dfdfd7278c48af6"
+          "size": 37240,
+          "sha256": "20a810fe0a3d337637fee654ddf1a9be0867e294ee9cbe6fcbb50b4d72ff1b6b"
         },
         {
           "name": "cover.png",
@@ -179,8 +179,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 16423,
-          "sha256": "5ea6ab5f941a4d9fff5c2a7d12b17c3252cc960c20f738ed81303ad7a2794712"
+          "size": 16425,
+          "sha256": "c81de72b41e4feb375ca83e6468735aad56cbdfabeb4bae022aba0ed2a66c697"
         },
         {
           "name": "cover.png",
@@ -206,8 +206,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 3959,
-          "sha256": "f3adda35933186b1c5a35780a55ced9e164ff038b41bd3de370ecff908ef95d1"
+          "size": 3961,
+          "sha256": "ac4e8eefe317237a061d0cea1edb4b6120bd5352d125c102bd8b3f1500293ac9"
         },
         {
           "name": "cover.png",
@@ -234,8 +234,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 3916,
-          "sha256": "e5760cdad1844d020a15d1bcd3b48173ff55f5824effca1a3bbb5709ca5ec938"
+          "size": 3918,
+          "sha256": "47fa3daf687fe7d1c25477c073802e0a8d0e1f2396bcd7e8e56c94b54f3ca1b4"
         },
         {
           "name": "cover.png",
@@ -263,8 +263,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 9302,
-          "sha256": "81c9852438887370791a77b93901d3ea93208c0cb7cc89fb5343c41adf4000c7"
+          "size": 9306,
+          "sha256": "0402730e8671cad80deb39405f67a8bf5ba05b7c899f4e047753408ba445c78d"
         },
         {
           "name": "cover.png",

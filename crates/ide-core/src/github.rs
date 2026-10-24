@@ -14,7 +14,7 @@ use serde_json::Value;
 
 pub const DEFAULT_API: &str = "https://api.github.com";
 /// Where a user creates a token that can list and clone private repositories.
-pub const TOKEN_URL: &str = "https://github.com/settings/tokens/new?scopes=repo&description=Air";
+pub const TOKEN_URL: &str = "https://github.com/settings/tokens/new?scopes=repo&description=Light";
 /// Repositories are listed in pages of 100, at most this many pages (1000 repositories).
 pub const MAX_PAGES: usize = 10;
 
@@ -253,7 +253,7 @@ pub fn curl_config(url: &str, token: Option<&str>) -> String {
     c.push_str(&format!("url = {}\n", config_quote(url)));
     c.push_str("header = \"Accept: application/vnd.github+json\"\n");
     c.push_str("header = \"X-GitHub-Api-Version: 2022-11-28\"\n");
-    c.push_str("header = \"User-Agent: Air\"\n");
+    c.push_str("header = \"User-Agent: Light\"\n");
     if let Some(t) = token.filter(|t| !t.is_empty()) {
         c.push_str(&format!("header = {}\n", config_quote(&format!("Authorization: Bearer {t}"))));
     }
@@ -312,9 +312,9 @@ impl Api {
         Api { base: base.trim_end_matches('/').to_string() }
     }
 
-    /// `AIR_GITHUB_API` (a test server) or api.github.com.
+    /// `LIGHT_GITHUB_API` (a test server) or api.github.com.
     pub fn from_env() -> Api {
-        Api::new(&std::env::var("AIR_GITHUB_API").unwrap_or_else(|_| DEFAULT_API.to_string()))
+        Api::new(&std::env::var("LIGHT_GITHUB_API").or_else(|_| std::env::var("AIR_GITHUB_API")).unwrap_or_else(|_| DEFAULT_API.to_string()))
     }
 
     /// GET `path` (starting with `/`); returns the HTTP status and body.
@@ -389,7 +389,7 @@ pub enum TokenSource {
     GhCli,
     /// The login Git itself has saved for github.com (Git Credential Manager, macOS keychain, ...).
     GitCredential,
-    /// `AIR_GITHUB_FAKE_TOKEN`, for the UI tests.
+    /// `LIGHT_GITHUB_FAKE_TOKEN`, for the UI tests.
     Test,
 }
 
@@ -403,10 +403,10 @@ pub fn parse_credential_output(text: &str) -> Option<(String, String)> {
 /// A token that is already on this computer: the GitHub CLI's, else the one Git has saved for github.com. Asks
 /// nothing and never opens a window; a stale token is caught by the check against `/user` that follows.
 pub fn find_saved_token() -> Option<(TokenSource, String)> {
-    if let Ok(t) = std::env::var("AIR_GITHUB_FAKE_TOKEN") {
+    if let Ok(t) = std::env::var("LIGHT_GITHUB_FAKE_TOKEN").or_else(|_| std::env::var("AIR_GITHUB_FAKE_TOKEN")) {
         return (!t.is_empty()).then_some((TokenSource::Test, t));
     }
-    if std::env::var("AIR_GITHUB_AUTODETECT").is_ok_and(|v| v == "0") {
+    if std::env::var("LIGHT_GITHUB_AUTODETECT").or_else(|_| std::env::var("AIR_GITHUB_AUTODETECT")).is_ok_and(|v| v == "0") {
         return None;
     }
     let mut gh = Command::new("gh");
@@ -433,11 +433,11 @@ pub fn find_saved_token() -> Option<(TokenSource, String)> {
 const BROWSER_LOGIN_TIMEOUT: Duration = Duration::from_secs(600);
 
 /// `git credential-manager ARGS` (Git Credential Manager ships with Git for Windows and is installed on macOS and
-/// Linux by many setups). `AIR_FAKE_GCM`, a Python script, replaces it in the UI tests.
+/// Linux by many setups). `LIGHT_FAKE_GCM`, a Python script, replaces it in the UI tests.
 fn gcm_command(args: &[&str]) -> Command {
-    let mut c = match std::env::var_os("AIR_FAKE_GCM") {
+    let mut c = match std::env::var_os("LIGHT_FAKE_GCM").or_else(|| std::env::var_os("AIR_FAKE_GCM")) {
         Some(script) => {
-            let mut c = Command::new(std::env::var_os("AIR_FAKE_GCM_PYTHON").unwrap_or_else(|| "python".into()));
+            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_GCM_PYTHON").or_else(|| std::env::var_os("AIR_FAKE_GCM_PYTHON")).unwrap_or_else(|| "python".into()));
             c.arg(script);
             c
         }
@@ -525,8 +525,8 @@ pub fn browser_login(cancel: &AtomicBool) -> Result<String, LoginError> {
 
 /// The token Git has saved for `username` at github.com (no prompts, no windows).
 pub fn credential_for(username: &str) -> Option<String> {
-    if std::env::var_os("AIR_FAKE_GCM").is_some() {
-        return std::env::var("AIR_FAKE_GCM_TOKEN").ok().filter(|t| !t.is_empty());
+    if std::env::var_os("LIGHT_FAKE_GCM").or_else(|| std::env::var_os("AIR_FAKE_GCM")).is_some() {
+        return std::env::var("LIGHT_FAKE_GCM_TOKEN").or_else(|_| std::env::var("AIR_FAKE_GCM_TOKEN")).ok().filter(|t| !t.is_empty());
     }
     if username.contains(['\n', '\r']) {
         return None;
@@ -540,7 +540,7 @@ pub fn credential_for(username: &str) -> Option<String> {
     }
 }
 
-/// Save the login in Git's credential helper (`git credential approve`), so Git and Air find it next time.
+/// Save the login in Git's credential helper (`git credential approve`), so Git and Light find it next time.
 /// Only called when the user ticks "remember".
 pub fn remember_token(login: &str, token: &str) -> Result<(), String> {
     if login.contains(['\n', '\r']) || token.contains(['\n', '\r']) {
@@ -728,7 +728,7 @@ mod tests {
         let requests = seen.lock().unwrap().clone();
         assert!(requests[0].starts_with("GET /user HTTP/1.1"), "{}", requests[0]);
         assert!(requests[0].to_lowercase().contains("authorization: bearer ghp_good"), "{}", requests[0]);
-        assert!(requests[0].to_lowercase().contains("user-agent: air"));
+        assert!(requests[0].to_lowercase().contains("user-agent: light"));
     }
 
     #[test]

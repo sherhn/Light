@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a self-contained Air distribution that works right after unpacking:
+"""Build a self-contained Light distribution that works right after unpacking:
 the app, the CLI, a bundled SBCL (REPL, compiler, ASDF), the registry of modules and all licence notices.
 
 Usage:
@@ -7,7 +7,7 @@ Usage:
 
 --sbcl-dir  folder with sbcl[.exe], sbcl.core and contrib/, or an SBCL install prefix (bin/, lib/sbcl/);
             default: the sbcl found on PATH.
-Result: target/dist/Air-<version>-<os>-<arch>[.zip on Windows, .tar.gz elsewhere]
+Result: target/dist/Light-<version>-<os>-<arch>[.zip on Windows, .tar.gz elsewhere]
 --installers also creates a Windows Setup.exe, macOS .dmg or Debian/Ubuntu .deb.
 Windows installers include Portable Git; --git-dir can reuse an extracted copy.
 """
@@ -80,7 +80,7 @@ def notices(sbcl_version):
     lines = [
         "# Third-party notices",
         "",
-        "Air itself is dual licensed MIT OR Apache-2.0.",
+        "Light itself is dual licensed MIT OR Apache-2.0.",
         "",
         "## Bundled software",
         "",
@@ -108,18 +108,18 @@ def main():
     a = ap.parse_args()
 
     if not a.skip_build:
-        subprocess.run(["cargo", "build", "--locked", "--release", "-p", "air", "-p", "air-cli"], cwd=ROOT, check=True)
+        subprocess.run(["cargo", "build", "--locked", "--release", "-p", "light", "-p", "light-cli"], cwd=ROOT, check=True)
     sbcl_exe, sbcl_core, sbcl_contrib = find_sbcl(a.sbcl_dir)
     ver = version()
     arch = {"amd64": "x64", "x86_64": "x64", "aarch64": "arm64"}.get(platform.machine().lower(), platform.machine().lower())
-    name = f"Air-{ver}-{'macos' if platform.system() == 'Darwin' else platform.system().lower()}-{arch}"
+    name = f"Light-{ver}-{'macos' if platform.system() == 'Darwin' else platform.system().lower()}-{arch}"
     dist = ROOT / "target" / "dist" / name
     from installers import reset_directory
     dist = reset_directory(dist, ROOT / "target/dist")
     (dist / "lisp").mkdir(parents=True)
     (dist / "licenses").mkdir()
 
-    for exe in ("air", "air-cli"):
+    for exe in ("light", "light-cli"):
         src = ROOT / "target" / "release" / f"{exe}{EXE}"
         if not src.is_file():
             sys.exit(f"missing {src}; build first")
@@ -149,8 +149,8 @@ def main():
         sys.exit("no registry/index.json: run `python tools/build_registry.py --covers` first")
     shutil.copytree(registry, dist / "registry")
     (dist / "START_HERE.txt").write_text(
-        "Air - a modular IDE for any language, written in Rust\n\n"
-        f"Run {'air.exe' if os.name == 'nt' else './air'}. Nothing else has to be installed:\n"
+        "Light - a modular IDE for any language, written in Rust\n\n"
+        f"Run {'light.exe' if os.name == 'nt' else './light'}. Nothing else has to be installed:\n"
         "the languages come as modules - open the Modules tab (Ctrl+Alt+P) and install what you work with\n"
         "(Lisp, Python, C/C++, Assembler, Markdown, reStructuredText, Shell and make). The folder 'registry'\n"
         "holds them, so this works offline too; the list is also read from the published registry.\n"
@@ -160,7 +160,7 @@ def main():
         + f"{sbcl_ver} is bundled; its licence is in licenses/SBCL-COPYING.txt.\n"
         + (
             "\nThe build has no Apple Developer ID signature or notarization.\n"
-            "After copying Air.app to Applications, macOS may require approval in System Settings > Privacy & Security.\n"
+            "After copying Light.app to Applications, macOS may require approval in System Settings > Privacy & Security.\n"
             if platform.system() == "Darwin"
             else ""
         ),

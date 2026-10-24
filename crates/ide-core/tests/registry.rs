@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use air_lang::{Language, LanguageSet};
+use light_lang::{Language, LanguageSet};
 use ide_core::modules::{Index, Manifest, Source};
 use ide_core::modules::sha256::sha256_hex;
 use lisp_syntax::highlight::Class;

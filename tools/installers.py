@@ -13,7 +13,7 @@ import tempfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
-UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Air"
+UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Light"
 
 
 def reset_directory(path, parent):
@@ -44,7 +44,7 @@ def bundle_windows_git(dist, architecture, explicit=None):
                 raise ValueError("Git for Windows SHA-256 mismatch")
             temporary.replace(archive)
         source = cache / f"git-{spec['version']}-{architecture}"
-        marker = source / ".air-vendor-sha256"
+        marker = source / ".light-vendor-sha256"
         if not marker.is_file() or marker.read_text() != spec["sha256"]:
             reset_directory(source, cache)
             choices = [os.environ.get("SEVENZIP"), shutil.which("7z"), shutil.which("7za")]
@@ -59,7 +59,7 @@ def bundle_windows_git(dist, architecture, explicit=None):
             marker.write_text(spec["sha256"])
     if not (source / "cmd/git.exe").is_file() or not (source / "LICENSE.txt").is_file():
         raise ValueError(f"not a complete Portable Git distribution: {source}")
-    shutil.copytree(source, dist / "git", ignore=shutil.ignore_patterns(".air-vendor-sha256"))
+    shutil.copytree(source, dist / "git", ignore=shutil.ignore_patterns(".light-vendor-sha256"))
     return f"\n## Git for Windows {spec['version']}\n\nBundled in `git/`; licences in `git/LICENSE.txt`.\nSource and source packages: {spec['source']}\n"
 
 
@@ -93,12 +93,12 @@ def windows(dist, version, architecture, compiler=None):
     manifest.write_text(uninstall_manifest(dist), encoding="utf-8")
     definitions = {
         "APP_VERSION": version, "OUTPUT_FILE": output, "PAYLOAD_DIR": dist,
-        "APP_ICON": ROOT / "assets/icon/air.ico", "UNINSTALL_KEY": UNINSTALL_KEY,
+        "APP_ICON": ROOT / "assets/icon/light.ico", "UNINSTALL_KEY": UNINSTALL_KEY,
         "UNINSTALL_MANIFEST": manifest,
         "PAYLOAD_KIB": sum(p.stat().st_size for p in dist.rglob("*") if p.is_file()) // 1024,
     }
     try:
-        subprocess.run([str(compiler), "/V2", "/INPUTCHARSET", "UTF8"] + [f"/D{k}={v}" for k, v in definitions.items()] + [str(ROOT / "tools/installers/air.nsi")], check=True)
+        subprocess.run([str(compiler), "/V2", "/INPUTCHARSET", "UTF8"] + [f"/D{k}={v}" for k, v in definitions.items()] + [str(ROOT / "tools/installers/light.nsi")], check=True)
     finally:
         manifest.unlink(missing_ok=True)
     return output
@@ -107,10 +107,10 @@ def windows(dist, version, architecture, compiler=None):
 def desktop_entry():
     return """[Desktop Entry]
 Type=Application
-Name=Air
+Name=Light
 Comment=A modular IDE for any language
-Exec=/opt/air/air %F
-Icon=air
+Exec=/opt/light/light %F
+Icon=light
 Terminal=false
 Categories=Development;IDE;
 StartupNotify=true
@@ -121,39 +121,39 @@ MimeType=text/plain;
 def linux(dist, version, architecture):
     arch = {"x64": "amd64", "arm64": "arm64"}[architecture]
     output = dist.parent / f"{dist.name}.deb"
-    with tempfile.TemporaryDirectory(prefix="air-deb-", dir=dist.parent) as temp:
+    with tempfile.TemporaryDirectory(prefix="light-deb-", dir=dist.parent) as temp:
         work = Path(temp)
         root = work / "root"
-        payload = root / "opt/air"
+        payload = root / "opt/light"
         shutil.copytree(dist, payload)
-        for name in ("air", "air-cli", "lisp/sbcl"):
+        for name in ("light", "light-cli", "lisp/sbcl"):
             (payload / name).chmod(0o755)
-        for name in ("air", "air-cli"):
+        for name in ("light", "light-cli"):
             link = root / "usr/bin" / name
             link.parent.mkdir(parents=True, exist_ok=True)
-            link.symlink_to(f"/opt/air/{name}")
+            link.symlink_to(f"/opt/light/{name}")
         applications = root / "usr/share/applications"
         applications.mkdir(parents=True)
-        (applications / "air.desktop").write_text(desktop_entry(), encoding="utf-8")
+        (applications / "light.desktop").write_text(desktop_entry(), encoding="utf-8")
         for size in (16, 32, 48, 128, 256, 512):
-            icon = root / f"usr/share/icons/hicolor/{size}x{size}/apps/air.png"
+            icon = root / f"usr/share/icons/hicolor/{size}x{size}/apps/light.png"
             icon.parent.mkdir(parents=True)
-            shutil.copy2(ROOT / f"assets/icon/air-{size}.png", icon)
+            shutil.copy2(ROOT / f"assets/icon/light-{size}.png", icon)
         # Let dpkg determine the ABI versions required by this build, including SBCL.
         debian = work / "debian"
         debian.mkdir()
-        (debian / "control").write_text("Source: air-ide\n\nPackage: air-ide\nArchitecture: any\nDescription: Air IDE\n")
-        generated = subprocess.check_output(["dpkg-shlibdeps", "-O", f"-e{payload / 'air'}", f"-e{payload / 'air-cli'}", f"-e{payload / 'lisp/sbcl'}"], cwd=work, text=True)
+        (debian / "control").write_text("Source: light-ide\n\nPackage: light-ide\nArchitecture: any\nDescription: Light IDE\n")
+        generated = subprocess.check_output(["dpkg-shlibdeps", "-O", f"-e{payload / 'light'}", f"-e{payload / 'light-cli'}", f"-e{payload / 'lisp/sbcl'}"], cwd=work, text=True)
         dependencies = generated.strip().removeprefix("shlibs:Depends=").split(", ")
         dependencies += ["libgl1", "libx11-6", "libxcursor1", "libxi6", "libxrandr2", "libxkbcommon0", "libwayland-client0", "libwayland-cursor0", "libwayland-egl1", "xdg-utils", "curl", "git"]
         control = root / "DEBIAN"
         control.mkdir()
         installed_size = sum(p.stat().st_size for p in payload.rglob("*") if p.is_file()) // 1024
         (control / "control").write_text(
-            f"Package: air-ide\nVersion: {version}\nArchitecture: {arch}\nSection: devel\nPriority: optional\n"
-            f"Maintainer: Air contributors <noreply@github.com>\nInstalled-Size: {installed_size}\n"
-            f"Depends: {', '.join(dict.fromkeys(dependencies))}\nHomepage: https://github.com/sherhn/AirLisp\n"
-            "Description: Air, a modular IDE for any language\n Includes the editor, CLI, offline language module registry and bundled runtime.\n",
+            f"Package: light-ide\nVersion: {version}\nArchitecture: {arch}\nSection: devel\nPriority: optional\n"
+            f"Maintainer: Light contributors <noreply@github.com>\nInstalled-Size: {installed_size}\n"
+            f"Depends: {', '.join(dict.fromkeys(dependencies))}\nHomepage: https://github.com/sherhn/Light\n"
+            "Description: Light, a modular IDE for any language\n Includes the editor, CLI, offline language module registry and bundled runtime.\n",
             encoding="utf-8",
         )
         # Package permissions must not depend on the builder's umask or checkout.
@@ -170,7 +170,7 @@ def macos_libraries(contents):
     frameworks = contents / "Frameworks"
     frameworks.mkdir()
     binaries = contents / "MacOS"
-    executables = [binaries / "air", binaries / "air-cli", contents / "Resources/lisp/sbcl"]
+    executables = [binaries / "light", binaries / "light-cli", contents / "Resources/lisp/sbcl"]
     pending = [(p, p) for p in executables]
     copied = {}
     while pending:
@@ -208,38 +208,38 @@ def macos_libraries(contents):
             subprocess.run(["install_name_tool", "-id", f"@rpath/{destination.name}", str(destination)], check=True)
         # Signing a bundle's main executable signs the whole bundle. Do it last,
         # after its helper executables and private libraries have been signed.
-        if destination != binaries / "air":
+        if destination != binaries / "light":
             subprocess.run(["codesign", "--force", "--sign", "-", str(destination)], check=True)
 
 
 def macos(dist, version, architecture):
     output = dist.parent / f"{dist.name}.dmg"
-    with tempfile.TemporaryDirectory(prefix="air-dmg-", dir=dist.parent) as temp:
+    with tempfile.TemporaryDirectory(prefix="light-dmg-", dir=dist.parent) as temp:
         work = Path(temp)
         image = work / "image"
-        contents = image / "Air.app/Contents"
+        contents = image / "Light.app/Contents"
         binaries = contents / "MacOS"
         binaries.mkdir(parents=True)
         resources = contents / "Resources"
         resources.mkdir()
         for source in dist.iterdir():
-            target = (binaries if source.name in ("air", "air-cli") else resources) / source.name
+            target = (binaries if source.name in ("light", "light-cli") else resources) / source.name
             if source.is_dir():
                 shutil.copytree(source, target)
             else:
                 shutil.copy2(source, target)
-        iconset = work / "Air.iconset"
+        iconset = work / "Light.iconset"
         iconset.mkdir()
         for size in (16, 32, 128, 256, 512):
             for scale in (1, 2):
                 suffix = "@2x" if scale == 2 else ""
-                shutil.copy2(ROOT / f"assets/icon/air-{size * scale}.png", iconset / f"icon_{size}x{size}{suffix}.png")
-        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(resources / "Air.icns")], check=True)
+                shutil.copy2(ROOT / f"assets/icon/light-{size * scale}.png", iconset / f"icon_{size}x{size}{suffix}.png")
+        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(resources / "Light.icns")], check=True)
         info = {
-            "CFBundleName": "Air", "CFBundleDisplayName": "Air", "CFBundleExecutable": "air",
-            "CFBundleIdentifier": "io.github.sherhn.air", "CFBundlePackageType": "APPL",
+            "CFBundleName": "Light", "CFBundleDisplayName": "Light", "CFBundleExecutable": "light",
+            "CFBundleIdentifier": "io.github.sherhn.light", "CFBundlePackageType": "APPL",
             "CFBundleShortVersionString": version, "CFBundleVersion": version,
-            "CFBundleIconFile": "Air.icns", "LSMinimumSystemVersion": "15.0",
+            "CFBundleIconFile": "Light.icns", "LSMinimumSystemVersion": "15.0",
             "NSHighResolutionCapable": True,
         }
         (contents / "Info.plist").write_bytes(plistlib.dumps(info))
@@ -247,8 +247,8 @@ def macos(dist, version, architecture):
         subprocess.run(["codesign", "--force", "--sign", "-", str(contents.parent)], check=True)
         subprocess.run(["codesign", "--verify", "--deep", "--strict", str(contents.parent)], check=True)
         (image / "Applications").symlink_to("/Applications", target_is_directory=True)
-        (image / "Install.txt").write_text("Drag Air.app to Applications, then open Air from Applications.\n", encoding="utf-8")
-        subprocess.run(["hdiutil", "create", "-volname", "Air", "-srcfolder", str(image), "-format", "UDZO", "-ov", str(output)], check=True)
+        (image / "Install.txt").write_text("Drag Light.app to Applications, then open Light from Applications.\n", encoding="utf-8")
+        subprocess.run(["hdiutil", "create", "-volname", "Light", "-srcfolder", str(image), "-format", "UDZO", "-ov", str(output)], check=True)
     return output
 
 

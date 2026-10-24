@@ -164,7 +164,7 @@ pub struct Settings {
     pub modules_welcome_done: bool,
     /// What a Markdown or reStructuredText tab shows: `code`, `split` (code and the rendered document) or `preview`.
     pub markup_preview: String,
-    /// Default parent folder for "Get from Version Control"; empty = ~/AirProjects.
+    /// Default parent folder for "Get from Version Control"; empty = ~/LightProjects.
     pub clone_dir: String,
     /// The GitHub login last signed in with or looked up (prefills the GitHub tab); never a secret.
     pub github_user: String,
@@ -215,10 +215,10 @@ pub const MAX_FONT: f32 = 40.0;
 
 impl Settings {
     pub fn config_dir() -> Option<PathBuf> {
-        if let Ok(p) = std::env::var("AIR_CONFIG_DIR") {
+        if let Ok(p) = std::env::var("LIGHT_CONFIG_DIR").or_else(|_| std::env::var("AIR_CONFIG_DIR")) {
             return Some(PathBuf::from(p));
         }
-        dirs::config_dir().map(|d| d.join("Air"))
+        dirs::config_dir().map(|d| crate::paths::compatible_dir(&d, "Light", "Air"))
     }
 
     pub fn load_from(path: &Path) -> Settings {

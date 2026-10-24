@@ -15,6 +15,7 @@ pub mod github;
 pub mod graph;
 pub mod index;
 pub mod localvcs;
+pub mod paths;
 pub mod modules;
 pub mod search;
 pub mod todo;
@@ -35,7 +36,7 @@ pub(crate) mod testutil {
     impl TempDir {
         pub fn new(tag: &str) -> TempDir {
             let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-            let p = std::env::temp_dir().join(format!("air-test-{}-{}-{}", std::process::id(), tag, n));
+            let p = std::env::temp_dir().join(format!("light-test-{}-{}-{}", std::process::id(), tag, n));
             let _ = std::fs::remove_dir_all(&p);
             std::fs::create_dir_all(&p).unwrap();
             TempDir(p)

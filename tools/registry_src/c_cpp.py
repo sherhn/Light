@@ -58,7 +58,7 @@ MODULE = module(
     name="C and C++",
     category="Languages",
     summary="Highlighting, brackets, folding and an outline for C, C++ and headers; compile and run a file; the compilers and debuggers in Linux.",
-    description="C and C++ for Air: syntax highlighting with preprocessor and types, matching brackets, folding of blocks, the outline of functions, structs and macros, Enter after a brace indents, and a command to compile and run the current file. The Linux side brings gcc, g++, make, cmake, ninja, gdb, clang, clangd, valgrind and friends - installed from inside the IDE.",
+    description="C and C++ for Light: syntax highlighting with preprocessor and types, matching brackets, folding of blocks, the outline of functions, structs and macros, Enter after a brace indents, and a command to compile and run the current file. The Linux side brings gcc, g++, make, cmake, ninja, gdb, clang, clangd, valgrind and friends - installed from inside the IDE.",
     languages=[
         dict(id="c", name="C", extensions=["c", "h", "ld", "lds"], filenames=[], grammar=grammar(False), **COMMON),
         dict(id="cpp", name="C++", extensions=["cc", "cpp", "cxx", "c++", "hpp", "hh", "hxx", "ipp", "inl", "tpp"], filenames=[], grammar=grammar(True), **COMMON),
@@ -76,10 +76,10 @@ MODULE = module(
     detect=dict(extensions=["c", "h", "cc", "cpp", "cxx", "hpp", "hh", "hxx"], files=["CMakeLists.txt", "meson.build", "Makefile", "makefile", "GNUmakefile"]),
     templates=[
         dict(name="C program", description="main.c and a makefile", open="main.c",
-             files={"main.c": '#include <stdio.h>\n\nint main(void) {\n    printf("Hello, Air\\n");\n    return 0;\n}\n',
+             files={"main.c": '#include <stdio.h>\n\nint main(void) {\n    printf("Hello, Light\\n");\n    return 0;\n}\n',
                     "makefile": 'CFLAGS = -g -Wall -Wextra\n\nall: main\n\nmain: main.c\n\t$(CC) $(CFLAGS) main.c -o main\n\nrun: main\n\t./main\n\nclean:\n\trm -f main\n\n.PHONY: all run clean\n'}),
         dict(name="C++ program", description="main.cpp and a CMake project", open="main.cpp",
-             files={"main.cpp": '#include <iostream>\n\nint main() {\n    std::cout << "Hello, Air\\n";\n}\n',
+             files={"main.cpp": '#include <iostream>\n\nint main() {\n    std::cout << "Hello, Light\\n";\n}\n',
                     "CMakeLists.txt": 'cmake_minimum_required(VERSION 3.16)\nproject(hello CXX)\nset(CMAKE_CXX_STANDARD 17)\nadd_executable(hello main.cpp)\n'}),
     ],
 )

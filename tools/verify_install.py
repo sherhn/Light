@@ -34,19 +34,19 @@ def run_setup(setup, destination):
 def check_payload(payload, work, gui=False, resources=None):
     windows = platform.system() == "Windows"
     suffix = ".exe" if windows else ""
-    cli = payload / f"air-cli{suffix}"
+    cli = payload / f"light-cli{suffix}"
     resources = resources or payload
     assert (resources / "registry/index.json").is_file()
     assert (resources / "lisp" / f"sbcl{suffix}").is_file()
     env = dict(os.environ)
-    for name in ("AIR_SBCL", "AIR_BUNDLE_DIR", "SBCL_HOME", "AIR_REGISTRY", "AIR_PRELOAD_MODULES"):
+    for name in ("LIGHT_SBCL", "LIGHT_BUNDLE_DIR", "SBCL_HOME", "LIGHT_REGISTRY", "LIGHT_PRELOAD_MODULES"):
         env.pop(name, None)
-    env["AIR_CONFIG_DIR"] = str(work / "config")
-    env["AIR_GITHUB_AUTODETECT"] = "0"
+    env["LIGHT_CONFIG_DIR"] = str(work / "config")
+    env["LIGHT_GITHUB_AUTODETECT"] = "0"
     env["XDG_CACHE_HOME"] = str(work / "cache")
     if windows:
         env["PATH"] = str(Path(os.environ["SystemRoot"]) / "System32")
-    assert "air-cli - headless Air engine" in run(cli, "help", env=env)
+    assert "light-cli - headless Light engine" in run(cli, "help", env=env)
     detected = run(cli, "which", env=env).replace("\\", "/").lower()
     assert str(resources / "lisp").replace("\\", "/").lower() in detected, detected
     assert "42" in run(cli, "eval", "(+ 40 2)", env=env)
@@ -79,9 +79,9 @@ def check_payload(payload, work, gui=False, resources=None):
         ]
         script = work / "script.json"
         script.write_text(json.dumps(steps))
-        env["AIR_REGISTRY"] = str(resources / "registry")
-        env["AIR_PRELOAD_MODULES"] = ""
-        output = run(payload / f"air{suffix}", "--script", script, "--no-restore", env=env)
+        env["LIGHT_REGISTRY"] = str(resources / "registry")
+        env["LIGHT_PRELOAD_MODULES"] = ""
+        output = run(payload / f"light{suffix}", "--script", script, "--no-restore", env=env)
         assert "SCRIPT OK" in output, output
 
 
@@ -102,11 +102,11 @@ def windows(setup):
         return Path(result.value)
 
     programs, desktop = folder(2), folder(16)
-    if registration() or (programs / "Air").exists() or (desktop / "Air.lnk").exists():
-        raise RuntimeError("refusing to overwrite an existing Air installation or shortcuts; use a clean test account")
-    with tempfile.TemporaryDirectory(prefix="air-install-test-") as temp:
+    if registration() or (programs / "Light").exists() or (desktop / "Light.lnk").exists():
+        raise RuntimeError("refusing to overwrite an existing Light installation or shortcuts; use a clean test account")
+    with tempfile.TemporaryDirectory(prefix="light-install-test-") as temp:
         work = Path(temp)
-        install = work / "Русский путь/Air"
+        install = work / "Русский путь/Light"
         preferences = work / "config/settings.json"
         preferences.parent.mkdir()
         preferences.write_text(json.dumps({"font_size": 17.0}), encoding="utf-8")
@@ -114,7 +114,7 @@ def windows(setup):
             print("Installing into a Unicode path...", flush=True)
             run_setup(setup, install)
             assert registration() == str(install), (registration(), str(install))
-            assert (programs / "Air/Air.lnk").is_file()
+            assert (programs / "Light/Light.lnk").is_file()
             print("Checking bundled tools and offline modules...", flush=True)
             check_payload(install, work, gui=True)
             note = install / "user-note.txt"
@@ -125,17 +125,17 @@ def windows(setup):
             assert registration() == str(install)
             assert note.read_text() == "keep user files"
             assert preferences.read_bytes() == saved_preferences
-            assert "air-cli" in run(install / "air-cli.exe", "help")
+            assert "light-cli" in run(install / "light-cli.exe", "help")
         finally:
             if registration() == str(install) and (install / "Uninstall.exe").is_file():
                 print("Checking uninstall...", flush=True)
                 run(install / "Uninstall.exe", "/S")
                 deadline = time.monotonic() + 30
-                while time.monotonic() < deadline and (registration() is not None or (install / "air.exe").exists()):
+                while time.monotonic() < deadline and (registration() is not None or (install / "light.exe").exists()):
                     time.sleep(0.1)
         assert registration() is None
-        assert not (programs / "Air").exists()
-        assert not (install / "air.exe").exists()
+        assert not (programs / "Light").exists()
+        assert not (install / "light.exe").exists()
         assert not (install / "git").exists()
         assert note.read_text() == "keep user files"
         assert preferences.read_bytes() == saved_preferences
@@ -150,23 +150,23 @@ def main():
     if platform.system() == "Windows":
         windows(installer)
     elif platform.system() == "Darwin":
-        with tempfile.TemporaryDirectory(prefix="air-install-test-") as temp:
+        with tempfile.TemporaryDirectory(prefix="light-install-test-") as temp:
             work = Path(temp)
             mount = work / "mounted"
             run("hdiutil", "attach", "-nobrowse", "-readonly", "-mountpoint", mount, installer)
             try:
-                app = mount / "Air.app"
+                app = mount / "Light.app"
                 run("codesign", "--verify", "--deep", "--strict", app)
                 check_payload(app / "Contents/MacOS", work, resources=app / "Contents/Resources")
             finally:
                 run("hdiutil", "detach", mount)
         print("PASS: disk image, app signature, relocated payload and bundled runtime")
     else:
-        with tempfile.TemporaryDirectory(prefix="air-install-test-") as temp:
+        with tempfile.TemporaryDirectory(prefix="light-install-test-") as temp:
             work = Path(temp)
             run("dpkg-deb", "--extract", installer, work / "root")
-            run("desktop-file-validate", work / "root/usr/share/applications/air.desktop")
-            check_payload(work / "root/opt/air", work)
+            run("desktop-file-validate", work / "root/usr/share/applications/light.desktop")
+            check_payload(work / "root/opt/light", work)
         print("PASS: Debian package, desktop entry, relocated payload and bundled runtime")
 
 

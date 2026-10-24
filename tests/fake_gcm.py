@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""A stand-in for `git credential-manager` used by the UI tests (AIR_FAKE_GCM points at this file).
+"""A stand-in for `git credential-manager` used by the UI tests (LIGHT_FAKE_GCM points at this file).
 
 It never opens a browser or touches a real credential store. Accounts live in the JSON file named by
-AIR_FAKE_GCM_STATE. `github login --browser` follows AIR_FAKE_GCM_MODES (comma separated, one entry per call,
+LIGHT_FAKE_GCM_STATE. `github login --browser` follows LIGHT_FAKE_GCM_MODES (comma separated, one entry per call,
 the last one repeats): `hang` waits for a minute (the test cancels it), `fail` exits with an error, `ok` adds the
 account `octocat`.
 """
@@ -11,7 +11,7 @@ import os
 import sys
 import time
 
-STATE = os.environ.get("AIR_FAKE_GCM_STATE") or os.path.join(os.environ.get("TEMP", "."), "air-fake-gcm.json")
+STATE = os.environ.get("LIGHT_FAKE_GCM_STATE") or os.path.join(os.environ.get("TEMP", "."), "light-fake-gcm.json")
 
 
 def load():
@@ -34,7 +34,7 @@ def main(argv):
             print(a)
         return 0
     if argv[:2] == ["github", "login"]:
-        modes = [m for m in os.environ.get("AIR_FAKE_GCM_MODES", "ok").split(",") if m]
+        modes = [m for m in os.environ.get("LIGHT_FAKE_GCM_MODES", "ok").split(",") if m]
         mode = modes[min(s.get("calls", 0), len(modes) - 1)]
         s["calls"] = s.get("calls", 0) + 1
         save(s)

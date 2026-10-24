@@ -1,4 +1,4 @@
-//! Command scripts for the terminal (and `air-cli script`): a text file with one shell command per line,
+//! Command scripts for the terminal (and `light-cli script`): a text file with one shell command per line,
 //! run one after another in the same working directory.
 //!
 //! ```text
@@ -32,7 +32,7 @@ pub struct Step {
 
 /// Extensions that are executed by their own interpreter instead of being parsed as command scripts.
 pub const NATIVE_EXTENSIONS: &[&str] = &["bat", "cmd", "ps1", "sh"];
-/// The extension of Air command scripts.
+/// The extension of Light command scripts.
 pub const SCRIPT_EXTENSION: &str = "als";
 
 /// Is `path` something that "Run script" should offer (native scripts and `.als` files)?
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn cd_resolves_relative_and_rejects_missing() {
-        let base = std::env::temp_dir().join(format!("air-cmdscript-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("light-cmdscript-{}", std::process::id()));
         std::fs::create_dir_all(base.join("sub")).unwrap();
         let base = change_dir(&base, ".").unwrap();
         let sub = change_dir(&base, "sub").unwrap();
@@ -278,8 +278,8 @@ mod tests {
 
     #[test]
     fn shell_runs_commands_with_env() {
-        let env = vec![("AIR_T".to_string(), "value-42".to_string())];
-        let line = if cfg!(windows) { "echo %AIR_T%" } else { "echo $AIR_T" };
+        let env = vec![("LIGHT_T".to_string(), "value-42".to_string())];
+        let line = if cfg!(windows) { "echo %LIGHT_T%" } else { "echo $LIGHT_T" };
         let out = shell_command(line, Path::new("."), &env).output().unwrap();
         assert!(String::from_utf8_lossy(&out.stdout).contains("value-42"), "{:?}", String::from_utf8_lossy(&out.stdout));
         let fail = if cfg!(windows) { "exit /b 3" } else { "exit 3" };

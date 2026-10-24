@@ -14,7 +14,7 @@ MODULE = module(
     name="Shell and Make",
     category="Languages",
     summary="Shell scripts, makefiles and the usual configuration files: highlighting, comments and an outline of functions and targets.",
-    description="Shell scripts (sh, bash, zsh), makefiles and configuration files (YAML, TOML, INI, CMake, Dockerfile, .gitignore) for Air: comments, strings, variables, keywords and builtins, make targets and recipes, the outline of functions and targets, and Comment Line with #. Make targets also appear as run configurations.",
+    description="Shell scripts (sh, bash, zsh), makefiles and configuration files (YAML, TOML, INI, CMake, Dockerfile, .gitignore) for Light: comments, strings, variables, keywords and builtins, make targets and recipes, the outline of functions and targets, and Comment Line with #. Make targets also appear as run configurations.",
     languages=[
         dict(
             id="shell", name="Shell", extensions=["sh", "bash", "zsh", "ksh", "bashrc", "profile", "bash_profile", "zshrc"], filenames=[".bashrc", ".profile", ".bash_profile", ".zshrc"],
@@ -74,6 +74,6 @@ MODULE = module(
     tools=[],
     detect=dict(extensions=["sh", "mk"], files=["Makefile", "makefile", "GNUmakefile", "Dockerfile"]),
     templates=[
-        dict(name="Script", description="run.sh", open="run.sh", files={"run.sh": '#!/bin/sh\nset -e\n\necho "Hello, Air"\n'}),
+        dict(name="Script", description="run.sh", open="run.sh", files={"run.sh": '#!/bin/sh\nset -e\n\necho "Hello, Light"\n'}),
     ],
 )

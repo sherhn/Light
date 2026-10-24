@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate apps/air/src/lucide.rs (codepoints of the Lucide icons the UI uses) from assets/icons/info.json."""
+"""Generate apps/light/src/lucide.rs (codepoints of the Lucide icons the UI uses) from assets/icons/info.json."""
 import json
 import pathlib
 
@@ -17,5 +17,5 @@ for n in NAMES:
         raise SystemExit(f"unknown Lucide icon: {n}")
     code = int(info[n]["encodedCode"].lstrip("\\"), 16)
     lines.append("pub const %s: char = '\\u{%x}';" % (n.upper().replace("-", "_"), code))
-(ROOT / "apps" / "air" / "src" / "lucide.rs").write_text("\n".join(lines) + "\n", encoding="utf-8")
+(ROOT / "apps" / "light" / "src" / "lucide.rs").write_text("\n".join(lines) + "\n", encoding="utf-8")
 print(f"wrote {len(NAMES)} icons")

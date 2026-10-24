@@ -3,7 +3,7 @@
 //! (Python) or the comment block above it (`///`, `//`, `/** */`, `#`, `;`, `--`). It is what the hover popup shows
 //! for a function of a language a module brings.
 
-use air_lang::Language;
+use light_lang::Language;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DocInfo {
@@ -274,7 +274,7 @@ fn dedent(lines: &[String]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use air_lang::LangDef;
+    use light_lang::LangDef;
 
     fn lang(line_comment: &str, block: &[&str]) -> Language {
         Language::new(LangDef { id: "x".into(), name: "X".into(), line_comment: line_comment.into(), block_comment: block.iter().map(|s| s.to_string()).collect(), ..LangDef::default() }).unwrap()

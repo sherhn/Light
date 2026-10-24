@@ -45,10 +45,10 @@ class InstallerSafetyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "registry").mkdir()
-            (root / "air.exe").write_bytes(b"app")
+            (root / "light.exe").write_bytes(b"app")
             (root / "registry/module$1.json").write_text("{}")
             commands = uninstall_manifest(root).splitlines()
-            self.assertIn('Delete "$INSTDIR\\air.exe"', commands)
+            self.assertIn('Delete "$INSTDIR\\light.exe"', commands)
             self.assertIn('Delete "$INSTDIR\\registry\\module$$1.json"', commands)
             self.assertIn('RMDir "$INSTDIR\\registry"', commands)
             self.assertFalse(any("/r" in c.lower() or "*" in c or "$APPDATA" in c for c in commands))
@@ -56,7 +56,7 @@ class InstallerSafetyTests(unittest.TestCase):
 
     def test_desktop_launcher_opens_files_without_a_shell(self):
         desktop = desktop_entry()
-        self.assertIn("Exec=/opt/air/air %F\n", desktop)
+        self.assertIn("Exec=/opt/light/light %F\n", desktop)
         self.assertIn("Terminal=false\n", desktop)
         self.assertNotIn("sh -c", desktop)
 

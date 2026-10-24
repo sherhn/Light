@@ -18,7 +18,7 @@ MODULE = module(
     name="Python",
     category="Languages",
     summary="Highlighting, indentation, folding by blocks and an outline for Python; run a file; python3 and pip in Linux.",
-    description="Python for Air: strings of every kind (triple-quoted, f-strings, raw), decorators, keywords, builtins and numbers; Enter after a colon indents and return/pass dedent; folding by indentation; the outline of classes and functions; a command to run the current file. The Linux side brings python3, pip and venv - installed from inside the IDE.",
+    description="Python for Light: strings of every kind (triple-quoted, f-strings, raw), decorators, keywords, builtins and numbers; Enter after a colon indents and return/pass dedent; folding by indentation; the outline of classes and functions; a command to run the current file. The Linux side brings python3, pip and venv - installed from inside the IDE.",
     languages=[dict(
         id="python", name="Python", extensions=["py", "pyw", "pyi", "pyx"], filenames=["SConstruct", "SConscript", "Pipfile"], first_line=r"^#!.*\bpython",
         line_comment="#", brackets=["()", "[]", "{}"], check=["brackets"], indent={"mode": "python", "size": 4}, fold="indent",
@@ -57,7 +57,7 @@ MODULE = module(
     detect=dict(extensions=["py", "pyw"], files=["pyproject.toml", "requirements.txt", "setup.py", "Pipfile"]),
     templates=[
         dict(name="Script", description="main.py", open="main.py",
-             files={"main.py": 'def main():\n    print("Hello, Air")\n\n\nif __name__ == "__main__":\n    main()\n'}),
+             files={"main.py": 'def main():\n    print("Hello, Light")\n\n\nif __name__ == "__main__":\n    main()\n'}),
         dict(name="Package with tests", description="a package, a test and requirements", open="app/core.py",
              files={"pyproject.toml": '[project]\nname = "app"\nversion = "0.1.0"\n',
                     "requirements.txt": "pytest\n",

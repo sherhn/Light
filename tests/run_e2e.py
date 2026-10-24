@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end tests: drive the real Air window with JSON scripts (see apps/air/src/script.rs).
+"""End-to-end tests: drive the real Light window with JSON scripts (see apps/light/src/script.rs).
 
 Usage: python tests/run_e2e.py [--release] [name-substring ...]
 Each tests/e2e/*.json script runs in a fresh fixture project with an isolated config directory.
@@ -20,8 +20,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import fake_github
 PROFILE = "release" if "--release" in sys.argv else "debug"
-EXE = pathlib.Path(os.environ["AIR_E2E_EXE"]) if os.environ.get("AIR_E2E_EXE") else ROOT / "target" / PROFILE / ("air.exe" if os.name == "nt" else "air")
-CLI = ROOT / "target" / PROFILE / ("air-cli.exe" if os.name == "nt" else "air-cli")
+EXE = pathlib.Path(os.environ["LIGHT_E2E_EXE"]) if os.environ.get("LIGHT_E2E_EXE") else ROOT / "target" / PROFILE / ("light.exe" if os.name == "nt" else "light")
+CLI = ROOT / "target" / PROFILE / ("light-cli.exe" if os.name == "nt" else "light-cli")
 SHOTS = ROOT / "target" / "e2e-shots"
 
 FIXTURE_FILES = {
@@ -65,7 +65,7 @@ def make_fixture(tmp):
 
 def run_one(script_path):
     name = script_path.stem
-    tmp = pathlib.Path(tempfile.mkdtemp(prefix=f"air-e2e-{name}-"))
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix=f"light-e2e-{name}-"))
     try:
         proj = make_fixture(tmp)
         text = script_path.read_text(encoding="utf-8")
@@ -172,10 +172,10 @@ def run_one(script_path):
                 func(path)
 
             shutil.rmtree(proj / ".git", onexc=_unlock)
-        env = dict(os.environ, AIR_CONFIG_DIR=str(tmp / "cfg"))
+        env = dict(os.environ, LIGHT_CONFIG_DIR=str(tmp / "cfg"))
         # modules come from the registry of this repository; a script gets Lisp, plus what `@modules a,b` names (a kernel
         # project also C, assembler and make), and `@no_modules` starts with none
-        env["AIR_REGISTRY"] = str(ROOT / "registry")
+        env["LIGHT_REGISTRY"] = str(ROOT / "registry")
         preload = ["lisp"]
         tag = re.search(r"@modules ([\w,-]+)", text)
         if tag:
@@ -184,10 +184,10 @@ def run_one(script_path):
             preload += ["c-cpp", "assembler", "shell-make"]
         if "@no_modules" in text:
             preload = []
-        env["AIR_PRELOAD_MODULES"] = ",".join(dict.fromkeys(preload))
+        env["LIGHT_PRELOAD_MODULES"] = ",".join(dict.fromkeys(preload))
         # the tests never read the real GitHub login (gh / Git credential store) nor call api.github.com
-        env["AIR_GITHUB_AUTODETECT"] = "0"
-        env.pop("AIR_GITHUB_FAKE_TOKEN", None)
+        env["LIGHT_GITHUB_AUTODETECT"] = "0"
+        env.pop("LIGHT_GITHUB_FAKE_TOKEN", None)
         github = None
         if "github" in name:
             remotes = tmp / "remotes"
@@ -196,26 +196,26 @@ def run_one(script_path):
                 "private-notes": fake_github.make_remote(remotes, "private-notes", {"notes.txt": "secret notes\n"}),
             }
             github = fake_github.Server(paths).start()
-            env["AIR_GITHUB_API"] = github.url
+            env["LIGHT_GITHUB_API"] = github.url
             # a fake Git Credential Manager: the browser sign-in hangs (cancelled), fails, then works
-            env["AIR_FAKE_GCM"] = str(ROOT / "tests" / "fake_gcm.py")
-            env["AIR_FAKE_GCM_PYTHON"] = sys.executable
-            env["AIR_FAKE_GCM_STATE"] = str(tmp / "fake-gcm.json")
-            env["AIR_FAKE_GCM_MODES"] = "hang,fail,ok"
-            env["AIR_FAKE_GCM_TOKEN"] = fake_github.FAKE_TOKEN
+            env["LIGHT_FAKE_GCM"] = str(ROOT / "tests" / "fake_gcm.py")
+            env["LIGHT_FAKE_GCM_PYTHON"] = sys.executable
+            env["LIGHT_FAKE_GCM_STATE"] = str(tmp / "fake-gcm.json")
+            env["LIGHT_FAKE_GCM_MODES"] = "hang,fail,ok"
+            env["LIGHT_FAKE_GCM_TOKEN"] = fake_github.FAKE_TOKEN
             if "saved" in name:
                 # "a login that is already on this computer" without touching the real one
-                env["AIR_GITHUB_FAKE_TOKEN"] = fake_github.FAKE_TOKEN
+                env["LIGHT_GITHUB_FAKE_TOKEN"] = fake_github.FAKE_TOKEN
         # the tests never touch the real WSL: a fake stands in for wsl.exe (scripts named *wsl* start without WSL)
-        env["AIR_FAKE_WSL"] = str(ROOT / "tests" / "fake_wsl.py")
-        env["AIR_FAKE_WSL_PYTHON"] = sys.executable
-        env["AIR_FAKE_WSL_STATE"] = str(tmp / "fake-wsl.json")
-        env["AIR_FAKE_WSL_START"] = "absent" if "wsl" in name else "installed"
+        env["LIGHT_FAKE_WSL"] = str(ROOT / "tests" / "fake_wsl.py")
+        env["LIGHT_FAKE_WSL_PYTHON"] = sys.executable
+        env["LIGHT_FAKE_WSL_STATE"] = str(tmp / "fake-wsl.json")
+        env["LIGHT_FAKE_WSL_START"] = "absent" if "wsl" in name else "installed"
         if shutil.which("sbcl"):
-            env.setdefault("AIR_FAKE_WSL_SBCL", shutil.which("sbcl"))
-        if os.environ.get("AIR_E2E_STRIP_SBCL"):
+            env.setdefault("LIGHT_FAKE_WSL_SBCL", shutil.which("sbcl"))
+        if os.environ.get("LIGHT_E2E_STRIP_SBCL"):
             # prove that the bundled SBCL is used: no system SBCL on PATH, no explicit override
-            env.pop("AIR_SBCL", None)
+            env.pop("LIGHT_SBCL", None)
             sep = os.pathsep
             env["PATH"] = sep.join(p for p in env.get("PATH", "").split(sep) if "sbcl" not in p.lower() and "steel bank" not in p.lower())
         t0 = time.time()
@@ -224,7 +224,7 @@ def run_one(script_path):
         except subprocess.TimeoutExpired as e:
             return name, False, f"TIMEOUT after 180s\n{(e.stdout or b'').decode(errors='replace') if isinstance(e.stdout, bytes) else e.stdout}", time.time() - t0
         out = (p.stdout or "") + (p.stderr or "")
-        if os.environ.get("AIR_E2E_VERBOSE"):
+        if os.environ.get("LIGHT_E2E_VERBOSE"):
             print(out)
         ok = p.returncode == 0 and "SCRIPT OK" in out
         return name, ok, out, time.time() - t0
@@ -239,7 +239,7 @@ def run_one(script_path):
 
 def main():
     if not EXE.exists() or not CLI.exists():
-        raise SystemExit(f"build first: cargo build{' --release' if PROFILE == 'release' else ''} -p air -p air-cli")
+        raise SystemExit(f"build first: cargo build{' --release' if PROFILE == 'release' else ''} -p light -p light-cli")
     SHOTS.mkdir(parents=True, exist_ok=True)
     filters = [a for a in sys.argv[1:] if not a.startswith("--")]
     scripts = sorted((ROOT / "tests" / "e2e").glob("*.json"))

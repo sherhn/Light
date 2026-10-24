@@ -5,7 +5,7 @@
   "name": "HTML",
   "category": "Languages",
   "summary": "Tags, attributes, entities and comments; tag indentation and folding, an element outline and a web page template.",
-  "description": "HTML for Air: tags (including custom elements), quoted and unquoted attributes, character references, declarations and comments are coloured without treating page text as code. Tag and attribute names are available in completion; the outline lists opening elements. Comment Line wraps lines in HTML comments; opening and closing tags control indentation and folding, with void and self-closing elements handled separately. Script, style, textarea and title contents stay separate from HTML tags. A new project can start with an HTML page and a linked stylesheet.",
+  "description": "HTML for Light: tags (including custom elements), quoted and unquoted attributes, character references, declarations and comments are coloured without treating page text as code. Tag and attribute names are available in completion; the outline lists opening elements. Comment Line wraps lines in HTML comments; opening and closing tags control indentation and folding, with void and self-closing elements handled separately. Script, style, textarea and title contents stay separate from HTML tags. A new project can start with an HTML page and a linked stylesheet.",
   "languages": [
     {
       "id": "html",
@@ -1286,7 +1286,7 @@
       "description": "An HTML page with a linked stylesheet",
       "open": "index.html",
       "files": {
-        "index.html": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>My website</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n  </head>\n  <body>\n    <main class=\"page\">\n      <h1>Hello, Air</h1>\n      <p>Your first web page.</p>\n    </main>\n  </body>\n</html>\n",
+        "index.html": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>My website</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n  </head>\n  <body>\n    <main class=\"page\">\n      <h1>Hello, Light</h1>\n      <p>Your first web page.</p>\n    </main>\n  </body>\n</html>\n",
         "styles.css": ":root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n}\n\nbody {\n  margin: 0;\n}\n\n.page {\n  max-width: 60rem;\n  margin: 0 auto;\n  padding: 2rem;\n}\n"
       }
     }

@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use air_lang::LangDef;
+use light_lang::LangDef;
 use serde::{Deserialize, Serialize};
 
 /// A command that runs a file of a language.
@@ -143,7 +143,7 @@ impl Manifest {
             return Err(format!("{}: the version {:?} is not like 1.2.3", self.id, self.version));
         }
         for l in &self.languages {
-            air_lang::Language::new(l.clone())?;
+            light_lang::Language::new(l.clone())?;
         }
         for r in &self.run {
             if !self.languages.iter().any(|l| l.id == r.language) && self.builtin.is_empty() {

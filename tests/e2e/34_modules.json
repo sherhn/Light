@@ -1,5 +1,5 @@
 [
-  {"op": "log", "value": "@no_modules @polyglot: a fresh Air has no languages; they are downloaded from inside the IDE"},
+  {"op": "log", "value": "@no_modules @polyglot: a fresh Light has no languages; they are downloaded from inside the IDE"},
   {"op": "assert_modules", "installed": [], "tab": false},
   {"op": "open_project", "path": "${PROJ}"},
   {"op": "wait", "what": "index"},

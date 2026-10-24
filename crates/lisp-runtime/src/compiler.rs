@@ -282,7 +282,7 @@ impl CompileResult {
 static FASL_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub fn compile_file(imp: &Implementation, file: &Path) -> io::Result<(RunHandle, std::path::PathBuf)> {
-    let dir = std::env::temp_dir().join("air");
+    let dir = std::env::temp_dir().join("light");
     std::fs::create_dir_all(&dir)?;
     let fasl = dir.join(format!("compile-{}-{}.fasl", std::process::id(), FASL_COUNTER.fetch_add(1, Ordering::SeqCst)));
     let forms = format!(
@@ -437,7 +437,7 @@ mod tests {
     }
 
     fn write(name: &str, content: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("air-compile-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("light-compile-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join(name);
         std::fs::write(&p, content).unwrap();

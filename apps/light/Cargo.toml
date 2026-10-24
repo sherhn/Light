@@ -1,0 +1,25 @@
+[package]
+name = "light"
+description = "Light - a modular IDE for any language"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "light"
+path = "src/main.rs"
+
+[dependencies]
+lisp-syntax.workspace = true
+light-lang.workspace = true
+light-markup.workspace = true
+ide-core.workspace = true
+lisp-runtime.workspace = true
+eframe = { version = "0.37", default-features = false, features = ["glow", "default_fonts", "clipboard", "x11", "wayland"] }
+rfd = "0.17"
+serde.workspace = true
+serde_json.workspace = true
+png = "0.18"
+
+[target.'cfg(windows)'.build-dependencies]
+embed-resource = "3"

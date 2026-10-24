@@ -56,7 +56,7 @@ MODULE = module(
     name="CSS",
     category="Languages",
     summary="Selectors, properties, values, colours, variables and at-rules; brace indentation, folding and a stylesheet template.",
-    description="CSS for Air: class and ID selectors, pseudo-classes and pseudo-elements, attribute selectors, common properties (including vendor prefixes), custom properties, strings, URLs, colours, dimensions, functions and at-rules. Comment Line uses CSS block comments; braces indent, match and fold. The outline lists rule selectors and block at-rules. Start with a stylesheet template or use the stylesheet linked by the HTML module's web page template.",
+    description="CSS for Light: class and ID selectors, pseudo-classes and pseudo-elements, attribute selectors, common properties (including vendor prefixes), custom properties, strings, URLs, colours, dimensions, functions and at-rules. Comment Line uses CSS block comments; braces indent, match and fold. The outline lists rule selectors and block at-rules. Start with a stylesheet template or use the stylesheet linked by the HTML module's web page template.",
     languages=[dict(
         id="css", name="CSS", extensions=["css"], filenames=[],
         block_comment=["/*", "*/"], brackets=["()", "[]", "{}"], identifier_chars="-", indent={"mode": "braces", "size": 2}, fold="braces", check=["brackets"],

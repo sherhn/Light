@@ -217,7 +217,7 @@ pub fn walk_files(root: &Path) -> impl Iterator<Item = PathBuf> {
         .require_git(false)
         .filter_entry(|e| {
             let name = e.file_name().to_string_lossy();
-            !matches!(name.as_ref(), ".git" | ".idea" | "node_modules" | "target" | "fasl-cache" | ".air" | ".DS_Store")
+            !matches!(name.as_ref(), ".git" | ".idea" | "node_modules" | "target" | "fasl-cache" | ".light" | ".air" | ".DS_Store")
         })
         .build()
         .filter_map(Result::ok)

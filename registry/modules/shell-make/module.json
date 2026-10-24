@@ -5,7 +5,7 @@
   "name": "Shell and Make",
   "category": "Languages",
   "summary": "Shell scripts, makefiles and the usual configuration files: highlighting, comments and an outline of functions and targets.",
-  "description": "Shell scripts (sh, bash, zsh), makefiles and configuration files (YAML, TOML, INI, CMake, Dockerfile, .gitignore) for Air: comments, strings, variables, keywords and builtins, make targets and recipes, the outline of functions and targets, and Comment Line with #. Make targets also appear as run configurations.",
+  "description": "Shell scripts (sh, bash, zsh), makefiles and configuration files (YAML, TOML, INI, CMake, Dockerfile, .gitignore) for Light: comments, strings, variables, keywords and builtins, make targets and recipes, the outline of functions and targets, and Comment Line with #. Make targets also appear as run configurations.",
   "languages": [
     {
       "id": "shell",
@@ -409,7 +409,7 @@
       "description": "run.sh",
       "open": "run.sh",
       "files": {
-        "run.sh": "#!/bin/sh\nset -e\n\necho \"Hello, Air\"\n"
+        "run.sh": "#!/bin/sh\nset -e\n\necho \"Hello, Light\"\n"
       }
     }
   ]

@@ -11,8 +11,8 @@ rust-version = "1.88"
 [workspace.dependencies]
 lisp-syntax = { path = "crates/lisp-syntax" }
 ide-core = { path = "crates/ide-core" }
-air-lang = { path = "crates/air-lang" }
-air-markup = { path = "crates/air-markup" }
+light-lang = { path = "crates/light-lang" }
+light-markup = { path = "crates/light-markup" }
 lisp-runtime = { path = "crates/lisp-runtime" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

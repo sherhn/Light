@@ -52,7 +52,7 @@ pub struct ReplSession {
 
 fn write_server_file() -> io::Result<PathBuf> {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
-    let dir = std::env::temp_dir().join("air");
+    let dir = std::env::temp_dir().join("light");
     std::fs::create_dir_all(&dir)?;
     let path = dir.join(format!("repl-server-{}-{}.lisp", std::process::id(), COUNTER.fetch_add(1, Ordering::SeqCst)));
     std::fs::write(&path, SERVER_SOURCE)?;
@@ -484,7 +484,7 @@ mod tests {
         if !install.join("sbcl.core").is_file() || !install.join("contrib").is_dir() {
             return; // other layouts (distro packages) cannot be relocated this way
         }
-        let dir = std::env::temp_dir().join(format!("air-bundle-run-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("light-bundle-run-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         copy_dir(install, &dir);
         let imp = Implementation::bundled(&dir).expect("bundle layout");

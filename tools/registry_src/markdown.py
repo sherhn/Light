@@ -6,7 +6,7 @@ MODULE = module(
     name="Markdown",
     category="Documents",
     summary="Headings, emphasis, code, links and lists; Enter continues a list; folding and an outline by headings.",
-    description="Markdown for Air: headings (# and underlined), bold, italic, inline code and fenced code blocks, links and images, block quotes, lists and tables are coloured; Enter at the end of a list item or a quotation continues it and Enter on an empty item ends it; the outline and folding follow the headings; Comment Line wraps a line in an HTML comment. A rendered preview shows the document next to the code or instead of it (Editor, Editor and Preview, Preview).",
+    description="Markdown for Light: headings (# and underlined), bold, italic, inline code and fenced code blocks, links and images, block quotes, lists and tables are coloured; Enter at the end of a list item or a quotation continues it and Enter on an empty item ends it; the outline and folding follow the headings; Comment Line wraps a line in an HTML comment. A rendered preview shows the document next to the code or instead of it (Editor, Editor and Preview, Preview).",
     languages=[dict(
         id="markdown", name="Markdown", extensions=["md", "markdown", "mdown", "mkd", "mdx"], filenames=["README", "CHANGELOG", "LICENSE"],
         block_comment=["<!--", "-->"], brackets=[], indent={"mode": "markup", "size": 2}, fold="headings", preview="markdown",

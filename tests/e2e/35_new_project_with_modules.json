@@ -15,9 +15,9 @@
   {"op": "wait", "what": "index"},
   {"op": "frames", "value": 6},
   {"op": "assert_modules", "installed": ["markdown", "python"], "enabled": ["markdown", "python"]},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/main.py", "value": "Hello, Air"},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/.air/project.json", "value": "python"},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/.air/project.json", "value": "markdown"},
+  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/main.py", "value": "Hello, Light"},
+  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/.light/project.json", "value": "python"},
+  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/.light/project.json", "value": "markdown"},
   {"op": "assert_language", "value": "python"},
   {"op": "screenshot", "path": "${SHOTS}/${NAME}_created.png"},
 

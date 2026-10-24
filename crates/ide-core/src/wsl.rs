@@ -2,7 +2,7 @@
 //!
 //! A project that lives there is a Linux project: git for it runs inside the distribution (so file modes, symlinks
 //! and line endings stay Linux ones and git does not complain about "dubious ownership"). Every call goes through
-//! `wsl.exe`; in the UI tests `AIR_FAKE_WSL` (a Python script) stands in for it.
+//! `wsl.exe`; in the UI tests `LIGHT_FAKE_WSL` (a Python script) stands in for it.
 
 use std::path::Path;
 use std::process::Command;
@@ -42,11 +42,11 @@ pub fn windows_path(distro: &str, linux: &str) -> std::path::PathBuf {
 }
 
 /// `wsl.exe -d DISTRO [--cd DIR] -e PROGRAM` (arguments are added by the caller). In the UI tests
-/// `AIR_FAKE_WSL` (a Python script, run by `AIR_FAKE_WSL_PYTHON`) replaces `wsl.exe`.
+/// `LIGHT_FAKE_WSL` (a Python script, run by `LIGHT_FAKE_WSL_PYTHON`) replaces `wsl.exe`.
 pub fn command(distro: &str, cwd: Option<&str>, program: &str) -> Command {
-    let mut c = match std::env::var_os("AIR_FAKE_WSL") {
+    let mut c = match std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")) {
         Some(script) => {
-            let mut c = Command::new(std::env::var_os("AIR_FAKE_WSL_PYTHON").unwrap_or_else(|| "python".into()));
+            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_WSL_PYTHON").or_else(|| std::env::var_os("AIR_FAKE_WSL_PYTHON")).unwrap_or_else(|| "python".into()));
             c.arg(script);
             c
         }
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn commands_go_through_wsl_exe() {
-        if std::env::var_os("AIR_FAKE_WSL").is_some() {
+        if std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")).is_some() {
             return;
         }
         let mut c = command("Ubuntu", Some("/home/me/p"), "git");

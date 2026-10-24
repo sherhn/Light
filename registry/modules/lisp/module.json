@@ -5,7 +5,7 @@
   "name": "Lisp",
   "category": "Languages",
   "summary": "Common Lisp and Scheme: structural editing, a live REPL, compile and load, ASDF systems, symbol navigation and SBCL in Linux.",
-  "description": "The Lisp module switches on everything Air does for Lisp: the reader with matching brackets and rainbow depth, structural editing (slurp, barf, splice, raise), formatting, completion and documentation from the live image, the REPL, run and compile of files, ASDF systems, go to definition, find usages and refactorings. SBCL runs on Windows or in your Linux through WSL.",
+  "description": "The Lisp module switches on everything Light does for Lisp: the reader with matching brackets and rainbow depth, structural editing (slurp, barf, splice, raise), formatting, completion and documentation from the live image, the REPL, run and compile of files, ASDF systems, go to definition, find usages and refactorings. SBCL runs on Windows or in your Linux through WSL.",
   "builtin": "lisp",
   "languages": [],
   "run": [],
@@ -35,7 +35,7 @@
         "src/package.lisp": "(defpackage :{{name}}\n  (:use :cl)\n  (:export #:main #:greet))\n",
         "src/main.lisp": "(in-package :{{name}})\n\n(defun greet (name)\n  \"Return a greeting for NAME.\"\n  (format nil \"Hello, ~a!\" name))\n\n(defun main ()\n  (format t \"~a~%\" (greet \"world\")))\n",
         "test/tests.lisp": "(defpackage :{{name}}/test\n  (:use :cl)\n  (:export #:run))\n(in-package :{{name}}/test)\n\n(defun run ()\n  (assert (string= (funcall (intern \"GREET\" :{{name}}) \"Lisp\") \"Hello, Lisp!\"))\n  (format t \"All tests passed.~%\"))\n",
-        "README.md": "# {{name}}\n\nA Common Lisp project created with Air.\n",
+        "README.md": "# {{name}}\n\nA Common Lisp project created with Light.\n",
         ".gitignore": "*.fasl\n"
       }
     }

@@ -1,7 +1,7 @@
 //! Windows Subsystem for Linux: finding it and its distributions, setting them up, and running programs inside a
 //! distribution with Windows paths translated to Linux ones.
 //!
-//! Every call goes through `wsl.exe` (in the UI tests through the fake script named by `AIR_FAKE_WSL`). The
+//! Every call goes through `wsl.exe` (in the UI tests through the fake script named by `LIGHT_FAKE_WSL`). The
 //! setup commands only ever add things - WSL itself, a distribution, packages inside one; nothing here unregisters,
 //! moves or deletes a distribution or its files.
 
@@ -86,15 +86,15 @@ pub fn sh_quote(s: &str) -> String {
 
 /// Is `wsl.exe` replaced by the fake of the UI tests?
 pub fn is_faked() -> bool {
-    std::env::var_os("AIR_FAKE_WSL").is_some()
+    std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")).is_some()
 }
 
-/// `wsl.exe` with its own messages in UTF-8 (`WSL_UTF8`). `AIR_FAKE_WSL` (a Python script, run by
-/// `AIR_FAKE_WSL_PYTHON`) stands in for it in the UI tests, so they never touch the real WSL.
+/// `wsl.exe` with its own messages in UTF-8 (`WSL_UTF8`). `LIGHT_FAKE_WSL` (a Python script, run by
+/// `LIGHT_FAKE_WSL_PYTHON`) stands in for it in the UI tests, so they never touch the real WSL.
 pub fn wsl_command() -> Command {
-    let mut c = match std::env::var_os("AIR_FAKE_WSL") {
+    let mut c = match std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")) {
         Some(script) => {
-            let mut c = Command::new(std::env::var_os("AIR_FAKE_WSL_PYTHON").unwrap_or_else(|| "python".into()));
+            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_WSL_PYTHON").or_else(|| std::env::var_os("AIR_FAKE_WSL_PYTHON")).unwrap_or_else(|| "python".into()));
             c.arg(script);
             c
         }
@@ -289,18 +289,18 @@ pub struct SbclCheck {
 /// user-installed SBCL on the profile's PATH is found too).
 pub fn sbcl_check_script(sbcl: &str) -> String {
     let sbcl = sh_quote(if sbcl.trim().is_empty() { "sbcl" } else { sbcl.trim() });
-    format!("p=$(command -v {sbcl} 2>/dev/null); echo \"AIR_SBCL=$p\"; if [ -n \"$p\" ]; then echo \"AIR_VERSION=$(\"$p\" --version 2>/dev/null)\"; fi; echo \"AIR_MOUNT=$(wslpath -u 'C:\\' 2>/dev/null)\"")
+    format!("p=$(command -v {sbcl} 2>/dev/null); echo \"LIGHT_SBCL=$p\"; if [ -n \"$p\" ]; then echo \"LIGHT_VERSION=$(\"$p\" --version 2>/dev/null)\"; fi; echo \"LIGHT_MOUNT=$(wslpath -u 'C:\\' 2>/dev/null)\"")
 }
 
 pub fn parse_sbcl_check(text: &str) -> SbclCheck {
     let value = |key: &str| text.lines().find_map(|l| l.trim().strip_prefix(key)).map(str::trim).filter(|v| !v.is_empty()).map(str::to_string);
-    let mount_root = value("AIR_MOUNT=").and_then(|m| {
+    let mount_root = value("LIGHT_MOUNT=").and_then(|m| {
         // `/mnt/c/` -> `/mnt/`
         let t = m.trim_end_matches('/');
         let root = &t[..t.len().saturating_sub(1)];
         (t.ends_with(['c', 'C']) && root.ends_with('/')).then(|| root.to_string())
     });
-    SbclCheck { path: value("AIR_SBCL="), version: value("AIR_VERSION="), mount_root }
+    SbclCheck { path: value("LIGHT_SBCL="), version: value("LIGHT_VERSION="), mount_root }
 }
 
 /// Look for SBCL inside `distro` (starts the distribution if it is stopped).
@@ -384,32 +384,32 @@ pub fn install_file_command(file: &Path, name: &str, location: &Path) -> Result<
     Ok(c)
 }
 
-/// Shell script installing SBCL with the distribution's package manager (run as root). The `@@air stage` lines
+/// Shell script installing SBCL with the distribution's package manager (run as root). The `@@light stage` lines
 /// tell the setup page which phase it is in (see [`crate::setup_progress`]).
 pub const INSTALL_SBCL_SCRIPT: &str = "set -e
-echo '@@air stage prepare'
+echo '@@light stage prepare'
 if command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  echo '@@air stage install'
+  echo '@@light stage install'
   apt-get install -y sbcl
 elif command -v dnf >/dev/null 2>&1; then
-  echo '@@air stage install'
+  echo '@@light stage install'
   dnf install -y sbcl
 elif command -v zypper >/dev/null 2>&1; then
-  echo '@@air stage install'
+  echo '@@light stage install'
   zypper --non-interactive install sbcl
 elif command -v pacman >/dev/null 2>&1; then
-  echo '@@air stage install'
+  echo '@@light stage install'
   pacman -Sy --noconfirm sbcl
 elif command -v apk >/dev/null 2>&1; then
-  echo '@@air stage install'
+  echo '@@light stage install'
   apk add sbcl
 else
   echo 'No supported package manager (apt, dnf, zypper, pacman, apk) found.' >&2
   exit 2
 fi
-echo '@@air stage verify'
+echo '@@light stage verify'
 sbcl --version";
 
 /// Install SBCL inside `distro` as root (`wsl -u root` needs no password).
@@ -578,7 +578,7 @@ pub fn install_tools_script(groups: &[ToolGroup]) -> String {
     let core = groups.iter().any(|g| !g.custom);
     // the way each other package manager installs the core set, then the user's own packages one by one
     let other = |manager: &str, core_cmd: &str, one: &str| -> String {
-        let mut s = String::from("  echo '@@air stage install'\n");
+        let mut s = String::from("  echo '@@light stage install'\n");
         if core {
             s.push_str(&format!("  {core_cmd}\n"));
         }
@@ -593,11 +593,11 @@ pub fn install_tools_script(groups: &[ToolGroup]) -> String {
     let apk = other("apk", "apk add build-base nasm gdb git qemu-system-i386 qemu-system-x86_64", "apk add");
     format!(
         "set -e
-echo '@@air stage prepare'
+echo '@@light stage prepare'
 if command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  echo '@@air stage install'
+  echo '@@light stage install'
   have=''
   for p in {apt}; do
     if apt-cache show \"$p\" >/dev/null 2>&1; then have=\"$have $p\"; else echo \"Skipped (this distribution has no $p)\"; fi
@@ -611,7 +611,7 @@ elif command -v dnf >/dev/null 2>&1; then
   echo 'No supported package manager (apt, dnf, zypper, pacman, apk) found.' >&2
   exit 2
 fi
-echo '@@air stage verify'
+echo '@@light stage verify'
 for t in make gcc; do
   if command -v \"$t\" >/dev/null 2>&1; then \"$t\" --version | head -n 1; fi
 done"
@@ -676,7 +676,7 @@ pub fn open_window(distro: &str) -> io::Result<()> {
         return Ok(());
     }
     // `start` gives the distribution a console window of its own; the title is the first quoted argument
-    Command::new("cmd").args(["/C", "start", "Air", "wsl.exe", "-d", distro, "--cd", "~"]).spawn().map(|_| ())
+    Command::new("cmd").args(["/C", "start", "Light", "wsl.exe", "-d", distro, "--cd", "~"]).spawn().map(|_| ())
 }
 
 /// Free bytes on the drive of `path` (Windows only; `None` when unknown).
@@ -713,10 +713,10 @@ pub fn shell(t: &Target, cwd: &Path, line: &str, env: &[(String, String)], marke
 
 static NEXT_MARKER: AtomicU64 = AtomicU64::new(1);
 
-/// A tag put on the command line of a process started in the distribution, unique for this run of Air.
+/// A tag put on the command line of a process started in the distribution, unique for this run of Light.
 pub fn new_marker() -> String {
     // the trailing `x` keeps `...-1x` from matching `...-10x`
-    format!("air-{}-{}x", std::process::id(), NEXT_MARKER.fetch_add(1, Ordering::Relaxed))
+    format!("light-{}-{}x", std::process::id(), NEXT_MARKER.fetch_add(1, Ordering::Relaxed))
 }
 
 /// `pgrep` pattern that matches `marker` but not the command line that carries the pattern itself.
@@ -917,7 +917,7 @@ mod tests {
     fn the_install_script_does_not_fail_for_the_tools_it_left_out() {
         // the check at the end only reports what is there (the script runs with `set -e`)
         let s = install_tools_script(&[ToolGroup::new("Debugging", &["gdb"], "gdb")]);
-        let verify = &s[s.find("@@air stage verify").unwrap()..];
+        let verify = &s[s.find("@@light stage verify").unwrap()..];
         assert!(verify.contains("if command -v \"$t\""), "{verify}");
         assert!(!verify.contains("\nmake --version") && !verify.contains("\ngcc --version"));
         // and with nothing chosen from apt nothing is asked of apt-get
@@ -1004,9 +1004,9 @@ mod tests {
 
     #[test]
     fn sbcl_check_reports_path_version_and_mount_root() {
-        let c = parse_sbcl_check("AIR_SBCL=/usr/bin/sbcl\nAIR_VERSION=SBCL 2.2.9.debian\nAIR_MOUNT=/mnt/c/\n");
+        let c = parse_sbcl_check("LIGHT_SBCL=/usr/bin/sbcl\nLIGHT_VERSION=SBCL 2.2.9.debian\nLIGHT_MOUNT=/mnt/c/\n");
         assert_eq!(c, SbclCheck { path: Some("/usr/bin/sbcl".into()), version: Some("SBCL 2.2.9.debian".into()), mount_root: Some("/mnt/".into()) });
-        let missing = parse_sbcl_check("AIR_SBCL=\nAIR_MOUNT=/win/c/\n");
+        let missing = parse_sbcl_check("LIGHT_SBCL=\nLIGHT_MOUNT=/win/c/\n");
         assert_eq!(missing, SbclCheck { path: None, version: None, mount_root: Some("/win/".into()) });
         assert!(sbcl_check_script("my sbcl").contains("command -v 'my sbcl'"));
         assert_eq!(sh_quote("it's"), r"'it'\''s'");
@@ -1032,8 +1032,8 @@ mod tests {
         let a = args(&c);
         let at = a.iter().position(|x| x == "-d").unwrap();
         assert_eq!(a[at..], ["-d", "Ubuntu-24.04", "--cd", "/mnt/c/proj", "-e", "/usr/bin/sbcl", "--eval", "(format t \"~a\" 1)"]);
-        let s = shell(&t, Path::new(r"C:\proj"), "ls -la | wc -l", &[("A".into(), "1".into())], "air-1-2x");
-        assert!(args(&s).ends_with(&["-e".into(), "env".into(), "A=1".into(), "sh".into(), "-lc".into(), "ls -la | wc -l".into(), "air-1-2x".into()]));
+        let s = shell(&t, Path::new(r"C:\proj"), "ls -la | wc -l", &[("A".into(), "1".into())], "light-1-2x");
+        assert!(args(&s).ends_with(&["-e".into(), "env".into(), "A=1".into(), "sh".into(), "-lc".into(), "ls -la | wc -l".into(), "light-1-2x".into()]));
         let i = install_distro_command("Ubuntu-24.04", Some(Path::new(r"C:\WSL\Ubuntu")));
         assert!(args(&i).ends_with(&["--install".into(), "-d".into(), "Ubuntu-24.04".into(), "--no-launch".into(), "--web-download".into(), "--location".into(), r"C:\WSL\Ubuntu".into()]));
         assert!(args(&install_sbcl_command("Debian")).ends_with(&["-u".into(), "root".into(), "-e".into(), "sh".into(), "-c".into(), INSTALL_SBCL_SCRIPT.into()]));
@@ -1044,9 +1044,9 @@ mod tests {
         let (a, b) = (new_marker(), new_marker());
         assert_ne!(a, b);
         assert!(a.ends_with('x'));
-        let p = marker_pattern("air-12-3x");
-        assert_eq!(p, "[a]ir-12-3x");
-        assert!(!p.contains("air-12-3x"), "the cleanup's own command line must not match");
+        let p = marker_pattern("light-12-3x");
+        assert_eq!(p, "[l]ight-12-3x");
+        assert!(!p.contains("light-12-3x"), "the cleanup's own command line must not match");
     }
 
     #[test]
@@ -1083,14 +1083,14 @@ mod tests {
         assert_eq!(strip_notices("localhost NAT but not from wsl\n"), "localhost NAT but not from wsl\n");
     }
 
-    /// Needs a real WSL distribution (`AIR_TEST_DISTRO`, default Ubuntu-24.04): run with
+    /// Needs a real WSL distribution (`LIGHT_TEST_DISTRO`, default Ubuntu-24.04): run with
     /// `cargo test -p lisp-runtime -- --ignored real_wsl`. Starts `sh -> sh -> sleep` the way the terminal starts a
     /// command that starts a program (`make run` -> qemu), with the program immune to hangup, and checks that
     /// `kill_marked` leaves nothing behind.
     #[test]
     #[ignore = "needs a real WSL distribution"]
     fn real_wsl_kill_marked_ends_grandchildren() {
-        let distro = std::env::var("AIR_TEST_DISTRO").unwrap_or_else(|_| "Ubuntu-24.04".into());
+        let distro = std::env::var("LIGHT_TEST_DISTRO").or_else(|_| std::env::var("AIR_TEST_DISTRO")).unwrap_or_else(|_| "Ubuntu-24.04".into());
         let t = Target::new(&distro, "");
         let marker = new_marker();
         // a number no other process of the machine runs `sleep` with
@@ -1119,14 +1119,14 @@ mod tests {
         assert_eq!(left, 0, "sleep outlived kill_marked");
     }
 
-    /// Needs a real Debian/Ubuntu WSL distribution (`AIR_TEST_DISTRO`, default Ubuntu-24.04): run the whole install
+    /// Needs a real Debian/Ubuntu WSL distribution (`LIGHT_TEST_DISTRO`, default Ubuntu-24.04): run the whole install
     /// script with `apt-get install` turned into a simulation, so nothing is installed, and see that it gets through
     /// (package names exist, the lists phase and the check run) and that the progress model follows its output.
     #[test]
     #[ignore = "needs a real WSL distribution"]
     fn real_wsl_install_script_runs_in_simulation() {
         use crate::setup_progress::{Kind, Stage, Tracker};
-        let distro = std::env::var("AIR_TEST_DISTRO").unwrap_or_else(|_| "Ubuntu-24.04".into());
+        let distro = std::env::var("LIGHT_TEST_DISTRO").or_else(|_| std::env::var("AIR_TEST_DISTRO")).unwrap_or_else(|_| "Ubuntu-24.04".into());
         // a wrapper first on PATH: `apt-get install ...` becomes `apt-get -s install ...` (a simulation)
         let shim = r#"d=$(mktemp -d)
 cat > $d/apt-get <<'EOS'

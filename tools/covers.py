@@ -1,4 +1,4 @@
-"""The covers of the modules, drawn in the look of Air: a black ground with green and blue light, liquid glass on top -
+"""The covers of the modules, drawn in the look of Light: a black ground with green and blue light, liquid glass on top -
 a frosted code card, a glass tile with the mark of the language, drops of glass - and the name of the module.
 
 Used by tools/build_registry.py. Each cover is 640 x 360 (drawn at twice that and scaled down).
@@ -17,7 +17,7 @@ import glass as g  # noqa: E402
 W, H = 1280, 720
 OUT_W, OUT_H = 640, 360
 
-# colours of the code, as in the editor (apps/air/src/theme.rs, dark)
+# colours of the code, as in the editor (apps/light/src/theme.rs, dark)
 C = {
     "p": (207, 216, 212),    # plain
     "k": (107, 166, 255),    # keyword
@@ -42,7 +42,7 @@ SCENES = {
               [("  ", "p"), ('"Say hello."', "s")],
               [("  (", "p"), ("format ", "k"), ("t ", "m"), ('"Hello, ~a~%"', "s"), (" name))", "p")],
               [("", "p")],
-              [("(", "p"), ("greet ", "f"), ('"Air"', "s"), (")", "p")]],
+              [("(", "p"), ("greet ", "f"), ('"Light"', "s"), (")", "p")]],
         orbs=[((200, 120), 700, g.GREEN, 0.80), ((1120, 640), 640, g.BLUE, 0.78)],
     ),
     "c-cpp": dict(
@@ -50,7 +50,7 @@ SCENES = {
         code=[[("#include ", "x"), ("<stdio.h>", "s")],
               [("", "p")],
               [("int ", "t"), ("main", "f"), ("(", "p"), ("void", "t"), (") {", "p")],
-              [("    ", "p"), ("printf", "f"), ("(", "p"), ('"Hello, Air\\n"', "s"), (");", "p")],
+              [("    ", "p"), ("printf", "f"), ("(", "p"), ('"Hello, Light\\n"', "s"), (");", "p")],
               [("    ", "p"), ("return ", "k"), ("0", "n"), (";", "p")],
               [("}", "p")]],
         orbs=[((1090, 110), 720, g.BLUE, 0.85), ((150, 650), 620, g.GREEN, 0.72), ((640, 360), 380, g.TEAL, 0.14)],
@@ -61,7 +61,7 @@ SCENES = {
               [("    ", "p"), ('"""Say hello."""', "s")],
               [("    ", "p"), ("return ", "k"), ('f"Hello, {name}"', "s")],
               [("", "p")],
-              [("print", "v"), ("(greet(", "p"), ('"Air"', "s"), ("))", "p")]],
+              [("print", "v"), ("(greet(", "p"), ('"Light"', "s"), ("))", "p")]],
         orbs=[((300, 80), 640, g.GREEN, 0.74), ((1040, 560), 700, g.BLUE, 0.80), ((700, 300), 340, g.TEAL, 0.20)],
     ),
     "assembler": dict(
@@ -77,7 +77,7 @@ SCENES = {
         glyph="</>", mono=True, size=170, label="LANGUAGE",
         code=[[("<!doctype html>", "x")],
               [("<main", "k"), (" class=", "v"), ('"page"', "s"), (">", "k")],
-              [("  <h1>", "k"), ("Hello, Air", "p"), ("</h1>", "k")],
+              [("  <h1>", "k"), ("Hello, Light", "p"), ("</h1>", "k")],
               [("  <p>", "k"), ("Make it yours.", "p"), ("</p>", "k")],
               [("</main>", "k")]],
         orbs=[((180, 120), 700, g.GREEN, 0.80), ((1100, 600), 680, g.BLUE, 0.78)],
@@ -93,7 +93,7 @@ SCENES = {
     ),
     "markdown": dict(
         glyph="M↓", mono=False, size=170, label="DOCUMENTS",
-        code=[[("# ", "h"), ("Air", "h")],
+        code=[[("# ", "h"), ("Light", "h")],
               [("", "p")],
               [("Write ", "p"), ("**docs**", "p"), (" in ", "p"), ("*Markdown*", "p"), (".", "p")],
               [("- ", "m"), ("lists", "p")],
@@ -102,7 +102,7 @@ SCENES = {
     ),
     "restructuredtext": dict(
         glyph=".rst", mono=True, size=140, label="DOCUMENTS",
-        code=[[("Air", "h")],
+        code=[[("Light", "h")],
               [("===", "h")],
               [("", "p")],
               [(".. ", "x"), ("note::", "k")],

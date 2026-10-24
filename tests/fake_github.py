@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A stand-in for api.github.com used by the UI tests (AIR_GITHUB_API points at it).
+"""A stand-in for api.github.com used by the UI tests (LIGHT_GITHUB_API points at it).
 
 It serves one account (`octocat`, token FAKE_TOKEN) with a handful of repositories whose clone URLs are local git
 repositories, so cloning from the list works without the network. Anything but the right token gets a 401 on the

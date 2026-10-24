@@ -1,7 +1,7 @@
-Air manual
-==========
+Light manual
+============
 
-:Author: Air
+:Author: Light
 :Version: 1.0
 
 An IDE made of **modules**, with ``literal`` text, *emphasis* and a `link <https://example.org>`_.
@@ -16,7 +16,7 @@ Install
 
 #. Download the zip
 #. Unpack it
-#. Run ``air.exe``
+#. Run ``light.exe``
 
 Usage
 -----
@@ -36,7 +36,7 @@ term
 +-------+--------+
 | Name  | Kind   |
 +=======+========+
-| air   | IDE    |
+| light | IDE    |
 +-------+--------+
 | sbcl  | Lisp   |
 +-------+--------+

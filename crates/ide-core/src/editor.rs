@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use air_lang::{IndentMode, Language};
+use light_lang::{IndentMode, Language};
 use lisp_syntax::highlight::Span;
 
 use lisp_syntax::indent;
@@ -101,7 +101,7 @@ pub struct Editor {
     other: Option<Arc<Language>>,
     /// Highlighting spans of `other`, for the revision they were made for.
     lang_cache: RefCell<Option<(u64, Rc<Vec<Span>>)>>,
-    problem_cache: RefCell<Option<(u64, Rc<Vec<air_lang::Problem>>)>>,
+    problem_cache: RefCell<Option<(u64, Rc<Vec<light_lang::Problem>>)>>,
     undo: Vec<Entry>,
     redo: Vec<Entry>,
     pending: Vec<Edit>,
@@ -192,7 +192,7 @@ impl Editor {
     }
     /// What the language's own checks find in the text (brackets that do not pair up...), cached per revision. Empty
     /// for Lisp, which has its reader's diagnostics.
-    pub fn language_problems(&self) -> Rc<Vec<air_lang::Problem>> {
+    pub fn language_problems(&self) -> Rc<Vec<light_lang::Problem>> {
         let Some(lang) = self.other.as_ref() else { return Rc::new(Vec::new()) };
         if let Some((rev, p)) = &*self.problem_cache.borrow()
             && *rev == self.revision

@@ -1,4 +1,4 @@
-"""Drawing helpers for the look of Air: a black ground with green and blue glows and "liquid glass" on top - frosted,
+"""Drawing helpers for the look of Light: a black ground with green and blue glows and "liquid glass" on top - frosted,
 translucent panels with a light rim and a specular highlight. Used for the app icon and the covers of the modules.
 
 Everything works on RGBA float arrays (numpy) in 0..1 and is converted to Pillow images at the end.
@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FONTS = ROOT / "assets" / "fonts"
 
-# the palette of Air (see apps/air/src/theme.rs)
+# the palette of Light (see apps/light/src/theme.rs)
 BLACK = (8, 11, 12)
 GREEN = (31, 214, 107)       # the glow; the UI accent is a touch deeper: 2DBE60
 SBER = (33, 160, 56)         # the classic green

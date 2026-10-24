@@ -46,9 +46,9 @@ impl ModuleStore {
         ModuleStore { dir: dir.into() }
     }
 
-    /// `AIR_MODULES_DIR`, else `modules` next to the settings.
+    /// `LIGHT_MODULES_DIR`, else `modules` next to the settings.
     pub fn default_dir() -> Option<PathBuf> {
-        if let Ok(p) = std::env::var("AIR_MODULES_DIR") {
+        if let Ok(p) = std::env::var("LIGHT_MODULES_DIR").or_else(|_| std::env::var("AIR_MODULES_DIR")) {
             return Some(PathBuf::from(p));
         }
         crate::settings::Settings::config_dir().map(|d| d.join("modules"))

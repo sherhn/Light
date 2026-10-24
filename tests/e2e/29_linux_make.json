@@ -14,11 +14,11 @@
   {"op": "frames", "value": 3},
   {"op": "assert_max_problems", "value": 0},
 
-  {"op": "log", "value": "use Linux for this project: the choice is remembered in .air/project.json"},
+  {"op": "log", "value": "use Linux for this project: the choice is remembered in .light/project.json"},
   {"op": "project_env", "value": "Ubuntu-24.04"},
   {"op": "frames", "value": 3},
   {"op": "assert_env", "value": "linux:Ubuntu-24.04", "banner": false, "run_config": "make all"},
-  {"op": "assert_file_contains", "path": "${PROJ}/.air/project.json", "value": "Ubuntu-24.04"},
+  {"op": "assert_file_contains", "path": "${PROJ}/.light/project.json", "value": "Ubuntu-24.04"},
 
   {"op": "log", "value": "the distribution has no developer tools yet: the project offers to install them"},
   {"op": "wait", "what": "wsl_idle", "timeout": 30},

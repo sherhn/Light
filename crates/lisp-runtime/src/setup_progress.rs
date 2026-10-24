@@ -1,12 +1,12 @@
 //! How far a Linux setup step has got, read from the output of the installer.
 //!
 //! `wsl --install` prints a percentage while it downloads. Package managers print what they unpack and configure;
-//! the scripts of [`crate::wsl`] also print `@@air stage NAME` between their phases. A [`Tracker`] turns this
+//! the scripts of [`crate::wsl`] also print `@@light stage NAME` between their phases. A [`Tracker`] turns this
 //! stream into a fraction (when the total is known) and a stage, so the UI can draw a real progress bar instead of
 //! a spinner. Nothing here starts a process: the tracker only reads text.
 
 /// Prefix of the lines the setup scripts print between their phases (the UI hides them from the log).
-pub const MARKER: &str = "@@air stage ";
+pub const MARKER: &str = "@@light stage ";
 
 /// What kind of setup step the output belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -441,12 +441,12 @@ mod tests {
         t.feed("0 upgraded, 3 newly installed\nUnpacking x\n");
         assert_eq!(t.progress(), Progress { stage: Stage::Starting, fraction: None });
         // an unfinished marker line is not acted on until it is complete
-        t.feed("@@air stage insta");
+        t.feed("@@light stage insta");
         assert_eq!(t.progress().stage, Stage::Starting);
         t.feed("ll\n");
         assert_eq!(t.progress().stage, Stage::Install);
         // an unknown stage name changes nothing
-        t.feed("@@air stage dance\n");
+        t.feed("@@light stage dance\n");
         assert_eq!(t.progress().stage, Stage::Install);
     }
 

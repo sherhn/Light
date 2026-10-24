@@ -1,18 +1,18 @@
-# Air guide
+# Light guide
 
 ![logo](logo.png)
 
-A short guide to **Air**, the IDE made of *modules*. It has `inline code`, a [link to the manual](manual.rst),
+A short guide to **Light**, the IDE made of *modules*. It has `inline code`, a [link to the manual](manual.rst),
 a [link to a section](#install) and a ~~struck~~ word.
 
-> Air is an editor first.
+> Light is an editor first.
 > Everything else is a module.
 
 ## Install
 
 1. Download the zip
 2. Unpack it
-3. Run `air.exe`
+3. Run `light.exe`
 
 - [x] a done task
 - [ ] an open task

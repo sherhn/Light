@@ -1,8 +1,0 @@
-[package]
-name = "air-markup"
-description = "Markdown and reStructuredText parsed into one document model, for the preview of the Markdown and reStructuredText modules"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-
-[dependencies]

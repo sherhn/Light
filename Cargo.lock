@@ -40,46 +40,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "air"
-version = "0.2.0"
-dependencies = [
- "air-lang",
- "air-markup",
- "eframe",
- "embed-resource",
- "ide-core",
- "lisp-runtime",
- "lisp-syntax",
- "png",
- "rfd",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "air-cli"
-version = "0.2.0"
-dependencies = [
- "ide-core",
- "lisp-runtime",
- "lisp-syntax",
-]
-
-[[package]]
-name = "air-lang"
-version = "0.2.0"
-dependencies = [
- "lisp-syntax",
- "regex",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "air-markup"
-version = "0.2.0"
-
-[[package]]
 name = "android-activity"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1068,9 +1028,9 @@ checksum = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
 name = "ide-core"
 version = "0.2.0"
 dependencies = [
- "air-lang",
  "dirs",
  "ignore",
+ "light-lang",
  "lisp-syntax",
  "regex",
  "serde",
@@ -1262,6 +1222,46 @@ dependencies = [
  "plain",
  "redox_syscall 0.9.5",
 ]
+
+[[package]]
+name = "light"
+version = "0.2.0"
+dependencies = [
+ "eframe",
+ "embed-resource",
+ "ide-core",
+ "light-lang",
+ "light-markup",
+ "lisp-runtime",
+ "lisp-syntax",
+ "png",
+ "rfd",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "light-cli"
+version = "0.2.0"
+dependencies = [
+ "ide-core",
+ "lisp-runtime",
+ "lisp-syntax",
+]
+
+[[package]]
+name = "light-lang"
+version = "0.2.0"
+dependencies = [
+ "lisp-syntax",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "light-markup"
+version = "0.2.0"
 
 [[package]]
 name = "linebender_resource_handle"

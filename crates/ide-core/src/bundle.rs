@@ -1,4 +1,4 @@
-//! Optional command-line tools shipped alongside an installed Air executable.
+//! Optional command-line tools shipped alongside an installed Light executable.
 
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
@@ -27,7 +27,7 @@ mod tests {
         let temp = crate::testutil::TempDir::new("bundled-git");
         let bin = temp.path().join("git/cmd");
         std::fs::create_dir_all(&bin).unwrap();
-        let executable = temp.path().join("air.exe");
+        let executable = temp.path().join("light.exe");
         assert!(tool_path(&executable, None).is_none());
         std::fs::write(bin.join("git.exe"), "git").unwrap();
         let user_bin = temp.path().join("my-tools");
