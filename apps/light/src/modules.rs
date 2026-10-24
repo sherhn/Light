@@ -36,7 +36,7 @@ pub struct Busy {
 enum Event {
     Index(Result<(Index, Source), String>),
     /// A cover picture is in the cache.
-    Cover,
+    Cover(String),
     /// All the covers have been fetched.
     CoversDone,
     Progress { id: String, done: usize, total: usize, file: String },
@@ -111,17 +111,29 @@ impl ModulesState {
         self.store.as_ref().map(|s| s.dir().join(".covers"))
     }
 
-    /// The cover of a module: the installed one, else the one in the cache.
+    /// Artwork follows the current catalog, independently of the installed code's version.
     pub fn cover_file(&self, id: &str) -> Option<PathBuf> {
-        if let Some(m) = self.installed.iter().find(|m| m.manifest.id == id)
-            && let Some(p) = m.cover_path()
+        if let Some(e) = self.index.as_ref().and_then(|i| i.entry(id))
+            && let Some(f) = cover_entry(e)
+            && let Some(cache) = self.cache_dir()
         {
-            return Some(p);
+            let p = cache.join(cache_name(id, f));
+            if p.is_file() {
+                return Some(p);
+            }
         }
-        let e = self.index.as_ref()?.entry(id)?;
-        let f = e.files.iter().find(|f| f.name == e.cover)?;
-        let p = self.cache_dir()?.join(cache_name(id, f));
-        p.is_file().then_some(p)
+        // Updated bundled artwork also works offline with an older installed module.
+        if let Some(registry) = bundled_registry()
+            && let Ok(json) = std::fs::read_to_string(registry.join("index.json"))
+            && let Ok(index) = Index::parse(&json)
+            && let Some(entry) = index.entry(id)
+        {
+            let p = registry.join(&entry.path).join(&entry.cover);
+            if p.is_file() {
+                return Some(p);
+            }
+        }
+        self.installed.iter().find(|m| m.manifest.id == id).and_then(Installed::cover_path)
     }
 
     /// The cards of the Modules tab: installed modules and everything the registry offers, by name.
@@ -406,6 +418,7 @@ impl App {
         while let Ok(ev) = self.mods.rx.try_recv() {
             match ev {
                 Event::Index(Ok((index, source))) => {
+                    self.mods.covers.clear();
                     self.mods.index = Some(index);
                     self.mods.index_source = Some(source);
                     self.mods.loading_index = false;
@@ -416,7 +429,10 @@ impl App {
                     self.mods.loading_index = false;
                 }
                 // a picture that arrived is loaded when the tab next draws it
-                Event::Cover => ctx.request_repaint(),
+                Event::Cover(id) => {
+                    self.mods.covers.remove(&id);
+                    ctx.request_repaint();
+                }
                 Event::CoversDone => {
                     self.mods.loading_covers = false;
                     ctx.request_repaint();
@@ -499,7 +515,7 @@ fn fetch_covers(index: &Index, source: &Source, cache: Option<&Path>, tx: &Sende
             && ide_core::modules::sha256::sha256_hex(&bytes).eq_ignore_ascii_case(&f.sha256)
             && std::fs::write(&file, bytes).is_ok()
         {
-            let _ = tx.send(Event::Cover);
+            let _ = tx.send(Event::Cover(e.id.clone()));
         }
     }
 }
@@ -513,6 +529,64 @@ mod tests {
     use ide_core::settings::{CustomTool, Settings};
 
     use crate::app::App;
+    use super::*;
+
+    struct Fixture(PathBuf);
+
+    impl Fixture {
+        fn new() -> Self {
+            let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+            let path = std::env::temp_dir().join(format!("light-module-art-{}-{unique}", std::process::id()));
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for Fixture {
+        fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); }
+    }
+
+    #[test]
+    fn refreshed_artwork_does_not_require_updating_installed_module_code() {
+        let fixture = Fixture::new();
+        let store = ModuleStore::at(fixture.0.join("modules"));
+        let mut manifest = Manifest::parse(std::str::from_utf8(include_bytes!("../../../registry/modules/python/module.json")).unwrap()).unwrap();
+        manifest.version = "1.0.0".into();
+        let json = serde_json::to_vec(&manifest).unwrap();
+        store.install_bytes("python", &[("module.json", &json), ("cover.png", b"old cover with title")]).unwrap();
+        let mut state = ModulesState { installed: store.installed(), store: Some(store), ..Default::default() };
+        let installed_cover = state.installed[0].cover_path().unwrap();
+        // Before a network response, the updated cover shipped with Light works offline.
+        assert_ne!(state.cover_file("python").unwrap(), installed_cover);
+        assert_eq!(std::fs::read(&installed_cover).unwrap(), b"old cover with title");
+        let index = Index::parse(include_str!("../../../registry/index.json")).unwrap();
+        let entry = index.entry("python").unwrap();
+        let current_cover = state.cache_dir().unwrap().join(cache_name("python", cover_entry(entry).unwrap()));
+        std::fs::create_dir_all(current_cover.parent().unwrap()).unwrap();
+        std::fs::write(&current_cover, b"new catalog artwork").unwrap();
+        state.index = Some(index);
+        assert_eq!(state.cover_file("python").unwrap(), current_cover);
+        assert_eq!(state.installed[0].manifest.version, "1.0.0");
+        // A third-party module without bundled/catalog art keeps its installed cover.
+        manifest.id = "custom-art".into();
+        let json = serde_json::to_vec(&manifest).unwrap();
+        state.store.as_ref().unwrap().install_bytes("custom-art", &[("module.json", &json), ("cover.png", b"custom art")]).unwrap();
+        state.installed = state.store.as_ref().unwrap().installed();
+        assert_eq!(std::fs::read(state.cover_file("custom-art").unwrap()).unwrap(), b"custom art");
+    }
+
+    #[test]
+    fn downloaded_cover_invalidates_only_its_loaded_texture() {
+        let ctx = egui::Context::default();
+        let mut app = App::new(Settings::default());
+        let texture = ctx.load_texture("cover-fixture", egui::ColorImage::filled([1, 1], egui::Color32::WHITE), TextureOptions::LINEAR);
+        app.mods.covers.insert("python".into(), texture.clone());
+        app.mods.covers.insert("lisp".into(), texture);
+        app.mods.tx.send(Event::Cover("python".into())).unwrap();
+        app.poll_modules(&ctx);
+        assert!(!app.mods.covers.contains_key("python"));
+        assert!(app.mods.covers.contains_key("lisp"));
+    }
 
     #[test]
     fn documents_without_a_path_use_plain_text_even_with_lisp_enabled() {

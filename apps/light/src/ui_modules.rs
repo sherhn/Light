@@ -183,7 +183,6 @@ impl App {
         let busy = self.mods.busy.clone();
         let loading = self.mods.loading_index;
         let error = self.mods.index_error.clone();
-        let source = self.mods.index_source.as_ref().map(|s| s.label());
         let broken = self.mods.broken.clone();
         let mut filter = self.mods.filter.clone();
         let mut category = self.mods.category.clone();
@@ -298,13 +297,6 @@ impl App {
                 ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
                     paint_card(ui, &pal, rect, card, textures[i].as_ref(), busy.get(&card.id), needed.contains(&card.id), &mut actions);
                 });
-            }
-            if let Some(s) = &source {
-                ui.horizontal(|ui| {
-                    ui.add_space(SIDE);
-                    ui.label(RichText::new(i18n::fmt("Registry: {}", &[s])).color(pal.text_dim).size(11.5));
-                });
-                ui.add_space(16.0);
             }
         });
 
