@@ -71,26 +71,26 @@ fn paint_cover(ui: &mut egui::Ui, pal: &Palette, rect: Rect, tex: Option<&Textur
 #[allow(clippy::too_many_arguments)]
 fn paint_card(ui: &mut egui::Ui, pal: &Palette, rect: Rect, card: &Card, tex: Option<&TextureHandle>, busy: Option<&Busy>, recommended: bool, actions: &mut Vec<Action>) {
     let hovered = ui.rect_contains_pointer(rect);
-    // glass: translucent, a rim that catches light, greener when the pointer is over it
+    // The same restrained language watermark used by the website's module cards.
     ui.painter().rect_filled(rect, CornerRadius::same(widgets::CARD_RADIUS), pal.panel_bg);
     ui.painter().rect_stroke(rect, CornerRadius::same(widgets::CARD_RADIUS), Stroke::new(1.0, if hovered { pal.accent.gamma_multiply(0.7) } else { pal.border }), StrokeKind::Inside);
-    widgets::sheen(ui.painter(), rect, pal);
     let cover = Rect::from_min_size(rect.min + Vec2::splat(9.0), Vec2::new(rect.width() - 18.0, (rect.width() - 18.0) * 9.0 / 16.0));
     paint_cover(ui, pal, cover, tex);
     if recommended {
         let g = ui.painter().layout_no_wrap(tr("Recommended").to_string(), fonts::semibold(11.0), pal.text_on_accent);
-        let r = Rect::from_min_size(Pos2::new(cover.max.x - g.size().x - 26.0, cover.max.y - 32.0), Vec2::new(g.size().x + 16.0, 22.0));
+        let r = Rect::from_min_size(Pos2::new(cover.max.x - g.size().x - 26.0, cover.min.y + 12.0), Vec2::new(g.size().x + 16.0, 22.0));
         ui.painter().rect_filled(r, CornerRadius::same(11), pal.accent);
         ui.painter().text(r.center(), Align2::CENTER_CENTER, tr("Recommended"), fonts::semibold(11.0), pal.text_on_accent);
     }
     let x0 = rect.min.x + 16.0;
     let w = rect.width() - 32.0;
-    let mut y = cover.max.y + 12.0;
-    // name and category
-    ui.painter().text(Pos2::new(x0, y), Align2::LEFT_TOP, &card.name, fonts::semibold(16.0), pal.text);
+    // The title stays readable on the dark cover in both IDE themes.
+    let title = paragraph(ui, &card.name, fonts::semibold(27.0), Color32::from_rgb(0xe5, 0xe9, 0xe7), cover.width() - 28.0, 2);
+    ui.painter().galley(Pos2::new(cover.min.x + 14.0, cover.max.y - 18.0 - title.size().y), title, Color32::WHITE);
+    let mut y = cover.max.y + 16.0;
     let cat = i18n::tr_dyn(&card.category).to_string();
-    ui.painter().text(Pos2::new(rect.max.x - 16.0, y + 3.0), Align2::RIGHT_TOP, cat, fonts::ui(11.5), pal.text_dim);
-    y += 26.0;
+    ui.painter().text(Pos2::new(x0, y), Align2::LEFT_TOP, cat, fonts::ui(11.0), pal.text_dim);
+    y += 23.0;
     let g = paragraph(ui, &card.summary, fonts::ui(12.5), pal.text_dim, w, 3);
     ui.painter().galley(Pos2::new(x0, y), g, pal.text_dim);
     // the bottom row: what it is, and what to do
