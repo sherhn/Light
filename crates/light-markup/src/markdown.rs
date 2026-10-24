@@ -915,12 +915,12 @@ mod tests {
     }
 
     #[test]
-    fn the_readme_of_this_repository_parses() {
-        let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../README.md")).unwrap();
+    fn the_markup_guide_fixture_parses() {
+        let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/markup/guide.md")).unwrap();
         let d = parse(&text);
         let h = crate::model::headings(&d);
-        assert!(h.iter().any(|(l, t, _, _)| *l == 1 && t == "Light"), "{h:?}");
-        assert!(h.iter().any(|(_, t, a, _)| t == "Modules" && a == "modules"));
+        assert!(h.iter().any(|(l, t, _, _)| *l == 1 && t == "Light guide"), "{h:?}");
+        assert!(h.iter().any(|(_, t, a, _)| t == "Install" && a == "install"));
         assert!(d.blocks.iter().any(|b| matches!(&b.kind, BlockKind::Table { .. })));
         assert!(d.blocks.iter().any(|b| matches!(&b.kind, BlockKind::Code { .. })));
         // nothing of the markup syntax is left in the text
