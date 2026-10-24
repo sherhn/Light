@@ -24,6 +24,4 @@ Language modules are installed inside the IDE. Compilers and interpreters are co
 
 [Сборки / Downloads](https://github.com/sherhn/Light/releases) · [Обратная связь / Issues](https://github.com/sherhn/Light/issues)
 
-Контакт / Contact: [sherhn.inc@gmail.com](mailto:sherhn.inc@gmail.com)
-
 Лицензия / License: MIT OR Apache-2.0.
