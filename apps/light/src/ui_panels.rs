@@ -165,7 +165,19 @@ impl App {
             });
             return;
         }
-        let rows = self.take_tree_rows();
+        ui.horizontal(|ui| {
+            ui.add_space(12.0);
+            let response = ui.add_sized([ui.available_width() - 12.0, 30.0], egui::TextEdit::singleline(&mut self.project_filter).hint_text(tr("Search files by name")));
+            if response.gained_focus() { self.editor_focus = false; }
+        });
+        ui.add_space(6.0);
+        let cached_rows = self.take_tree_rows();
+        let query = self.project_filter.trim().to_lowercase();
+        let matches: Vec<TreeRow> = self.project.as_ref().filter(|_| !query.is_empty()).into_iter().flat_map(|p| p.files.iter()).filter_map(|path| {
+            let name = path.file_name()?.to_string_lossy().into_owned();
+            (!query.is_empty() && name.to_lowercase().contains(&query)).then(|| TreeRow { path: path.clone(), depth: 0, is_dir: false, expanded: false, name, ignored: false })
+        }).collect();
+        let rows = if query.is_empty() { &cached_rows } else { &matches };
         let mut toggle: Option<PathBuf> = None;
         let mut open: Option<PathBuf> = None;
         let mut select: Option<PathBuf> = None;
@@ -173,10 +185,14 @@ impl App {
         let selected = self.project.as_ref().and_then(|p| p.selected.clone());
         let active_path = self.doc().and_then(|d| d.path.clone());
         let font = fonts::ui(13.5);
-        egui::ScrollArea::both().auto_shrink([false, false]).show_rows(ui, ROW_H, rows.len(), |ui, range| {
+        // show_rows must see the same spacing as the rows it virtualizes.
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.spacing_mut().scroll.floating = false;
+        egui::ScrollArea::both().auto_shrink([false, false]).max_height(ui.available_height()).show_rows(ui, ROW_H, rows.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for row in &rows[range] {
-                let w = ui.available_width().max(220.0);
+                let text_w = ui.painter().layout_no_wrap(row.name.clone(), font.clone(), pal.text).size().x;
+                let w = ui.available_width().max(70.0 + row.depth as f32 * 18.0 + text_w);
                 let (r, resp) = ui.allocate_exact_size(Vec2::new(w, ROW_H), Sense::click());
                 let is_sel = selected.as_ref() == Some(&row.path);
                 widgets::row_background(ui, &pal, r, is_sel, resp.hovered());
@@ -206,7 +222,7 @@ impl App {
                     pal.text
                 };
                 ui.painter().text(Pos2::new(x + 42.0, r.center().y), egui::Align2::LEFT_CENTER, &row.name, font.clone(), color);
-                let resp = if dirty_dir { resp.on_hover_text(tr("Contains files with changes")) } else { resp };
+                let resp = if dirty_dir { resp.on_hover_text(tr("Contains files with changes")) } else { resp.on_hover_text(row.path.display().to_string()) };
                 if resp.clicked() {
                     select = Some(row.path.clone());
                     if row.is_dir {
@@ -266,7 +282,7 @@ impl App {
                 });
             }
         });
-        self.put_tree_rows(rows);
+        self.put_tree_rows(cached_rows);
         if let Some(p) = select
             && let Some(proj) = self.project.as_mut()
         {

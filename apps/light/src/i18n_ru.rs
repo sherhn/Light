@@ -2,6 +2,7 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Search files by name", "Поиск файлов по имени"),
     // ---- menus and command titles (ide-core command registry)
     ("File", "Файл"),
     ("Edit", "Правка"),

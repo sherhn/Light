@@ -31,6 +31,7 @@ pub struct App {
     pub pal: Palette,
     pub keymap: Keymap,
     pub project: Option<Project>,
+    pub project_filter: String,
     pub docs: Vec<Doc>,
     pub active: usize,
     pub split: Option<Split>,
@@ -141,6 +142,7 @@ impl App {
             compile: None,
             compiler_problems: vec![],
             find_results: FindResults::default(),
+            project_filter: String::new(),
             popup: Popup::None,
             find: FindBar::default(),
             completion: Completion::default(),
@@ -258,6 +260,7 @@ impl App {
             return;
         }
         let root = path.to_path_buf();
+        self.project_filter.clear();
         // another project in this window: nothing of the old one stays (tabs, search results, history, problems...)
         if self.project.as_ref().is_some_and(|p| p.root != root) {
             self.leave_project();
