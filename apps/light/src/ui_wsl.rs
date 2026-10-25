@@ -313,9 +313,10 @@ impl App {
                     }
                 });
                 ui.add_space(6.0);
+                ui.label(RichText::new(tr("Install into:")).color(pal.text_dim).size(12.0));
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(tr("Install into:")).color(pal.text_dim).size(12.0));
-                    let r = TextField::new(&mut self.wsl.location).hint(tr("the default WSL folder")).icon(Icon::Folder).width((ui.available_width() - 130.0).max(160.0)).height(32.0).show(ui, &pal);
+                    let browse_w = ui.painter().layout_no_wrap(tr("Browse...").to_string(), fonts::ui(13.5), pal.text).size().x + 38.0;
+                    let r = TextField::new(&mut self.wsl.location).hint(tr("the default WSL folder")).icon(Icon::Folder).width((ui.available_width() - browse_w - 8.0).max(40.0)).height(32.0).show(ui, &pal);
                     if r.lost_focus() {
                         act = Some(Act::Recheck);
                     }

@@ -14,7 +14,7 @@ use crate::state::*;
 use crate::widgets::{self, ROW_H};
 
 /// Height reserved below the changes list: message box, buttons and spacing.
-const BOTTOM_H: f32 = 176.0;
+const BOTTOM_H: f32 = 210.0;
 const MESSAGE_H: f32 = 86.0;
 
 /// Everything the user did in the list during one frame; applied after drawing.
@@ -52,7 +52,7 @@ impl App {
             });
             return;
         }
-        let list_h = (ui.available_height() - BOTTOM_H).max(90.0);
+        let list_h = (ui.available_height() - BOTTOM_H).max(0.0);
         let actions = ui.allocate_ui(vec2(ui.available_width(), list_h), |ui| self.draw_change_tree(ui)).inner;
         self.apply_list_actions(actions);
         self.draw_commit_form(ui, ctx);
@@ -65,12 +65,6 @@ impl App {
         ui.horizontal(|ui| {
             ui.add_space(14.0);
             ui.label(RichText::new(tr("Commit")).font(fonts::semibold(15.0)));
-            if let Some(b) = self.git.branch.clone() {
-                ui.add_space(4.0);
-                let (r, _) = ui.allocate_exact_size(Vec2::splat(14.0), Sense::hover());
-                icons::paint(ui.painter(), r, Icon::Branch, pal.text_dim);
-                ui.label(RichText::new(crate::ui_chrome::elide(&b, 20)).color(pal.text_dim).size(12.5));
-            }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.add_space(10.0);
                 ui.spacing_mut().item_spacing.x = 2.0;
@@ -83,8 +77,16 @@ impl App {
                 }
             });
         });
+        if let Some(b) = self.git.branch.clone() {
+            ui.horizontal(|ui| {
+                ui.add_space(14.0);
+                let (r, _) = ui.allocate_exact_size(Vec2::splat(14.0), Sense::hover());
+                icons::paint(ui.painter(), r, Icon::Branch, pal.text_dim);
+                ui.add(egui::Label::new(RichText::new(&b).color(pal.text_dim).size(12.5)).truncate()).on_hover_text(b);
+            });
+        }
         ui.add_space(6.0);
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.add_space(12.0);
             let label = crate::ui_chrome::elide(&self.base_label(), 22);
             let resp = widgets::Pill::new(&label).icon(Icon::History, pal.text_dim).chevron().bordered().height(28.0).show(ui, &pal);
@@ -135,6 +137,8 @@ impl App {
         let mut rects: Vec<(String, Rect, Rect)> = vec![];
         let current = self.diff_current_rel().map(str::to_string);
         let root_name = self.project.as_ref().map(|p| p.name.clone()).unwrap_or_default();
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.spacing_mut().scroll.floating = false;
         egui::ScrollArea::vertical().id_salt("commit_changes").auto_shrink([false, false]).show_rows(ui, ROW_H, rows.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for row in &rows[range] {
@@ -298,7 +302,7 @@ impl App {
                 ui.add_space(8.0);
                 let sel = self.git.checked.len();
                 let can = sel > 0 && !self.git.commit_msg.trim().is_empty() && self.git.repo.is_some();
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.add_enabled_ui(can, |ui| {
                         if widgets::primary_button(ui, &pal, &i18n::fmt("Commit ({})", &[&sel])).clicked() {
                             commit = true;

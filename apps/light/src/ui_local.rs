@@ -52,22 +52,25 @@ impl App {
         let mut restore: Option<u64> = None;
         let mut delete: Option<u64> = None;
         let mut show_changes = false;
-        egui::ScrollArea::vertical().id_salt("local_commits").auto_shrink([false, false]).show_rows(ui, ROW_H + 8.0, commits.len(), |ui, range| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.spacing_mut().scroll.floating = false;
+        egui::ScrollArea::vertical().id_salt("local_commits").auto_shrink([false, false]).show_rows(ui, ROW_H + 16.0, commits.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for i in range {
                 let c = &commits[i];
                 let is_base = base == Base::Local(c.id);
-                let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), ROW_H + 8.0), Sense::click());
+                let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), ROW_H + 16.0), Sense::click());
                 widgets::row_background(ui, &pal, r, is_base, resp.hovered());
                 let cy = r.center().y;
                 let br = Rect::from_min_size(Pos2::new(r.min.x + 14.0, cy - 11.0), Vec2::new(40.0, 22.0));
                 ui.painter().rect_filled(br, CornerRadius::same(6), pal.accent.gamma_multiply(0.22));
                 ui.painter().text(br.center(), Align2::CENTER_CENTER, format!("#{}", c.id), fonts::semibold(12.0), pal.accent);
                 let g = ui.painter().layout_no_wrap(c.message.clone(), fonts::semibold(13.5), pal.text);
-                let gw = g.size().x.min(r.width() * 0.5);
-                ui.painter().galley(Pos2::new(r.min.x + 66.0, cy - g.size().y / 2.0), g, pal.text);
+                let text_rect = Rect::from_min_max(pos2(r.min.x + 66.0, r.min.y), pos2((r.max.x - if is_base { 100.0 } else { 50.0 }).max(r.min.x + 66.0), r.max.y));
+                let text_painter = ui.painter().with_clip_rect(text_rect.intersect(ui.clip_rect()));
+                text_painter.galley(Pos2::new(text_rect.min.x, r.min.y + 5.0), g, pal.text);
                 let meta = i18n::fmt("{0}   -   {1} file(s)", &[&age_text(c.time), &c.files.len()]);
-                ui.painter().text(Pos2::new(r.min.x + 80.0 + gw, cy), Align2::LEFT_CENTER, meta, fonts::ui(12.0), pal.text_dim);
+                text_painter.text(Pos2::new(text_rect.min.x, r.max.y - 10.0), Align2::LEFT_CENTER, meta, fonts::ui(11.5), pal.text_dim);
                 if is_base {
                     ui.painter().text(Pos2::new(r.max.x - 16.0, cy), Align2::RIGHT_CENTER, tr("BASE"), fonts::semibold(11.0), pal.accent);
                 }

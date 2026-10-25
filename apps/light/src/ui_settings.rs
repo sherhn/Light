@@ -72,19 +72,25 @@ impl Rows {
             ui.painter().line_segment([pos2(ui.cursor().min.x, y), pos2(ui.cursor().min.x + w, y)], Stroke::new(1.0, pal.border));
         }
         self.n += 1;
-        let text_w = (w - ctrl_w - 24.0 - look.lead).max(140.0);
+        // Stack controls when two columns cannot fit the translated labels.
+        let stacked = w < ctrl_w + look.lead + 220.0;
+        let text_w = if stacked { w - look.lead } else { w - ctrl_w - 24.0 - look.lead }.max(40.0);
         let tg = ui.painter().layout(title.to_string(), fonts::ui(13.5), pal.text, text_w);
         let dg = (!desc.is_empty()).then(|| ui.painter().layout(desc.to_string(), fonts::ui(11.5), pal.text_dim, text_w));
         let content_h = tg.size().y + dg.as_ref().map_or(0.0, |g| 3.0 + g.size().y);
-        let h = (content_h + look.pad).max(look.min_h);
+        let h = (content_h + look.pad).max(look.min_h) + if stacked { 42.0 } else { 0.0 };
         let (rect, _) = ui.allocate_exact_size(vec2(w, h), Sense::hover());
-        let top = rect.min.y + (h - content_h) / 2.0;
+        let top = rect.min.y + if stacked { look.pad / 2.0 } else { (h - content_h) / 2.0 };
         let th = tg.size().y;
         ui.painter().galley(pos2(rect.min.x + look.lead, top), tg, pal.text);
         if let Some(g) = dg {
             ui.painter().galley(pos2(rect.min.x + look.lead, top + th + 3.0), g, pal.text_dim);
         }
-        let ctrl_rect = Rect::from_min_max(pos2(rect.max.x - ctrl_w, rect.min.y), rect.max);
+        let ctrl_rect = if stacked {
+            Rect::from_min_max(pos2(rect.min.x + look.lead, top + content_h + 8.0), pos2(rect.max.x, rect.max.y - 8.0))
+        } else {
+            Rect::from_min_max(pos2(rect.max.x - ctrl_w, rect.min.y), rect.max)
+        };
         let mut c = ui.new_child(egui::UiBuilder::new().max_rect(ctrl_rect).layout(egui::Layout::right_to_left(Align::Center)));
         control(&mut c);
         rect
@@ -349,6 +355,31 @@ impl App {
             }
         } else {
             self.popup = Popup::Settings { lisp_path, detected, filter, page };
+        }
+    }
+}
+
+#[cfg(test)]
+mod row_layout_tests {
+    use super::*;
+
+    #[test]
+    fn long_linux_labels_and_controls_fit_narrow_and_wide_rows() {
+        for width in [300.0, 400.0, 560.0] {
+            let ctx = egui::Context::default();
+            fonts::install(&ctx);
+            let pal = Palette::for_settings(&ide_core::settings::Settings::default());
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                ui.set_width(width);
+                let mut control_rect = Rect::NOTHING;
+                let row = Rows { n: 0 }.row_sized(ui, &pal,
+                    ("Среда разработки Linux", "Инструменты разработки и терминал запускаются в выбранном дистрибутиве Linux."),
+                    250.0, Look { min_h: 56.0, pad: 28.0, lead: 0.0 }, |ui| {
+                        control_rect = widgets::secondary_button(ui, &pal, "Установить Ubuntu").rect;
+                    });
+                assert!(row.contains_rect(control_rect), "control outside row at {width}: {control_rect:?} / {row:?}");
+            });
+            output.textures_delta.clear();
         }
     }
 }
