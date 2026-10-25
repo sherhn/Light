@@ -95,9 +95,9 @@ const MARK_W: f32 = 4.0;
 const FOLD_W: f32 = 18.0;
 const TEXT_PAD: f32 = 6.0;
 /// Code overview (minimap): pixels per row and per character.
-const MAP_W: f32 = 88.0;
-const MAP_ROW: f32 = 2.0;
-const MAP_COL: f32 = 1.0;
+const MAP_W: f32 = 128.0;
+const MAP_ROW: f32 = 5.0;
+const MAP_COL: f32 = 2.0;
 /// The scrollbar lane at the far right; it also shows where the changes and problems are in the whole file.
 const BAR_W: f32 = 14.0;
 
@@ -619,7 +619,7 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
         let last = (((offset + map_rect.height()) / MAP_ROW).ceil() as usize + 1).min(rows.len());
         let x0 = map_rect.min.x + 8.0;
         let max_cols = ((map_rect.max.x - 6.0 - x0) / MAP_COL) as usize;
-        let mut mesh = egui::Mesh::default();
+        let mini_font = FontId::monospace(MAP_COL / 0.6);
         for row in first..last {
             let Some(line_no) = rows.get(row) else { continue };
             let ls = ed.line_start(line_no);
@@ -642,15 +642,13 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                 if c0 >= max_cols {
                     break;
                 }
-                let c1 = display_col(line, line[..b].chars().count()).min(max_cols);
                 if line[a..b].trim().is_empty() {
                     continue;
                 }
-                let r = Rect::from_min_max(Pos2::new(x0 + c0 as f32 * MAP_COL, y), Pos2::new(x0 + c1 as f32 * MAP_COL, y + MAP_ROW - 0.4));
-                mesh.add_colored_rect(r, pal.syntax(sp.class, sp.depth, cfg.rainbow).gamma_multiply(0.7));
+                let text: String = line[a..b].replace('\t', "    ").chars().take(max_cols - c0).collect();
+                mp.text(Pos2::new(x0 + c0 as f32 * MAP_COL, y), Align2::LEFT_TOP, text, mini_font.clone(), pal.syntax(sp.class, sp.depth, cfg.rainbow));
             }
         }
-        mp.add(Shape::mesh(mesh));
         // changed lines: a thin bar along the left edge of the overview
         for m in cfg.git_marks {
             let row = row_of_line(m.line);
