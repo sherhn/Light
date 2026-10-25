@@ -33,7 +33,10 @@ pub fn ui(size: f32) -> FontId {
 
 pub fn install(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
-    fonts.font_data.insert("jetbrains-mono".into(), Arc::new(FontData::from_static(MONO)));
+    // egui shapes with the font's default GSUB features and exposes no feature switch.
+    // Hide the substitution table in the in-memory code font, keeping the bundled
+    // original intact. This also covers terminal, diff and read-only code widgets.
+    fonts.font_data.insert("jetbrains-mono".into(), Arc::new(FontData::from_owned(literal_code_font())));
     fonts.font_data.insert("inter".into(), Arc::new(FontData::from_static(UI)));
     fonts.font_data.insert("inter-semibold".into(), Arc::new(FontData::from_static(UI_SEMIBOLD)));
     fonts.families.entry(FontFamily::Monospace).or_default().insert(0, "jetbrains-mono".into());
@@ -52,6 +55,18 @@ pub fn install(ctx: &egui::Context) {
         style.text_styles.insert(TextStyle::Heading, semibold(18.0));
         style.text_styles.insert(TextStyle::Monospace, FontId::monospace(13.5));
     });
+}
+
+fn literal_code_font() -> Vec<u8> {
+    let mut font = MONO.to_vec();
+    let count = u16::from_be_bytes([font[4], font[5]]) as usize;
+    let (tables, _) = font[12..12 + count * 16].as_chunks_mut::<16>();
+    for table in tables {
+        if &table[..4] == b"GSUB" {
+            table[..4].copy_from_slice(b"NoGS");
+        }
+    }
+    font
 }
 
 #[cfg(test)]
@@ -73,5 +88,22 @@ mod tests {
             assert!(dir.join(f).is_file(), "{f} must accompany the bundled fonts");
         }
         assert!(dir.join("../icons/LICENSE").is_file(), "the Lucide ISC licence must accompany the icon font");
+    }
+
+    #[test]
+    fn operators_keep_individual_visible_glyphs() {
+        let ctx = egui::Context::default();
+        install(&ctx);
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            ui.fonts_mut(|f| {
+                for text in [">>", "!=", "=>", "->", "===", "<=", "!=="] {
+                    let g = f.layout_no_wrap(text.into(), FontId::monospace(14.0), egui::Color32::WHITE);
+                    let glyphs = &g.rows[0].glyphs;
+                    assert_eq!(glyphs.len(), text.len());
+                    assert!(glyphs.iter().all(|g| g.advance_width > 0.0), "ligature in {text}");
+                }
+            });
+        });
+        output.textures_delta.clear();
     }
 }
