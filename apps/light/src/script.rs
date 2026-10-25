@@ -50,9 +50,16 @@ pub fn save_png(path: &Path, img: &egui::ColorImage) -> Result<(), String> {
 
 impl App {
     pub fn script_inject(&mut self, raw: &mut egui::RawInput) {
-        if let Some(s) = self.script.as_mut()
-            && !s.pending.is_empty()
-        {
+        if let Some(s) = self.script.as_mut() {
+            // Scripted runs must not receive real mouse/keyboard events from the
+            // desktop while the user continues working in other windows.
+            raw.events.clear();
+            raw.focused = true;
+            let modifiers = s.pending.iter().filter_map(|event| match event {
+                Event::Key { modifiers, .. } => Some(*modifiers),
+                _ => None,
+            }).next_back().unwrap_or(egui::Modifiers::NONE);
+            raw.events.push(Event::ModifiersChanged(modifiers));
             raw.events.append(&mut s.pending);
         }
     }
@@ -1568,5 +1575,23 @@ impl App {
                 s.wait_frames = 2;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod input_isolation_tests {
+    use super::*;
+
+    #[test]
+    fn scripted_runs_ignore_real_desktop_input() {
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.script = Some(Script { steps: VecDeque::new(), pending: vec![Event::Text("script".into())], wait_frames: 0, wait_cond: None, shot: None, failures: vec![], total: 0, done: false, started: 0.0 });
+        let mut raw = egui::RawInput { events: vec![Event::Text("external".into())], focused: false, ..Default::default() };
+        app.script_inject(&mut raw);
+        assert!(raw.focused);
+        assert_eq!(raw.events, vec![Event::ModifiersChanged(egui::Modifiers::NONE), Event::Text("script".into())]);
+        raw.events.push(Event::Text("external".into()));
+        app.script_inject(&mut raw);
+        assert_eq!(raw.events, vec![Event::ModifiersChanged(egui::Modifiers::NONE)]);
     }
 }

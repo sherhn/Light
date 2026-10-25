@@ -71,7 +71,7 @@ impl eframe::App for App {
         }
         if self.bottom_tool.is_some() {
             let margin = Margin { left: 0, right: gap, top: gap, bottom: gap };
-            egui::Panel::bottom("bottom_tool").resizable(true).default_size(280.0).size_range(120.0..=900.0).show_separator_line(false).frame(none.inner_margin(margin)).show(ui, |ui| {
+            egui::Panel::bottom("bottom_tool").resizable(true).default_size(280.0).size_range(200.0..=900.0).show_separator_line(false).frame(none.inner_margin(margin)).show(ui, |ui| {
                 widgets::card_frame(&pal, pal.panel_bg).show(ui, |ui| {
                     ui.set_min_size(ui.available_size());
                     self.draw_bottom_panel(ui, &ctx);

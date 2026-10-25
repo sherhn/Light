@@ -531,6 +531,14 @@ impl App {
     /// A console log (REPL, terminal, run output) whose text can be selected with the mouse (drag, double click for
     /// a word, triple click for a line) and copied with Ctrl+C or the right-click menu.
     fn draw_log(&self, ui: &mut egui::Ui, id: &str, lines: &[LogLine], stick: bool, prompt: &str) -> LogOut {
+        if lines.iter().any(|l| l.text.trim_end_matches('\n').contains('\n')) {
+            let rows: Vec<_> = lines.iter().flat_map(|l| l.text.trim_end_matches('\n').split('\n').map(|text| LogLine { kind: l.kind, text: text.trim_end_matches('\r').to_string() })).collect();
+            return self.draw_log_rows(ui, id, &rows, stick, prompt);
+        }
+        self.draw_log_rows(ui, id, lines, stick, prompt)
+    }
+
+    fn draw_log_rows(&self, ui: &mut egui::Ui, id: &str, lines: &[LogLine], stick: bool, prompt: &str) -> LogOut {
         use crate::log_select::{Pos, Selection, select_all, selected_text, word_range};
         let pal = self.pal;
         let font = egui::FontId::monospace((self.settings.font_size - 1.0).max(9.0));
@@ -543,7 +551,9 @@ impl App {
         let col_at = |g: &egui::Galley, p: Vec2, max: usize| -> usize { usize::from(g.cursor_from_pos(p).index).min(max) };
         // what the menu asked for
         let mut menu: Option<LogMenu> = None;
-        let area = egui::ScrollArea::both().id_salt(id).auto_shrink([false, false]).stick_to_bottom(stick).show_rows(ui, row_h, lines.len(), |ui, range| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.spacing_mut().scroll.floating = false;
+        let area = egui::ScrollArea::both().id_salt(id).min_scrolled_height(0.0).max_height(ui.available_height()).auto_shrink([false, false]).stick_to_bottom(stick).show_rows(ui, row_h, lines.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             // the rows on screen: where they are and how their text is laid out, for finding the character under the mouse
             let mut rows: Vec<(usize, Rect, Pos2, std::sync::Arc<egui::Galley>, usize, egui::Response)> = Vec::new();
@@ -564,8 +574,10 @@ impl App {
                     job.append(&prefix, 0.0, egui::TextFormat::simple(font.clone(), if l.kind == LogKind::Input { pal.ok } else { color }));
                 }
                 job.append(text, 0.0, egui::TextFormat::simple(font.clone(), color));
-                let (rect, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), row_h), Sense::CLICK | Sense::DRAG);
+                job.break_on_newline = false;
+                job.wrap.max_width = f32::INFINITY;
                 let g = ui.painter().layout_job(job);
+                let (rect, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width().max(g.size().x + 14.0), row_h), Sense::CLICK | Sense::DRAG);
                 let origin = Pos2::new(rect.min.x, rect.center().y - g.size().y / 2.0);
                 if resp.hovered() {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Text);
@@ -610,7 +622,7 @@ impl App {
                 let r = rows.iter().find(|r| p.y >= r.1.top() && p.y < r.1.bottom())?;
                 Some(Pos { line: r.0, col: col_at(&r.3, p - r.2, r.4) })
             };
-            if self.script.is_some()
+            if (self.script.is_some() || cfg!(test))
                 && let Some(first) = rows.first()
             {
                 let char_w = ui.fonts_mut(|f| f.glyph_width(&font, 'M'));
@@ -755,9 +767,15 @@ impl App {
         }
     }
 
+    fn console_input_height(&self, ui: &egui::Ui, text: &str) -> f32 {
+        let row = ui.fonts_mut(|f| f.row_height(&egui::FontId::monospace(self.settings.font_size)));
+        let wanted = row * (text.lines().count().max(1) + usize::from(text.ends_with('\n'))).min(6) as f32 + 36.0;
+        wanted.min((ui.available_height() * 0.45).max(row + 36.0))
+    }
+
     /// Rounded single/multi-line input row shared by REPL and terminal: the prompt and the first line of text
     /// share one baseline and are centred in a field of the standard height.
-    fn prompt_input(&mut self, ui: &mut egui::Ui, id: egui::Id, prompt: &str, which: u8, hint: &str) -> egui::Response {
+    fn prompt_input(&mut self, ui: &mut egui::Ui, id: egui::Id, prompt: &str, which: u8, hint: &str, height: f32) -> egui::Response {
         let pal = self.pal;
         let font = egui::FontId::monospace(self.settings.font_size);
         let row_h = ui.fonts_mut(|f| f.row_height(&font));
@@ -779,7 +797,10 @@ impl App {
                     .frame(egui::Frame::NONE)
                     .margin(Margin::ZERO)
                     .lock_focus(true);
-                resp = Some(ui.add(te));
+                let h = (height - 16.0 - 2.0 * vpad as f32).max(row_h);
+                egui::ScrollArea::vertical().id_salt(id.with("scroll")).max_height(h).min_scrolled_height(h).auto_shrink([false, false]).show(ui, |ui| {
+                    resp = Some(ui.add(te));
+                });
             });
         });
         resp.unwrap()
@@ -806,10 +827,10 @@ impl App {
                 self.ensure_repl();
             }
         });
-        let input_h = 64.0 + 20.0 * (self.repl.input.matches('\n').count().min(5) as f32);
-        let avail = ui.available_height() - input_h;
+        let input_h = self.console_input_height(ui, &self.repl.input);
+        let avail = ui.available_height() - input_h - ui.spacing().item_spacing.y;
         let mut log_out = LogOut::default();
-        ui.allocate_ui(Vec2::new(ui.available_width(), avail.max(40.0)), |ui| {
+        ui.allocate_ui(Vec2::new(ui.available_width(), avail.max(0.0)), |ui| {
             let stick = self.repl.stick_to_bottom;
             log_out = self.draw_log(ui, "repl_log", &self.repl.log, stick, ">");
         });
@@ -840,7 +861,7 @@ impl App {
                 ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::ArrowDown));
             }
         }
-        let resp = self.prompt_input(ui, id, ">", 0, tr("Evaluate Lisp. Enter to run, Shift+Enter for a new line"));
+        let resp = self.prompt_input(ui, id, ">", 0, tr("Evaluate Lisp. Enter to run, Shift+Enter for a new line"), input_h);
         if self.repl.focus_input {
             resp.request_focus();
             self.repl.focus_input = false;
@@ -870,6 +891,7 @@ impl App {
 
     fn draw_terminal(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let pal = self.pal;
+        let copy_requested = ctx.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy)));
         self.terminal_start_dir();
         ui.add_space(6.0);
         let scripts = self.project_scripts();
@@ -913,9 +935,10 @@ impl App {
         if pick {
             self.terminal_pick_script();
         }
-        let avail = ui.available_height() - 64.0;
+        let input_h = self.console_input_height(ui, &self.term.input);
+        let avail = ui.available_height() - input_h - ui.spacing().item_spacing.y;
         let mut log_out = LogOut::default();
-        ui.allocate_ui(Vec2::new(ui.available_width(), avail.max(40.0)), |ui| {
+        ui.allocate_ui(Vec2::new(ui.available_width(), avail.max(0.0)), |ui| {
             log_out = self.draw_log(ui, "term_log", &self.term.log, true, "$");
         });
         self.after_log(log_out, true);
@@ -924,24 +947,24 @@ impl App {
         let mut hist: Option<isize> = None;
         if ctx.memory(|m| m.has_focus(id)) {
             let (enter, up, down) = ctx.input(|i| (i.key_pressed(Key::Enter), i.key_pressed(Key::ArrowUp), i.key_pressed(Key::ArrowDown)));
-            if enter && !self.term.input.trim().is_empty() {
+            if enter && !ctx.input(|i| i.modifiers.shift) && !self.term.input.trim().is_empty() {
                 ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Enter));
                 submit = true;
             }
-            if up {
+            if up && !self.term.input.contains('\n') {
                 hist = Some(-1);
                 ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::ArrowUp));
             }
-            if down {
+            if down && !self.term.input.contains('\n') {
                 hist = Some(1);
                 ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::ArrowDown));
             }
         }
-        let resp = self.prompt_input(ui, id, "$", 1, tr("Type a command and press Enter"));
+        let resp = self.prompt_input(ui, id, "$", 1, tr("Type a command and press Enter"), input_h);
         // Ctrl+C copies what is selected (the log did that above); with nothing selected it stops the running command
-        if !log_out.copied && self.term_busy() && ctx.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy))) {
-            let input_selected = egui::TextEdit::load_state(ctx, id).and_then(|s| s.cursor.char_range()).is_some_and(|r| r.primary != r.secondary);
-            if (resp.has_focus() || log_out.keys_here) && !input_selected {
+        if !log_out.copied && self.term_busy() && copy_requested {
+            let input_selected = !self.term.input.is_empty() && egui::TextEdit::load_state(ctx, id).and_then(|s| s.cursor.char_range()).is_some_and(|r| r.primary != r.secondary);
+            if (ctx.memory(|m| m.has_focus(id)) || log_out.keys_here) && !input_selected {
                 self.terminal_interrupt();
             }
         }
@@ -1279,4 +1302,85 @@ fn ref_chip(p: &egui::Painter, pal: &crate::theme::Palette, at: Pos2, raw: &str)
     p.rect_filled(rect, CornerRadius::same(7), color.gamma_multiply(0.2));
     p.galley(Pos2::new(rect.min.x + 7.0, rect.center().y - g.size().y / 2.0), g, color);
     rect.max.x
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+    use ide_core::settings::Settings;
+
+    fn project() -> Project {
+        let root = PathBuf::from("C:/light-layout-project");
+        let rows: Vec<_> = (0..200).map(|i| TreeRow { path: root.join(format!("file{i:03}.rs")), depth: 1, is_dir: false, expanded: false, name: format!("file{i:03}.rs"), ignored: false }).collect();
+        Project { root: root.clone(), name: "layout".into(), tree_ver: 0, tree_cache: Some((0, rows)), ignore: ide_core::workspace::IgnoreMatcher::new(&root), expanded: Default::default(), selected: None, dir_cache: Default::default(), files: vec![root.join("collapsed/Navigator.rs"), root.join("other.rs")], files_rel: vec![], index: Default::default(), index_rx: None, branch: None }
+    }
+
+    #[test]
+    fn project_uses_the_full_tall_viewport_and_searches_collapsed_files() {
+        let ctx = egui::Context::default();
+        fonts::install(&ctx);
+        let mut app = App::new(Settings::default());
+        app.project = Some(project());
+        for query in ["", "nAvIg", "missing", ""] {
+            app.project_filter = query.into();
+            let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(300.0, 1400.0))), ..Default::default() }, |ui| {
+                app.draw_project_panel(ui, &ctx);
+            });
+            let texts: Vec<_> = output.shapes.iter().filter_map(|s| match &s.shape { egui::Shape::Text(t) => Some((t.galley.job.text.as_str(), t.pos.y)), _ => None }).collect();
+            if query.is_empty() {
+                let last = texts.iter().filter(|(s, _)| s.starts_with("file")).map(|(_, y)| *y).fold(0.0, f32::max);
+                assert!(last > 1300.0, "tree stopped early at {last}");
+            } else {
+                assert_eq!(texts.iter().filter(|(s, _)| *s == "Navigator.rs").count(), usize::from(query == "nAvIg"));
+                assert!(!texts.iter().any(|(s, _)| s.starts_with("file")));
+            }
+            output.textures_delta.clear();
+        }
+    }
+
+    #[test]
+    fn submitting_a_command_keeps_terminal_focus() {
+        let ctx = egui::Context::default();
+        fonts::install(&ctx);
+        let mut app = App::new(Settings::default());
+        app.term.input = "help".into();
+        app.term.focus_input = true;
+        for frame in 0..5 {
+            let mut output = ctx.run_ui(egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(700.0, 250.0))),
+                events: if frame == 2 { vec![egui::Event::Key { key: Key::Enter, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::NONE }] } else { vec![] },
+                ..Default::default()
+            }, |ui| { app.draw_terminal(ui, &ctx); });
+            output.textures_delta.clear();
+            assert!(ctx.memory(|m| m.has_focus(egui::Id::unique("term_input"))), "lost focus in frame {frame}: {:?}, editor={}", ctx.memory(|m| m.focused()), app.editor_focus);
+        }
+        assert!(app.term.input.is_empty());
+    }
+
+    #[test]
+    fn multiline_console_stays_inside_the_panel() {
+        for height in [120.0, 180.0, 280.0, 600.0] {
+            for lines in [1, 2, 8, 100] {
+                let ctx = egui::Context::default();
+                fonts::install(&ctx);
+                let mut app = App::new(Settings::default());
+                app.term.input = "echo test\n".repeat(lines);
+                app.term.log = vec![LogLine { kind: LogKind::Output, text: "first\nsecond\nthird".into() }];
+                app.repl.input = app.term.input.clone();
+                app.repl.log = app.term.log.clone();
+                let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                    let bounds = Rect::from_min_size(ui.cursor().min, Vec2::new(640.0, height));
+                    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(bounds));
+                    app.draw_terminal(&mut child, &ctx);
+                    assert!(child.min_rect().bottom() <= bounds.bottom() + 1.0, "{lines} lines overflow {height}: {:?}", child.min_rect());
+                    let g = ctx.data(|d| d.get_temp::<LogGeometry>(egui::Id::unique(LOG_GEOMETRY_ID))).unwrap();
+                    assert!(g.rows.iter().all(|r| !r.contains('\n')));
+                    let mut repl_ui = ui.new_child(egui::UiBuilder::new().id_salt("repl_test").max_rect(bounds));
+                    app.draw_repl(&mut repl_ui, &ctx);
+                    assert!(repl_ui.min_rect().bottom() <= bounds.bottom() + 1.0, "REPL {lines} lines overflow {height}: {:?}", repl_ui.min_rect());
+                });
+                output.textures_delta.clear();
+            }
+        }
+    }
 }
