@@ -35,6 +35,8 @@
   {"op": "log", "value": "a click on a file shows its diff side by side in the editor area"},
   {"op": "commit_click", "value": "src/nav.lisp"},
   {"op": "frames", "value": 5},
+  {"op": "assert_diff", "mode": "unified"},
+  {"op": "diff_mode", "value": "side"},
   {"op": "assert_diff", "file": "src/nav.lisp", "hunks": 2, "current": 0, "added": 2, "removed": 1, "mode": "side"},
   {"op": "assert_diff", "old_contains": "(* x 2)", "new_contains": "(* x 3)"},
   {"op": "assert_tabs", "value": 4},

@@ -40,14 +40,14 @@ fn paint_side_row(painter: &Painter, pal: &Palette, r: Rect, half: f32, row: &Si
     painter.rect_filled(Rect::from_min_size(pos2(r.min.x + half, r.min.y), vec2(1.0, r.height())), CornerRadius::ZERO, pal.hover);
     for (cell, area, tint) in [(&row.left, left, red), (&row.right, right, green)] {
         let Some(c) = cell else { continue };
-        let p = painter.with_clip_rect(area);
+        let p = painter.with_clip_rect(area.intersect(painter.clip_rect()));
         let text_x = area.min.x + NUM_W + 8.0;
         if let Some((a, b)) = c.hl {
             let hl = Rect::from_min_max(pos2(text_x + a as f32 * cw, area.min.y + 1.0), pos2(text_x + b as f32 * cw, area.max.y - 1.0));
             p.rect_filled(hl, CornerRadius::same(3), tint.gamma_multiply(0.34));
         }
         p.text(pos2(area.min.x + NUM_W - 8.0, area.center().y), Align2::RIGHT_CENTER, c.no, mono.clone(), pal.line_number);
-        p.text(pos2(text_x, area.center().y), Align2::LEFT_CENTER, &c.text, mono.clone(), pal.plain);
+        p.text(pos2(text_x, area.center().y), Align2::LEFT_CENTER, c.text.replace('\t', "    "), mono.clone(), pal.plain);
     }
     if current {
         painter.rect_filled(Rect::from_min_size(r.min, vec2(3.0, r.height())), CornerRadius::ZERO, pal.accent);
@@ -187,8 +187,10 @@ impl App {
     fn draw_side_rows(&mut self, ui: &mut egui::Ui, idx: usize, mono: &FontId, cw: f32) {
         let pal = self.pal;
         let Some(tab) = self.docs.get_mut(idx).and_then(|d| d.diff.as_mut()) else { return };
-        let longest = tab.sbs.rows.iter().flat_map(|r| [&r.left, &r.right]).filter_map(|c| c.as_ref()).map(|c| c.text.chars().count()).max().unwrap_or(0);
-        let half = ((ui.available_width() - 1.0) / 2.0).max(NUM_W + 24.0 + longest as f32 * cw).floor();
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.spacing_mut().scroll.floating = false;
+        let longest = tab.sbs.rows.iter().flat_map(|r| [&r.left, &r.right]).filter_map(|c| c.as_ref()).map(|c| ui.painter().layout_no_wrap(c.text.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
+        let half = ((ui.available_width() - 1.0) / 2.0).max(NUM_W + 24.0 + longest).ceil();
         let total_w = half * 2.0 + 1.0;
         let mut area = egui::ScrollArea::both().id_salt(("diff_side", idx)).auto_shrink([false, false]);
         if let Some(r) = tab.scroll_to.take() {
@@ -217,6 +219,8 @@ impl App {
     fn draw_unified_rows(&mut self, ui: &mut egui::Ui, idx: usize, mono: &FontId) {
         let pal = self.pal;
         let Some(tab) = self.docs.get_mut(idx).and_then(|d| d.diff.as_mut()) else { return };
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.spacing_mut().scroll.floating = false;
         let mut area = egui::ScrollArea::both().id_salt(("diff_unified", idx)).auto_shrink([false, false]);
         if let Some(r) = tab.scroll_to.take() {
             // `r` is a side-by-side row; the unified list has one row per removed line, so find the same change
@@ -224,8 +228,8 @@ impl App {
             let first = tab.lines.iter().position(|l| l.kind != LineKind::Same && (l.new_no.or(l.old_no) == target || l.old_no == target)).unwrap_or(0);
             area = area.vertical_scroll_offset(first.saturating_sub(3) as f32 * ROW_H);
         }
-        let longest = tab.lines.iter().map(|l| l.text.chars().count()).max().unwrap_or(0);
-        let total_w = (ui.available_width()).max(150.0 + longest as f32 * 8.0);
+        let longest = tab.lines.iter().map(|l| ui.painter().layout_no_wrap(l.text.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
+        let total_w = ui.available_width().max(150.0 + longest);
         area.show_rows(ui, ROW_H, tab.lines.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for l in &tab.lines[range] {
@@ -246,5 +250,49 @@ impl App {
                 ui.painter().text(pos2(r.min.x + 132.0, r.center().y), Align2::LEFT_CENTER, text, mono.clone(), if l.kind == LineKind::Same { pal.plain } else { fg });
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn horizontal_scroll_reaches_the_end_of_tabbed_unicode_lines() {
+        for unified in [true, false] {
+            let ctx = egui::Context::default();
+            fonts::install(&ctx);
+            let mut app = App::new(ide_core::settings::Settings::default());
+            let text = format!("{} КОНЕЦ", "\tlong code != >> ".repeat(40));
+            let mut doc = crate::doc::Doc::diff_tab();
+            let tab = doc.diff.as_mut().unwrap();
+            tab.lines = ide_core::diff::diff_lines("old", &text);
+            tab.sbs = ide_core::diff::side_by_side("old", &text);
+            app.docs.push(doc);
+            let mono = FontId::monospace(22.0);
+            let mut last_right = 0.0;
+            let mut clip_right = 0.0;
+            for frame in 0..30 {
+                let mut output = ctx.run_ui(egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(700.0, 250.0))),
+                    time: Some(frame as f64 / 30.0),
+                    events: if frame == 2 { vec![egui::Event::PointerMoved(pos2(350.0, 80.0)), egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: vec2(-100_000.0, 0.0), phase: egui::TouchPhase::Move, source: egui::MouseWheelSource::Wheel, modifiers: egui::Modifiers::NONE }] } else { vec![] },
+                    ..Default::default()
+                }, |ui| {
+                    if unified { app.draw_unified_rows(ui, 0, &mono); }
+                    else { app.draw_side_rows(ui, 0, &mono, 13.2); }
+                });
+                for shape in &output.shapes {
+                    if let egui::Shape::Text(t) = &shape.shape
+                        && t.galley.job.text.ends_with("КОНЕЦ") {
+                        last_right = t.pos.x + t.galley.size().x;
+                        clip_right = shape.clip_rect.right();
+                    }
+                }
+                output.textures_delta.clear();
+            }
+            assert!(last_right <= clip_right, "end is clipped: {last_right} > {clip_right}, unified={unified}");
+            assert!(last_right > clip_right - 40.0, "scroll never reached the end: {last_right}, unified={unified}");
+        }
     }
 }

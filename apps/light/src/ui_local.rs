@@ -264,9 +264,10 @@ impl App {
                 let mut vui = ui.new_child(egui::UiBuilder::new().max_rect(body).layout(egui::Layout::top_down(Align::Min)));
                 let row_h = 21.0;
                 let first_change = st.scroll_to.take();
-                // row width: the longest line (monospace 13 px is ~7.9 px per column) so only really long lines scroll sideways
-                let longest = st.diff.iter().map(|l| l.text.chars().count()).chain(st.code.iter().map(|l| l.chars().count())).max().unwrap_or(0);
-                let row_w = longest as f32 * 7.9 + 170.0;
+                vui.spacing_mut().item_spacing.y = 0.0;
+                vui.spacing_mut().scroll.floating = false;
+                let longest = st.diff.iter().map(|l| l.text.as_str()).chain(st.code.iter().map(String::as_str)).map(|text| vui.painter().layout_no_wrap(text.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
+                let row_w = longest + 150.0;
                 match st.mode {
                     LocalViewMode::Changes => {
                         if st.diff.is_empty() {
@@ -381,10 +382,12 @@ impl App {
                     ui.label(RichText::new(msg).color(pal.text_dim).size(12.5));
                 } else {
                     egui::Frame::new().fill(pal.editor_bg).corner_radius(CornerRadius::same(10)).inner_margin(Margin::symmetric(0, 6)).show(ui, |ui| {
+                        ui.spacing_mut().scroll.floating = false;
+                        let longest = h.hunk.old_lines.iter().map(|l| ui.painter().layout_no_wrap(l.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
                         egui::ScrollArea::both().id_salt("hunk_old").max_height(14.0 * row_h).auto_shrink([false, true]).show(ui, |ui| {
                             ui.spacing_mut().item_spacing.y = 0.0;
                             for (i, l) in h.hunk.old_lines.iter().enumerate() {
-                                let (r, _) = ui.allocate_exact_size(vec2(ui.available_width().max(width * 1.6), row_h), Sense::hover());
+                                let (r, _) = ui.allocate_exact_size(vec2(ui.available_width().max(longest + 70.0), row_h), Sense::hover());
                                 ui.painter().rect_filled(r, CornerRadius::ZERO, pal.error.gamma_multiply(0.12));
                                 ui.painter().text(pos2(r.min.x + 10.0, r.center().y), Align2::LEFT_CENTER, format!("{:>4}", h.hunk.old_start + i + 1), mono.clone(), pal.line_number);
                                 ui.painter().text(pos2(r.min.x + 52.0, r.center().y), Align2::LEFT_CENTER, l.replace('\t', "    "), mono.clone(), pal.plain);

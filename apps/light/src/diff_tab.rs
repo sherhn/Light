@@ -51,7 +51,7 @@ impl DiffTab {
             binary: false,
             sbs: SideBySide::default(),
             lines: vec![],
-            unified: false,
+            unified: true,
             cur: None,
             scroll_to: None,
             new_stamp: (0, None),
