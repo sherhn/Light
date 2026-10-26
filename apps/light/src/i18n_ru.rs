@@ -2,6 +2,20 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Windows folder...", "Папка Windows..."),
+    ("Home folder", "Домашняя папка"),
+    ("Up one folder", "На уровень выше"),
+    ("Search folders by name...", "Поиск папок по имени..."),
+    ("Search subfolders", "Искать во вложенных папках"),
+    ("Show hidden folders", "Скрытые папки"),
+    ("Looking for folders...", "Поиск папок..."),
+    ("No folders found", "Папки не найдены"),
+    ("Browse folder", "Перейти в папку"),
+    ("Search limited. Open a closer folder or refine the name.", "Поиск ограничен. Откройте папку ближе к проекту или уточните имя."),
+    ("Some folders could not be read.", "Некоторые папки недоступны для чтения."),
+    ("Searches up to 8 levels; skips dependency and build folders.", "Поиск на глубину до 8 уровней; без папок зависимостей и сборки."),
+    ("Enter an absolute Linux path or a path starting with ~/.", "Введите абсолютный путь Linux или путь, начинающийся с ~/."),
+    ("Folder reader stopped. Try refreshing.", "Чтение папок прервано. Попробуйте обновить список."),
     ("Search files by name", "Поиск файлов по имени"),
     // ---- menus and command titles (ide-core command registry)
     ("File", "Файл"),

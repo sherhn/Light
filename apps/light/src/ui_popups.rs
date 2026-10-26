@@ -50,6 +50,7 @@ impl App {
         }
         self.draw_palette(ctx);
         self.draw_clone(ctx);
+        self.draw_project_browser(ctx);
         self.draw_input_dialogs(ctx);
         self.draw_scenarios(ctx);
         self.draw_local_view(ctx);

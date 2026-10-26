@@ -293,9 +293,7 @@ impl App {
             }
             "file.clone" => self.open_clone_dialog(),
             "file.open_project" => {
-                if let Some(dir) = rfd::FileDialog::new().set_title(tr("Open Project")).pick_folder() {
-                    self.request_open_project(&dir);
-                }
+                self.open_project_browser();
             }
             "file.open_file" => {
                 let mut dlg = rfd::FileDialog::new().set_title(tr("Open File"));

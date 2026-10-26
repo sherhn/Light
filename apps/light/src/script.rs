@@ -95,6 +95,7 @@ impl App {
             // real time has passed (`sleep`): things that go by the clock, like scrolling while dragging, need it
             "after" => self.now >= cond["until"].as_f64().unwrap_or(0.0),
             "wsl_idle" => !self.wsl.busy(),
+            "project_browser_idle" => matches!(&self.popup, Popup::ProjectBrowser(browser) if browser.idle()) && !self.wsl.probing(),
             // the registry has answered (with a list or an error)
             "modules_index" => self.mods.index.is_some() || self.mods.index_error.is_some(),
             "modules_idle" => self.mods.busy.is_empty() && !self.mods.loading_index && !self.mods.loading_covers,
@@ -307,6 +308,10 @@ impl App {
                 self.editor_focus = true;
             }
             "focus_editor" => self.editor_focus = true,
+            "project_browser_focus" => {
+                let id = if sval == "path" { "project_browser_address" } else { "project_browser_search" };
+                ctx.memory_mut(|memory| memory.request_focus(egui::Id::unique(id)));
+            }
             "click" => {
                 let (x, y) = (step["x"].as_f64().unwrap_or(0.0) as f32, step["y"].as_f64().unwrap_or(0.0) as f32);
                 let s = self.script.as_mut().unwrap();
@@ -601,6 +606,7 @@ impl App {
                     Popup::FindInFiles { .. } => "find_in_files",
                     Popup::Settings { .. } => "settings",
                     Popup::Clone(_) => "clone",
+                    Popup::ProjectBrowser(_) => "project_browser",
                     Popup::LocalView(_) => "local_view",
                     Popup::About => "about",
                     Popup::OpenProject { .. } => "open_project",

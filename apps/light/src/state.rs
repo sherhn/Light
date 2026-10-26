@@ -428,6 +428,7 @@ pub enum Popup {
     FindInFiles { query: String, replace: String, case_sensitive: bool, whole_word: bool, just_opened: bool, replace_mode: bool },
     Settings { lisp_path: String, detected: String, filter: String, page: usize },
     Clone(Box<CloneState>),
+    ProjectBrowser(Box<crate::ui_project_browser::ProjectBrowser>),
     LocalView(Box<LocalViewState>),
     About,
     /// Opening another project while one is open: this window, a new window or cancel.
