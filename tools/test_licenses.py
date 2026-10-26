@@ -58,6 +58,7 @@ class LicensePolicyTests(unittest.TestCase):
             root = Path(temp)
             module_notices({"id": "html"}, root)
             notice = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+            self.assertNotIn(b"\r", (root / "THIRD_PARTY_NOTICES.md").read_bytes())
             self.assertIn("HTML5 Logo by W3C", notice)
             self.assertIn("color, opacity", notice)
             self.assertTrue((root / "HTML5-CC-BY-3.0.txt").is_file())

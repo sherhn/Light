@@ -50,7 +50,7 @@ def module_notices(module, destination):
         lines += ["The cover uses Light's own typographic label."]
     if module["id"] == "python":
         lines += ["Python is a trademark of the Python Software Foundation; the name identifies the supported programming language.", "Light is not affiliated with the PSF. No Python logo is reproduced in this cover."]
-    (destination / "THIRD_PARTY_NOTICES.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (destination / "THIRD_PARTY_NOTICES.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def main(argv):
