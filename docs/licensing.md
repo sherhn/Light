@@ -31,6 +31,8 @@ that exact Chocolatey/runtime version; Linux and macOS build it into the workspa
 using an installed SBCL as bootstrap. Nothing is installed system-wide by the
 preparation script. Runtime COPYING, contrib notices, ASDF/UIOP notices and
 copyright comment blocks are retained; the complete source archive is included.
+On systems older than SBCL 2.4.0, a checksum-pinned 2.4.0 source build serves as
+an intermediate compiler. This build tool is not included in release packages.
 
 Newly copied private macOS libraries require review before release. Zstandard
 1.5.7 has its original BSD license and imported xxHash copyright notice. Unknown
@@ -68,9 +70,8 @@ installer to another download site does not transfer that responsibility away.
 
 Every module includes LICENSE and THIRD_PARTY_NOTICES.md in its hashed registry
 entry. HTML5 also carries CC BY 3.0, W3C attribution and a description of visual
-changes. CSS and Markdown identify their CC0 originals; Python identifies PSF
-and its permitted freely distributed-tool use. C++ and shell covers use local
-typographic labels. Generated template code and grammar are Light's MIT material;
+changes. CSS and Markdown identify their CC0 originals. C++, Python and shell
+covers use local typographic labels. Generated template code and grammar are Light's MIT material;
 the artwork exceptions are described separately in each module's notices.
 
 ## Verification before publishing
