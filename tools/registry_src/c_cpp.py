@@ -53,7 +53,7 @@ COMMON = dict(
 )
 
 MODULE = module(
-    version="1.1.0",
+    version="1.1.1",
     id="c-cpp",
     name="C and C++",
     category="Languages",

@@ -13,6 +13,7 @@ import hashlib
 import importlib
 import json
 import pathlib
+import shutil
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -30,6 +31,28 @@ def write_json(path, data):
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
 
 
+def module_notices(module, destination):
+    """Legal materials travel with every independently downloadable module."""
+    shutil.copyfile(ROOT / "LICENSE", destination / "LICENSE")
+    lines = ["# Module notices", "", "Light's original grammar, templates and artwork are MIT licensed; see LICENSE.", ""]
+    mark = {"html": "HTML5", "css": "CSS", "markdown": "Markdown", "python": "Python"}.get(module["id"])
+    if mark:
+        shutil.copyfile(ROOT / "assets/module-marks/SimpleIcons-LICENSE.md", destination / "SimpleIcons-CC0.txt")
+        lines += ["The SVG conversion comes from Simple Icons (CC0); original artwork retains its own conditions.", "Source: https://github.com/simple-icons/simple-icons", ""]
+    if mark == "HTML5":
+        shutil.copyfile(ROOT / "assets/module-marks/HTML5-CC-BY-3.0.txt", destination / "HTML5-CC-BY-3.0.txt")
+        lines += ["HTML5 Logo by W3C: https://www.w3.org/html/logo/", "CC BY 3.0: https://creativecommons.org/licenses/by/3.0/", "The cover changes the logo's color, opacity and background composition."]
+    elif mark == "Python":
+        lines += ["Python and the Python Logo are trademarks of the Python Software Foundation (PSF).", "Light is not affiliated with the PSF. The mark identifies a freely distributed Python tool.", "Sources and usage conditions: https://www.python.org/community/logos/", "https://www.python.org/psf/trademarks/", "The cover changes the logo's color and opacity."]
+    elif mark == "CSS":
+        lines += ["CSS logo: https://github.com/CSS-Next/logo.css (CC0-1.0)."]
+    elif mark == "Markdown":
+        lines += ["Markdown Mark by Dustin Curtis: https://github.com/dcurtis/markdown-mark (CC0-1.0)."]
+    else:
+        lines += ["The cover uses Light's own typographic label."]
+    (destination / "THIRD_PARTY_NOTICES.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main(argv):
     redraw = "--covers" in argv
     mods = load_modules()
@@ -38,6 +61,7 @@ def main(argv):
         d = OUT / "modules" / m["id"]
         d.mkdir(parents=True, exist_ok=True)
         write_json(d / "module.json", m)
+        module_notices(m, d)
         cover = d / m["cover"]
         if redraw or not cover.exists():
             sys.path.insert(0, str(ROOT / "tools"))

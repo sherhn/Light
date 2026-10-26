@@ -1,6 +1,8 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
   "id": "html",
   "name": "HTML",
   "category": "Languages",
