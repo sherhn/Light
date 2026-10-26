@@ -117,19 +117,14 @@
           "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
         },
         {
-          "name": "SimpleIcons-CC0.txt",
-          "size": 6569,
-          "sha256": "9046848b63a5c92bff14e4accca80bd987e0623b74adf9226ce5198d312b79d5"
-        },
-        {
           "name": "THIRD_PARTY_NOTICES.md",
-          "size": 591,
-          "sha256": "e97e71970aa6fa8a956411ab56a3feee37cd9d462b3c2ff8c96dd89591260cf0"
+          "size": 346,
+          "sha256": "3b7349db03930e97cec301bdd04a8e42f5d7a71523a9d5980e2c65d298548d42"
         },
         {
           "name": "cover.png",
-          "size": 23024,
-          "sha256": "31cf770144af03e9ec77864b487c60a5353366f31d2c429fc669f596775a44f3"
+          "size": 21779,
+          "sha256": "992287dd9376a63971cc2f1be13aa2f5252f3f0b93235c7e89e0bc418020b7bd"
         }
       ],
       "detect": {
