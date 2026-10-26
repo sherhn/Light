@@ -59,8 +59,18 @@ def bundle_windows_git(dist, architecture, explicit=None):
             marker.write_text(spec["sha256"])
     if not (source / "cmd/git.exe").is_file() or not (source / "LICENSE.txt").is_file():
         raise ValueError(f"not a complete Portable Git distribution: {source}")
+    from git_sources import bundle as bundle_git_sources
+    source_kit = dist.parent / f"Git-{spec['version']}-sources.zip"
+    source_record = bundle_git_sources(source, source_kit)
+    (dist / "licenses/Git-SOURCE-MANIFEST.json").write_text(json.dumps(source_record, indent=2) + "\n", encoding="utf-8")
     shutil.copytree(source, dist / "git", ignore=shutil.ignore_patterns(".light-vendor-sha256"))
-    return f"\n## Git for Windows {spec['version']}\n\nBundled in `git/`; licences in `git/LICENSE.txt`.\nSource and source packages: {spec['source']}\n"
+    return (f"\n## Git for Windows {spec['version']}\n\nBundled in `git/`; original licences and copyright notices are retained there.\n"
+            f"The matching source kit is **{source_kit.name}**, supplied alongside this installer/archive in the same download location.\n"
+            "Published downloads: https://github.com/sherhn/Light/releases\n"
+            f"Source kit SHA-256: {source_record['sha256']}. It covers {source_record['packages']} exact package versions.\n"
+            "Extract PACKAGE_SOURCES.json and SOURCE_CODE.md from the kit for component versions, hashes, build recipes and original sources.\n"
+            "Redistributors must preserve access to the matching source kit when distributing these Git binaries.\n"
+            f"Upstream provenance: {spec['source']}\n")
 
 
 def nsis_quote(value):
@@ -196,6 +206,8 @@ def macos_libraries(contents):
             if not origin.is_file():
                 raise ValueError(f"cannot relocate {dependency}, required by {source}")
             if origin not in copied:
+                from legal_sources import native_library_notice
+                native_library_notice(origin, contents / "Resources")
                 target = frameworks / origin.name
                 if target.exists():
                     raise ValueError(f"library name collision: {target.name}")
@@ -210,6 +222,9 @@ def macos_libraries(contents):
         # after its helper executables and private libraries have been signed.
         if destination != binaries / "light":
             subprocess.run(["codesign", "--force", "--sign", "-", str(destination)], check=True)
+    from license_bundle import seal, verify
+    seal(contents / "Resources")
+    verify(contents / "Resources")
 
 
 def macos(dist, version, architecture):

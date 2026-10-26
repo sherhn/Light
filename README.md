@@ -16,6 +16,8 @@ Add the languages and tools your project needs.
 Modules are installed inside the IDE. Compilers and interpreters are configured separately.
 
 Licensed under [MIT](LICENSE).
+Third-party components retain their own licenses. Downloads include full notices,
+runtime/MPL sources, and a separate matching source kit for bundled Git; see [redistribution details](docs/licensing.md).
 
 ## Русский
 
@@ -35,3 +37,6 @@ Light — открытая модульная IDE на Rust и egui для Windo
 Модули устанавливаются внутри IDE. Компиляторы и интерпретаторы настраиваются отдельно.
 
 Лицензия — [MIT](LICENSE).
+Сторонние компоненты сохраняют собственные лицензии. Сборки содержат уведомления,
+исходники runtime/MPL-компонентов; рядом публикуется соответствующий исходный комплект Git.
+Подробнее — [в описании распространения](docs/licensing.md).

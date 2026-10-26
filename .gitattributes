@@ -1,2 +1,4 @@
 * text=auto eol=lf
 *.png binary
+# These originals are checksum-pinned; retain upstream bytes on every platform.
+assets/licenses/rust/** -text -whitespace

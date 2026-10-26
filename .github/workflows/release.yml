@@ -1,7 +1,7 @@
 name: Release
 
 # Push a tag `vX.Y.Z` (the version in Cargo.toml) to publish a GitHub release.
-# `vX.Y.Z-rc1` makes a pre-release. A manual run builds installers without publishing.
+# `vX.Y.Z-rc1` makes a pre-release. A manual run can publish after every platform passes.
 on:
   push:
     tags: ["v*"]
@@ -12,6 +12,14 @@ on:
         type: choice
         options: [all, windows, linux, macos]
         default: all
+      release_tag:
+        description: Release tag (for example v0.2.0-rc7)
+        type: string
+        default: ""
+      publish:
+        description: Publish the verified packages as a release
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,16 +33,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       MACOSX_DEPLOYMENT_TARGET: "15.0"
+      LIGHT_RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+      LIGHT_RELEASE_PLATFORM: ${{ inputs.platform || 'all' }}
     steps:
       - uses: actions/checkout@v4
       - name: The tag matches the version in Cargo.toml
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish
         shell: bash
         run: |
           version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
-          tag="${GITHUB_REF_NAME#v}"
-          [ "${tag%%-*}" = "$version" ] || { echo "::error::tag $GITHUB_REF_NAME does not match version $version in Cargo.toml"; exit 1; }
+          [[ "$LIGHT_RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]] || { echo "::error::invalid release tag"; exit 1; }
+          tag="${LIGHT_RELEASE_TAG#v}"
+          [ "${tag%%-*}" = "$version" ] || { echo "::error::tag $LIGHT_RELEASE_TAG does not match version $version in Cargo.toml"; exit 1; }
+          [ "$LIGHT_RELEASE_PLATFORM" = all ] || { echo "::error::publishing requires all platforms"; exit 1; }
       - uses: dtolnay/rust-toolchain@stable
+        with: { components: clippy }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - name: Linux system libraries
@@ -49,12 +62,24 @@ jobs:
           case "${{ runner.os }}" in
             Linux) sudo apt-get install -y sbcl ;;
             macOS) brew install sbcl ;;
-            Windows) choco install sbcl -y ;;
+            Windows) choco install sbcl --version=2.6.9 -y ;;
           esac
+      - name: Prepare the reviewed runtime and its exact sources
+        run: python tools/legal_sources.py prepare-sbcl
       - name: Packaging tests
         run: python -m unittest discover -s tools -p test_installers.py
+      - name: License and corresponding-source tests
+        run: python -m unittest discover -s tools -p test_licenses.py
+      - name: Check the reviewed dependency notices
+        run: python tools/license_bundle.py check
+      - name: Rust regression tests with the bundled runtime
+        run: |
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --no-fail-fast --locked
       - name: Build installers and portable archives
         run: python tools/package.py --installers
+      - name: Verify legal material in the portable archives and source kit
+        run: python tools/verify_archives.py target/dist
       # Hosted Windows runners expose OpenGL 1.1. Install a software driver only
       # on the test machine, after packaging, so the real GUI smoke test can run.
       - name: Software OpenGL for the Windows GUI smoke test
@@ -89,10 +114,12 @@ jobs:
 
   release:
     needs: package
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      LIGHT_RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -109,13 +136,16 @@ jobs:
           import os
           from pathlib import Path
           from urllib.parse import quote
-          base = f"https://github.com/{os.environ['GH_REPO']}/releases/download/{quote(os.environ['GITHUB_REF_NAME'])}"
+          base = f"https://github.com/{os.environ['GH_REPO']}/releases/download/{quote(os.environ['LIGHT_RELEASE_TAG'])}"
           print("Download **one installer for your system**. You do not need Rust, a source checkout, or individual files from this repository.\n")
           for pattern, label in [('*-Setup.exe', 'Windows x64'), ('*macos-arm64.dmg', 'macOS: Apple Silicon'), ('*macos-x64.dmg', 'macOS: Intel'), ('*.deb', 'Ubuntu / Debian x64')]:
               for path in sorted(Path('dist').glob(pattern)):
                   print(f"- **{label}**: [{path.name}]({base}/{quote(path.name)})")
           print("\nWindows: run Setup. macOS: open the disk image and drag Light to Applications. Ubuntu / Debian: open the .deb in your software installer, or use `sudo apt install ./Light-*.deb`.\n")
           print("The IDE, CLI, offline language modules and bundled runtime are included; Windows also includes Git. Project-specific compilers and interpreters are separate tools.\n")
+          for path in sorted(Path('dist').glob('Git-*-sources.zip')):
+              print(f"Corresponding source for bundled Git and its components: [{path.name}]({base}/{quote(path.name)}). The kit contains exact versions, original source packages, build recipes, patches and checksums.\n")
+          print("Original third-party licenses accompany every package; MPL component sources and SBCL sources are also included in the installed resources.\n")
           print("These builds do not yet have a Windows publisher signature or Apple notarization. macOS may require approval in System Settings > Privacy & Security. Portable archives are also attached for users who prefer them.")
           PY
       - name: Publish the release
@@ -124,5 +154,5 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           flags=(--generate-notes)
-          [[ "$GITHUB_REF_NAME" == *-* ]] && flags+=(--prerelease)
-          gh release create "$GITHUB_REF_NAME" dist/* --title "Light ${GITHUB_REF_NAME#v}" --notes-file RELEASE_NOTES.md "${flags[@]}"
+          [[ "$LIGHT_RELEASE_TAG" == *-* ]] && flags+=(--prerelease)
+          gh release create "$LIGHT_RELEASE_TAG" dist/* --target "$GITHUB_SHA" --title "Light ${LIGHT_RELEASE_TAG#v}" --notes-file RELEASE_NOTES.md "${flags[@]}"

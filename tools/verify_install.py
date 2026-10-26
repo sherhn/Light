@@ -36,6 +36,8 @@ def check_payload(payload, work, gui=False, resources=None):
     suffix = ".exe" if windows else ""
     cli = payload / f"light-cli{suffix}"
     resources = resources or payload
+    from license_bundle import verify
+    verify(resources)
     assert (resources / "registry/index.json").is_file()
     assert (resources / "lisp" / f"sbcl{suffix}").is_file()
     env = dict(os.environ)

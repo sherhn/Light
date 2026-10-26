@@ -52,6 +52,7 @@ def sbcl_from_running(exe):
 
 
 def find_sbcl(explicit):
+    explicit = explicit or os.environ.get("LIGHT_BUNDLED_SBCL_DIR")
     dirs = [pathlib.Path(explicit)] if explicit else []
     exe = shutil.which("sbcl")
     if exe:
@@ -67,34 +68,13 @@ def find_sbcl(explicit):
     sys.exit("No SBCL with sbcl, sbcl.core and contrib/ found. Install one or pass --sbcl-dir.")
 
 
-def crate_licenses():
-    out = subprocess.run(["cargo", "metadata", "--format-version", "1", "--locked"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    meta = json.loads(out)
-    members = set(meta["workspace_members"])
-    rows = sorted({(p["name"], p["version"], p.get("license") or "see crate", p.get("repository") or "") for p in meta["packages"] if p["id"] not in members})
-    return rows
-
-
-def notices(sbcl_version):
-    rows = crate_licenses()
-    lines = [
-        "# Third-party notices",
-        "",
-        "Light itself is licensed under MIT; see `LICENSE`.",
-        "",
-        "## Bundled software",
-        "",
-        f"* **Steel Bank Common Lisp {sbcl_version}** (`lisp/`) - public domain with BSD-style parts (MIT, Symbolics, Xerox);",
-        "  full text in `licenses/SBCL-COPYING.txt`. Source: https://www.sbcl.org / https://github.com/sbcl/sbcl",
-        "* **JetBrains Mono** - SIL OFL 1.1, `licenses/JetBrainsMono-OFL.txt` (https://github.com/JetBrains/JetBrainsMono)",
-        "* **Inter** - SIL OFL 1.1, `licenses/Inter-OFL.txt` (https://github.com/rsms/inter)",
-    ]
-    for extra in sorted((ROOT / "assets" / "licenses").glob("*")):
-        if extra.name not in ("SBCL-COPYING.txt",):
-            lines.append(f"* see `licenses/{extra.name}`")
-    lines += ["", "## Rust crates linked into the executables", "", "| crate | version | license |", "|---|---|---|"]
-    lines += [f"| {n} | {v} | {l} |" for n, v, l, _ in rows]
-    return "\n".join(lines) + "\n"
+def notices(destination, sbcl_version):
+    from license_bundle import bundle_cargo, bundle_static
+    from legal_sources import bundle_sbcl
+    return ("# Third-party notices\n\nLight's original code is MIT licensed; see LICENSE.\n"
+            "Third-party components retain the separate licenses and copyrights collected below.\n\n"
+            + bundle_static(destination) + "\n" + bundle_sbcl(destination, sbcl_version)
+            + bundle_cargo(destination))
 
 
 def main():
@@ -132,12 +112,7 @@ def main():
         from windows_manifest import enable_utf8
         enable_utf8(dist / "lisp/sbcl.exe")
     sbcl_ver = subprocess.run([str(sbcl_exe), "--version"], capture_output=True, text=True).stdout.strip() or "unknown"
-
-    for f in (ROOT / "assets" / "licenses").glob("*"):
-        shutil.copy2(f, dist / "licenses" / f.name)
-    for f in (ROOT / "assets" / "fonts").glob("*-OFL.txt"):
-        shutil.copy2(f, dist / "licenses" / f.name)
-    third_party = notices(sbcl_ver)
+    third_party = notices(dist, sbcl_ver)
     if a.installers and os.name == "nt":
         from installers import bundle_windows_git
         third_party += bundle_windows_git(dist, arch, a.git_dir)
@@ -149,6 +124,9 @@ def main():
     if not (registry / "index.json").is_file():
         sys.exit("no registry/index.json: run `python tools/build_registry.py --covers` first")
     shutil.copytree(registry, dist / "registry")
+    from license_bundle import seal, verify
+    seal(dist)
+    verify(dist)
     (dist / "START_HERE.txt").write_text(
         "Light - a modular IDE for any language, written in Rust\n\n"
         f"Run {'light.exe' if os.name == 'nt' else './light'}. Nothing else has to be installed:\n"
@@ -158,7 +136,7 @@ def main():
         "The Lisp module's REPL, compiler and ASDF come from the bundled SBCL in the 'lisp' folder.\n"
         + ("Git is included. An existing Git on your PATH takes priority.\n\n" if (dist / "git").is_dir()
            else "Git features and 'Get from Version Control' use the git on your PATH (https://git-scm.com).\n\n")
-        + f"{sbcl_ver} is bundled; its licence is in licenses/SBCL-COPYING.txt.\n"
+        + f"{sbcl_ver} is bundled; its original notices are in licenses/SBCL-NOTICES.txt and sources are in sources/.\n"
         + (
             "\nThe build has no Apple Developer ID signature or notarization.\n"
             "After copying Light.app to Applications, macOS may require approval in System Settings > Privacy & Security.\n"
