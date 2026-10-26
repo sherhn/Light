@@ -83,6 +83,10 @@ def build_sbcl(version, source, prefix, host="sbcl"):
     with tarfile.open(source, "r:gz") as archive:
         archive.extractall(sources, filter="data")
     project = sources / f"sbcl-sbcl-{version}"
+    # Older official Git tag archives omit this generated build metadata and
+    # cannot use git describe after extraction. The archive is pinned above.
+    if not (project / "version.lisp-expr").is_file():
+        (project / "version.lisp-expr").write_text(f'"{version}"\n', encoding="utf-8", newline="\n")
     # A failed cross-compilation must stop, never enter an interactive debugger.
     command = f"{shlex.quote(str(host))} --disable-debugger --no-sysinit --no-userinit"
     subprocess.run(["sh", "make.sh", f"--prefix={prefix}", f"--xc-host={command}"], cwd=project, check=True)
