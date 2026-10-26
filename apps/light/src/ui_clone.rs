@@ -32,7 +32,7 @@ impl App {
             error: None,
             just_opened: true,
             run: None,
-            linux: false,
+            linux: self.wsl_target().is_some(),
             linux_distro,
             linux_dir: "~/projects".into(),
             build_in_linux: false,
@@ -57,7 +57,12 @@ impl App {
                 return;
             }
         };
-        let linux = st.linux && !st.linux_distro.is_empty();
+        if st.linux && st.linux_distro.is_empty() {
+            st.error = Some(tr("Choose a Linux distribution first.").into());
+            return;
+        }
+        let selected_wsl = ide_core::wsl::wsl_path(std::path::Path::new(st.parent.trim()));
+        let linux = st.linux || selected_wsl.is_some();
         if !linux && st.parent.trim().is_empty() {
             st.error = Some(tr("Choose a directory to clone into").into());
             return;
@@ -70,32 +75,32 @@ impl App {
         let dest = PathBuf::from(st.parent.trim()).join(&name);
         // signed in to GitHub: private repositories clone too (the token reaches git for github.com only)
         let env = self.github.token.as_deref().map(|t| ide_core::github::git_auth_env(&url, t)).unwrap_or_default();
-        let opts = clone::CloneOptions { shallow: st.shallow, branch: Some(st.branch.clone()).filter(|b| !b.trim().is_empty()), env, lf: st.build_in_linux && !linux };
+        let mut opts = clone::CloneOptions { shallow: st.shallow, branch: Some(st.branch.clone()).filter(|b| !b.trim().is_empty()), env, lf: st.build_in_linux && !linux, ..Default::default() };
         let (tx, rx) = mpsc::channel();
         let cancel = Arc::new(AtomicBool::new(false));
         let (c2, d2) = (cancel.clone(), dest.clone());
         st.error = None;
-        let (distro, linux_dir) = (st.linux_distro.clone(), st.linux_dir.trim().to_string());
+        let (distro, linux_dir) = match selected_wsl.filter(|_| !st.linux) {
+            Some(path) => (path.distro, path.linux),
+            None => (st.linux_distro.clone(), st.linux_dir.trim().to_string()),
+        };
         std::thread::spawn(move || {
             let tx2 = tx.clone();
             let mut dest = d2;
             if linux {
-                // the folder inside the distribution: `~` is the Linux user's home; make sure the parent exists
-                let home = if linux_dir.starts_with('~') {
-                    let _ = tx.send(CloneMsg::Line(format!("Starting {distro}...")));
-                    match lisp_runtime::wsl::home_dir(&distro) {
-                        Ok(h) => h,
-                        Err(e) => {
-                            let _ = tx.send(CloneMsg::Done(Err(format!("{distro}: {e}"))));
-                            return;
-                        }
-                    }
-                } else {
-                    String::new()
+                let _ = tx.send(CloneMsg::Line(format!("Starting {distro}...")));
+                let destination = (|| {
+                    let user = lisp_runtime::wsl::project_user(&distro)?;
+                    let parent = lisp_runtime::wsl::project_parent(&user, &linux_dir)?;
+                    lisp_runtime::wsl::ensure_project_parent(&distro, &user, &parent)?;
+                    Ok::<_, String>((user, parent))
+                })();
+                let (user, parent) = match destination {
+                    Ok(destination) => destination,
+                    Err(error) => { let _ = tx.send(CloneMsg::Done(Err(error))); return; }
                 };
-                let parent = linux_parent(&linux_dir, &home);
-                let mk = lisp_runtime::wsl::exec(&lisp_runtime::wsl::Target::new(&distro, ""), None, "mkdir", &["-p".to_string(), parent.clone()]);
-                let _ = lisp_runtime::wsl::capture(mk, std::time::Duration::from_secs(60));
+                if c2.load(Ordering::Relaxed) { let _ = tx.send(CloneMsg::Done(Err("Cancelled".into()))); return; }
+                opts.wsl_user = Some(user.name);
                 dest = ide_core::wsl::windows_path(&distro, &format!("{}/{name}", parent.trim_end_matches('/')));
                 let _ = tx.send(CloneMsg::Dest(dest.clone()));
             }
@@ -139,7 +144,7 @@ impl App {
             let run = st.run.take().expect("running");
             match r {
                 Ok(()) => open_dest = Some(run.dest),
-                Err(e) => st.error = Some(e),
+                Err(e) => st.error = Some(i18n::tr_dyn(&e).into_owned()),
             }
         }
 
@@ -191,8 +196,6 @@ impl App {
                         st.linux = i == 1;
                     }
                     ui.add_space(12.0);
-                } else {
-                    st.linux = false;
                 }
                 if st.linux {
                     widgets::caption(ui, &pal, &tr("Folder in Linux").to_uppercase());
@@ -211,6 +214,7 @@ impl App {
                         }
                         TextField::new(&mut st.linux_dir).hint("~/projects").icon(Icon::Linux).enabled(!running).show(ui, &pal);
                     });
+                    ui.label(RichText::new(tr("Projects belong to your regular WSL user. ~ is their home folder.")).color(pal.text_dim).size(12.0));
                 } else {
                     widgets::caption(ui, &pal, &tr("Parent directory").to_uppercase());
                     ui.add_space(6.0);
@@ -359,32 +363,5 @@ impl App {
             return;
         }
         self.popup = Popup::Clone(st);
-    }
-}
-
-/// The Linux folder `dir` with `~` replaced by `home` (`~/projects` -> `/home/me/projects`).
-pub fn linux_parent(dir: &str, home: &str) -> String {
-    let dir = dir.trim();
-    let p = if dir == "~" {
-        home.to_string()
-    } else if let Some(rest) = dir.strip_prefix("~/") {
-        format!("{}/{rest}", home.trim_end_matches('/'))
-    } else {
-        dir.to_string()
-    };
-    let p = p.trim_end_matches('/').to_string();
-    if p.is_empty() { "/".into() } else { p }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn linux_folders() {
-        assert_eq!(linux_parent("~/projects", "/home/me"), "/home/me/projects");
-        assert_eq!(linux_parent("~", "/home/me/"), "/home/me");
-        assert_eq!(linux_parent("/srv/code/", ""), "/srv/code");
-        assert_eq!(linux_parent("  ~/a/b/ ", "/root"), "/root/a/b");
     }
 }

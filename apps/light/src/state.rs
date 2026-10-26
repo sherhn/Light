@@ -424,7 +424,7 @@ pub enum Popup {
     NewFile { dir: PathBuf, input: String, is_dir: bool, just_opened: bool },
     /// `modules`: the ones to connect; `template`: `module/Template` or empty for none (`@auto`: the first one);
     /// `creating`: waiting for the modules to be downloaded before making the project.
-    NewProject { parent: String, name: String, just_opened: bool, modules: Vec<String>, template: String, creating: bool },
+    NewProject { parent: String, name: String, just_opened: bool, modules: Vec<String>, template: String, creating: bool, location: crate::project_location::ProjectLocation },
     FindInFiles { query: String, replace: String, case_sensitive: bool, whole_word: bool, just_opened: bool, replace_mode: bool },
     Settings { lisp_path: String, detected: String, filter: String, page: usize },
     Clone(Box<CloneState>),

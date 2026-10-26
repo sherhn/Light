@@ -1,0 +1,20 @@
+[
+  {"op":"log","value":"@no_modules @linux_distro @root_wsl_user: refuse root-owned projects before creating folders or cloning"},
+  {"op":"language","value":"en"},
+  {"op":"command","value":"file.new_project"},
+  {"op":"wait","what":"wsl_idle","timeout":30},
+  {"op":"new_project_set","name":"User Project","linux":true,"distro":"Ubuntu-24.04","linux_dir":"~/projects","modules":[]},
+  {"op":"key","value":"Enter"},
+  {"op":"wait","what":"new_project_idle","timeout":30},
+  {"op":"assert_project_creation_error","value":"WSL starts as root"},
+  {"op":"screenshot","path":"${SHOTS}/${NAME}_root_error.png"},
+  {"op":"key","value":"Escape"},
+  {"op":"command","value":"file.clone"},
+  {"op":"wait","what":"wsl_idle","timeout":30},
+  {"op":"clone_set","value":"${PROJ}","linux":true},
+  {"op":"key","value":"Enter"},
+  {"op":"wait","what":"clone_idle","timeout":30},
+  {"op":"assert_clone_error","value":"WSL starts as root"},
+  {"op":"key","value":"Escape"},
+  {"op":"quit"}
+]

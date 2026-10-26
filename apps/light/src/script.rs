@@ -95,6 +95,8 @@ impl App {
             // real time has passed (`sleep`): things that go by the clock, like scrolling while dragging, need it
             "after" => self.now >= cond["until"].as_f64().unwrap_or(0.0),
             "wsl_idle" => !self.wsl.busy(),
+            "new_project_idle" => matches!(&self.popup, Popup::NewProject { location, creating, .. } if location.job.is_none() && !creating),
+            "clone_idle" => matches!(&self.popup, Popup::Clone(state) if state.run.is_none()),
             "project_browser_idle" => matches!(&self.popup, Popup::ProjectBrowser(browser) if browser.idle()) && !self.wsl.probing(),
             // the registry has answered (with a list or an error)
             "modules_index" => self.mods.index.is_some() || self.mods.index_error.is_some(),
@@ -241,6 +243,8 @@ impl App {
                     if let Some(b) = step["linux"].as_bool() {
                         c.linux = b;
                     }
+                    if let Some(value) = step["distro"].as_str() { c.linux_distro = value.into(); }
+                    if let Some(value) = step["linux_dir"].as_str() { c.linux_dir = value.into(); }
                     if let Some(v) = step["modules"].as_array() {
                         c.modules = v.iter().filter_map(|x| x.as_str().map(String::from)).collect();
                         c.show_modules = true;
@@ -400,7 +404,10 @@ impl App {
             }
             // fill in the New Project dialog: `name`, `parent`, `modules` (ids to tick) and `template` (`module/Name`)
             "new_project_set" => {
-                if let Popup::NewProject { parent, name, modules, template, .. } = &mut self.popup {
+                if let Popup::NewProject { parent, name, modules, template, location, .. } = &mut self.popup {
+                    if let Some(value) = step["linux"].as_bool() { location.linux = value; }
+                    if let Some(value) = step["distro"].as_str() { location.distro = value.into(); }
+                    if let Some(value) = step["linux_dir"].as_str() { location.parent = value.into(); }
                     if let Some(v) = step["parent"].as_str() {
                         *parent = v.to_string();
                     }
@@ -416,6 +423,14 @@ impl App {
                 } else {
                     self.fail("new_project_set: the New Project dialog is not open".to_string());
                 }
+            }
+            "assert_project_creation_error" => {
+                let error = match &self.popup { Popup::NewProject { location, .. } => location.error.as_deref(), _ => None };
+                if !error.is_some_and(|error| error.contains(&sval)) { self.fail(format!("expected project creation error containing {sval:?}, got {error:?}")); }
+            }
+            "assert_clone_error" => {
+                let error = match &self.popup { Popup::Clone(state) => state.error.as_deref(), _ => None };
+                if !error.is_some_and(|error| error.contains(&sval)) { self.fail(format!("expected clone error containing {sval:?}, got {error:?}")); }
             }
             "module_install" => self.module_install(&sval),
             "module_remove" => self.module_remove(&sval),

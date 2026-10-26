@@ -140,6 +140,10 @@ def run_inside(s, name, cwd, prog, args):
         return 0
     if prog == "sh" and args[:1] == ["-c"]:
         script = args[1] if len(args) > 1 else ""
+        if "LIGHT_PROJECT_UID=" in script:
+            user = os.environ.get("LIGHT_FAKE_WSL_PROJECT_USER", "user")
+            out(f"LIGHT_PROJECT_USER={user}\nLIGHT_PROJECT_UID={0 if user == 'root' else 1000}\nLIGHT_PROJECT_HOME={'/root' if user == 'root' else '/home/' + user}\n")
+            return 0
         loop = TOOLS_LOOP.search(script)
         if loop:
             packages = loop.group(1).split()

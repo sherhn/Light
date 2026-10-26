@@ -65,7 +65,7 @@ fn run(args: &[String]) -> Result<ExitCode, String> {
             let input = rest.first().ok_or("usage: clone <url> [dir] [--shallow]")?;
             let url = ide_core::clone::normalize_url(input)?;
             let dir = rest.get(1).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from(ide_core::clone::default_dir_name(&url)));
-            let opts = ide_core::clone::CloneOptions { shallow: rest.iter().any(|a| a == "--shallow"), branch: None, env: vec![], lf: rest.iter().any(|a| a == "--lf") };
+            let opts = ide_core::clone::CloneOptions { shallow: rest.iter().any(|a| a == "--shallow"), branch: None, env: vec![], lf: rest.iter().any(|a| a == "--lf"), ..Default::default() };
             let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
             println!("cloning {url} into {}", dir.display());
             ide_core::clone::clone_repo(&url, &dir, &opts, &cancel, &mut |l| println!("  {l}"))?;

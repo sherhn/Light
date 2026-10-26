@@ -58,6 +58,8 @@ pub fn default_dir_name(url: &str) -> String {
 
 #[derive(Clone, Debug, Default)]
 pub struct CloneOptions {
+    /// The regular Linux account resolved by the IDE for a WSL destination.
+    pub wsl_user: Option<String>,
     pub shallow: bool,
     pub branch: Option<String>,
     /// Extra environment for the git process (e.g. the credentials of a private GitHub repository).
@@ -87,7 +89,7 @@ pub fn clone_repo(url: &str, dest: &Path, opts: &CloneOptions, cancel: &Arc<Atom
     let wsl = crate::wsl::wsl_path(dest);
     let mut cmd = match &wsl {
         Some(w) => {
-            let mut c = crate::wsl::command(&w.distro, None, "git");
+            let mut c = crate::wsl::command_as_user(&w.distro, opts.wsl_user.as_deref(), None, "git");
             let mut env = opts.env.clone();
             env.extend([("GIT_TERMINAL_PROMPT".to_string(), "0".to_string()), ("LC_ALL".to_string(), "C".to_string())]);
             crate::wsl::pass_env(&mut c, &env);

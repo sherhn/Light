@@ -426,8 +426,7 @@ impl App {
                     self.popup = Popup::NewBranch { input, just_opened };
                 }
             }
-            Popup::NewProject { mut parent, mut name, mut just_opened, mut modules, mut template, mut creating } => {
-                let (mut ok, mut cancel) = (enter && !creating, esc);
+            Popup::NewProject { mut parent, mut name, mut just_opened, mut modules, mut template, mut creating, mut location } => {
                 let data = self.picker_data(ctx);
                 let installed_ids: Vec<String> = self.mods.installed.iter().map(|m| m.manifest.id.clone()).collect();
                 let missing: Vec<String> = modules.iter().filter(|id| !installed_ids.contains(id)).cloned().collect();
@@ -444,8 +443,30 @@ impl App {
                 // modules that are still to be downloaded have their templates only afterwards: the first one is used then
                 let not_yet = template == "@auto" && options.is_empty() && !modules.is_empty();
                 let chosen_label = options.iter().find(|o| o.0 == chosen).map_or(tr(if not_yet { "The first template of the chosen modules" } else { "Empty project" }).to_string(), |o| o.1.clone());
+                if let Some(root) = location.poll() {
+                    let distro = ide_core::wsl::wsl_path(&root).map(|path| path.distro);
+                    let cfg = crate::app_env::ProjectConfig { modules: modules.clone(), decided: distro.is_some(), linux: distro, ..Default::default() };
+                    if let Err(error) = crate::app_env::save_config(&root, &cfg) {
+                        self.toast(i18n::fmt("Cannot save the project settings: {}", &[&error]), Sev::Error);
+                    }
+                    self.request_open_project(&root);
+                    let selected = self.mods.installed.iter().flat_map(|module| module.manifest.templates.iter().map(move |value| (module, value))).find(|(module, value)| format!("{}/{}", module.manifest.id, value.name) == chosen);
+                    if let Some((_, value)) = selected {
+                        let first = if value.open.is_empty() { value.files.keys().next().cloned().unwrap_or_default() } else { value.open.clone() };
+                        let first = first.replace("{{name}}", &ide_core::workspace::sanitize_project_name(&name)).replace("{{ident}}", &ide_core::workspace::identifier(&name));
+                        if !first.is_empty() { self.open_file(&root.join(first)); }
+                    }
+                    return;
+                }
+                let working = location.job.is_some();
+                let (mut ok, mut cancel) = (enter && !creating && !working, esc && !working);
                 let pal = self.pal;
-                self.dialog_card(ctx, "new_project", tr("New Project"), 640.0, |ui| {
+                self.dialog_card(ctx, "new_project", tr("New Project"), 640.0_f32.min((ctx.content_rect().width() - 64.0).max(280.0)), |ui| {
+                    if working { ui.disable(); }
+                    egui::ScrollArea::vertical().id_salt("new_project_fields")
+                        .max_height((ctx.content_rect().height() - 160.0).max(140.0))
+                        .min_scrolled_height((ctx.content_rect().height() - 180.0).clamp(100.0, 500.0))
+                        .show(ui, |ui| {
                     widgets::caption(ui, &pal, &tr("Name").to_uppercase());
                     ui.add_space(6.0);
                     let r = self.text_field(ui, &mut name, tr("project name"));
@@ -453,14 +474,7 @@ impl App {
                     ui.add_space(14.0);
                     widgets::caption(ui, &pal, &tr("Location").to_uppercase());
                     ui.add_space(6.0);
-                    widgets::right_row(ui, widgets::FIELD_H, |ui| {
-                        if widgets::secondary_button(ui, &pal, tr("Browse...")).clicked()
-                            && let Some(d) = rfd::FileDialog::new().pick_folder()
-                        {
-                            parent = d.to_string_lossy().into_owned();
-                        }
-                        TextField::new(&mut parent).show(ui, &pal);
-                    });
+                    location.draw(ui, &pal, &self.wsl.distros(), &mut parent, creating || working);
                     ui.add_space(14.0);
                     widgets::caption(ui, &pal, &tr("Modules").to_uppercase());
                     ui.add_space(6.0);
@@ -491,9 +505,10 @@ impl App {
                     } else if !missing.is_empty() {
                         ui.label(RichText::new(i18n::fmt("{} module(s) will be downloaded first.", &[&missing.len()])).color(pal.text_dim).size(12.0));
                     }
+                    });
                     let (o, c) = self.ok_cancel(ui, tr("Create"));
-                    ok |= o && !creating;
-                    cancel |= c;
+                    ok |= o && !creating && !working;
+                    cancel |= c && !working;
                 });
                 'done: {
                 if cancel {
@@ -519,36 +534,13 @@ impl App {
                     }
                 }
                 if ok {
-                    let files: std::collections::BTreeMap<String, String> = self
-                        .mods
-                        .installed
-                        .iter()
-                        .filter_map(|m| m.manifest.templates.iter().find(|t| format!("{}/{}", m.manifest.id, t.name) == chosen))
-                        .flat_map(|t| t.files.clone())
-                        .collect();
-                    let open = self.mods.installed.iter().filter_map(|m| m.manifest.templates.iter().find(|t| format!("{}/{}", m.manifest.id, t.name) == chosen)).map(|t| t.open.clone()).next().unwrap_or_default();
-                    match ide_core::workspace::create_project(std::path::Path::new(&parent), &name, &files) {
-                        Ok(root) => {
-                            // the project remembers its modules: opened elsewhere, it offers the ones that are missing
-                            let cfg = crate::app_env::ProjectConfig { modules: modules.clone(), ..Default::default() };
-                            if let Err(e) = crate::app_env::save_config(&root, &cfg) {
-                                self.toast(i18n::fmt("Cannot save the project settings: {}", &[&e]), Sev::Error);
-                            }
-                            self.request_open_project(&root);
-                            let first = if open.is_empty() { files.keys().next().cloned().unwrap_or_default() } else { open };
-                            let first = first.replace("{{name}}", &ide_core::workspace::sanitize_project_name(&name)).replace("{{ident}}", &ide_core::workspace::identifier(&name));
-                            if !first.is_empty() {
-                                self.open_file(&root.join(first));
-                            }
-                        }
-                        Err(e) => {
-                            self.toast(format!("Cannot create project: {e}"), Sev::Error);
-                            self.popup = Popup::NewProject { parent, name, just_opened: false, modules, template, creating: false };
-                        }
-                    }
-                } else {
-                    self.popup = Popup::NewProject { parent, name, just_opened, modules, template, creating };
+                    let files: std::collections::BTreeMap<String, String> = self.mods.installed.iter()
+                        .filter_map(|module| module.manifest.templates.iter().find(|value| format!("{}/{}", module.manifest.id, value.name) == chosen))
+                        .flat_map(|value| value.files.clone()).collect();
+                    location.start(&parent, &name, files);
                 }
+                if location.job.is_some() || self.wsl.probing() { ctx.request_repaint_after(std::time::Duration::from_millis(50)); }
+                self.popup = Popup::NewProject { parent, name, just_opened, modules, template, creating, location };
                 }
             }
             Popup::FindInFiles { mut query, mut replace, mut case_sensitive, mut whole_word, mut just_opened, replace_mode } => {

@@ -48,6 +48,7 @@ mod ui_theme;
 mod ui_tools;
 mod ui_clone;
 mod ui_project_browser;
+mod project_location;
 mod ui_github;
 mod ui_commit;
 mod ui_diff;

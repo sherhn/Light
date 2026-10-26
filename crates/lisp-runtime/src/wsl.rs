@@ -670,6 +670,69 @@ pub fn home_dir(distro: &str) -> Result<String, String> {
     }
 }
 
+/// The default WSL account used for project files. Administrative setup commands use root separately.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProjectUser {
+    pub name: String,
+    pub home: String,
+}
+
+pub const ROOT_PROJECT_USER_ERROR: &str = "WSL starts as root. Set a regular user as the distribution's default user before creating or importing projects.";
+
+const PROJECT_USER_SCRIPT: &str = r#"printf 'LIGHT_PROJECT_USER=%s\nLIGHT_PROJECT_UID=%s\nLIGHT_PROJECT_HOME=%s\n' "$(id -un)" "$(id -u)" "$HOME""#;
+
+fn parse_project_user(text: &str) -> Result<ProjectUser, String> {
+    let field = |key: &str| text.lines().find_map(|line| line.strip_prefix(key)).map(str::trim);
+    let uid = field("LIGHT_PROJECT_UID=").and_then(|value| value.parse::<u32>().ok());
+    let name = field("LIGHT_PROJECT_USER=").unwrap_or("");
+    let home = field("LIGHT_PROJECT_HOME=").unwrap_or("");
+    if uid == Some(0) || name == "root" || home == "/root" {
+        return Err(ROOT_PROJECT_USER_ERROR.into());
+    }
+    if uid.is_none() || name.is_empty() || !home.starts_with('/') || home == "/" {
+        return Err("Cannot determine the WSL project user and home directory.".into());
+    }
+    Ok(ProjectUser { name: name.into(), home: home.into() })
+}
+
+pub fn project_user(distro: &str) -> Result<ProjectUser, String> {
+    let mut cmd = wsl_command();
+    cmd.args(["-d", distro, "-e", "sh", "-c", PROJECT_USER_SCRIPT]);
+    let output = capture(cmd, Duration::from_secs(30)).map_err(|error| error.to_string())?;
+    if !output.ok() { return Err(output.text.trim().to_string()); }
+    parse_project_user(&output.text)
+}
+
+/// Resolve a destination without shell expansion. The default is the regular user's ~/projects.
+pub fn project_parent(user: &ProjectUser, input: &str) -> Result<String, String> {
+    let input = input.trim();
+    let path = if input == "~" || input.starts_with("~/") {
+        format!("{}{}", user.home.trim_end_matches('/'), &input[1..])
+    } else { input.into() };
+    if !path.starts_with('/') || path.contains('\0') {
+        return Err("Enter an absolute Linux path or a path starting with ~/.".into());
+    }
+    let mut parts = Vec::new();
+    for part in path.split('/') {
+        match part { "" | "." => {}, ".." => { parts.pop(); }, part => parts.push(part) }
+    }
+    if parts.first() == Some(&"root") { return Err("Choose a project folder outside /root, such as ~/projects.".into()); }
+    Ok(format!("/{}", parts.join("/")))
+}
+
+/// Project mutations explicitly use the account whose home directory was resolved.
+pub fn project_command(distro: &str, user: &ProjectUser, program: &str, args: &[String]) -> Command {
+    let mut cmd = wsl_command();
+    cmd.args(["-d", distro, "-u", &user.name, "-e", program]).args(args);
+    cmd
+}
+
+pub fn ensure_project_parent(distro: &str, user: &ProjectUser, parent: &str) -> Result<(), String> {
+    let cmd = project_command(distro, user, "mkdir", &["-p".into(), "--".into(), parent.into()]);
+    let output = capture(cmd, Duration::from_secs(30)).map_err(|error| error.to_string())?;
+    if output.ok() { Ok(()) } else { Err(output.text.trim().to_string()) }
+}
+
 /// Open an interactive window of `distro` (its first start asks for a Linux user name and password).
 pub fn open_window(distro: &str) -> io::Result<()> {
     if is_faked() {
@@ -779,6 +842,36 @@ impl Cleanup {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn projects_require_a_regular_user_with_a_home() {
+        let text = "WSL startup notice\nLIGHT_PROJECT_USER=vladi\nLIGHT_PROJECT_UID=1000\nLIGHT_PROJECT_HOME=/home/vladi\n";
+        let user = parse_project_user(text).unwrap();
+        assert_eq!(user.name, "vladi");
+        assert_eq!(user.home, "/home/vladi");
+        for bad in [text.replace("UID=1000", "UID=0"), text.replace("USER=vladi", "USER=root"), text.replace("HOME=/home/vladi", "HOME=/root"), text.replace("UID=1000", "UID=unknown"), text.replace("HOME=/home/vladi", "HOME=/")] {
+            assert!(parse_project_user(&bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn project_destinations_expand_home_and_refuse_root_paths() {
+        let user = ProjectUser { name: "vladi".into(), home: "/home/vladi".into() };
+        assert_eq!(project_parent(&user, "~/projects").unwrap(), "/home/vladi/projects");
+        assert_eq!(project_parent(&user, "~/My Projects/../code").unwrap(), "/home/vladi/code");
+        assert_eq!(project_parent(&user, "/srv/Some Project/").unwrap(), "/srv/Some Project");
+        for bad in ["/root", "/home/../root/projects", "~/../../root/projects", "relative", "~someone/projects", ""] {
+            assert!(project_parent(&user, bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn project_commands_pass_the_regular_user_explicitly_and_paths_as_arguments() {
+        let user = ProjectUser { name: "vladi".into(), home: "/home/vladi".into() };
+        let command = project_command("Ubuntu", &user, "mkdir", &["--".into(), "/home/vladi/My Project; echo bad".into()]);
+        let argv: Vec<_> = command.get_args().map(|arg| arg.to_string_lossy().into_owned()).collect();
+        assert!(argv.ends_with(&["-d", "Ubuntu", "-u", "vladi", "-e", "mkdir", "--", "/home/vladi/My Project; echo bad"].map(String::from)));
+    }
 
     fn t() -> Target {
         Target::new("Ubuntu-24.04", "")

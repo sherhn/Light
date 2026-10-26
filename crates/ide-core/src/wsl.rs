@@ -44,6 +44,10 @@ pub fn windows_path(distro: &str, linux: &str) -> std::path::PathBuf {
 /// `wsl.exe -d DISTRO [--cd DIR] -e PROGRAM` (arguments are added by the caller). In the UI tests
 /// `LIGHT_FAKE_WSL` (a Python script, run by `LIGHT_FAKE_WSL_PYTHON`) replaces `wsl.exe`.
 pub fn command(distro: &str, cwd: Option<&str>, program: &str) -> Command {
+    command_as_user(distro, None, cwd, program)
+}
+
+pub fn command_as_user(distro: &str, user: Option<&str>, cwd: Option<&str>, program: &str) -> Command {
     let mut c = match std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")) {
         Some(script) => {
             let mut c = Command::new(std::env::var_os("LIGHT_FAKE_WSL_PYTHON").or_else(|| std::env::var_os("AIR_FAKE_WSL_PYTHON")).unwrap_or_else(|| "python".into()));
@@ -54,6 +58,7 @@ pub fn command(distro: &str, cwd: Option<&str>, program: &str) -> Command {
     };
     c.env("WSL_UTF8", "1");
     c.args(["-d", distro]);
+    if let Some(user) = user { c.args(["-u", user]); }
     if let Some(dir) = cwd {
         c.args(["--cd", dir]);
     }
@@ -111,5 +116,11 @@ mod tests {
         assert!(wslenv.split(':').any(|n| n == "GIT_CONFIG_COUNT") && wslenv.split(':').any(|n| n == "LC_ALL"));
         // the secret itself is an environment variable, never an argument
         assert!(!args(&c).iter().any(|a| a.contains("GIT_CONFIG")));
+    }
+    #[test]
+    fn cloning_can_pin_the_regular_wsl_user() {
+        let mut command = command_as_user("Ubuntu", Some("vladi"), None, "git");
+        command.arg("clone");
+        assert!(args(&command).ends_with(&["-d", "Ubuntu", "-u", "vladi", "-e", "git", "clone"].map(String::from)));
     }
 }

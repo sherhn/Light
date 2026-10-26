@@ -27,6 +27,8 @@
   {"op": "command", "value": "file.new_project"},
   {"op": "new_project_set", "parent": "${PROJ}_new", "name": "Lisp Demo", "modules": ["lisp"], "template": "@auto"},
   {"op": "key", "value": "Enter"},
+  {"op": "wait", "what": "ask_open", "timeout": 30},
+  {"op": "key", "value": "Enter"},
   {"op": "wait", "what": "no_popup", "timeout": 60},
   {"op": "wait", "what": "index"},
   {"op": "assert_file_contains", "path": "${PROJ}_new/lisp-demo/lisp-demo.asd", "value": "(asdf:defsystem \"lisp-demo\""},

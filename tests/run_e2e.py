@@ -211,6 +211,8 @@ def run_one(script_path):
         env["LIGHT_FAKE_WSL_PYTHON"] = sys.executable
         env["LIGHT_FAKE_WSL_STATE"] = str(tmp / "fake-wsl.json")
         env["LIGHT_FAKE_WSL_START"] = "absent" if "wsl" in name else "installed"
+        if "@root_wsl_user" in text:
+            env["LIGHT_FAKE_WSL_PROJECT_USER"] = "root"
         if shutil.which("sbcl"):
             env.setdefault("LIGHT_FAKE_WSL_SBCL", shutil.which("sbcl"))
         if os.environ.get("LIGHT_E2E_STRIP_SBCL"):

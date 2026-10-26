@@ -289,7 +289,10 @@ impl App {
                 if self.mods.index.is_none() {
                     self.modules_fetch_index();
                 }
-                self.popup = Popup::NewProject { parent, name: "my-project".into(), just_opened: true, modules, template: "@auto".into(), creating: false };
+                let linux = self.wsl_target().is_some();
+                let location = crate::project_location::ProjectLocation::new(self.suggested_distro().unwrap_or_default(), linux);
+                if cfg!(windows) && self.wsl.probe.is_none() && !self.wsl.probing() { self.wsl_probe(); }
+                self.popup = Popup::NewProject { parent, name: "my-project".into(), just_opened: true, modules, template: "@auto".into(), creating: false, location };
             }
             "file.clone" => self.open_clone_dialog(),
             "file.open_project" => {
