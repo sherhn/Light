@@ -3,7 +3,7 @@ from common import match, module, outline
 UNDERLINE = r"[=\-~^\"'#*+:._`]"
 
 MODULE = module(
-    version="1.1.0",
+    version="1.1.1",
     id="restructuredtext",
     name="reStructuredText",
     category="Documents",

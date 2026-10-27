@@ -4,7 +4,7 @@
     {
       "id": "lisp",
       "name": "Lisp",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "Languages",
       "summary": "Common Lisp and Scheme: structural editing, a live REPL, compile and load, ASDF systems, symbol navigation and SBCL in Linux.",
       "cover": "cover.png",
@@ -12,8 +12,18 @@
       "files": [
         {
           "name": "module.json",
-          "size": 2327,
-          "sha256": "2d2d08fe5578d9b3cfbeb1c7c4c5a98841acb52c615f2638da1b116f6c06b701"
+          "size": 2381,
+          "sha256": "3f4304b1a20bcc7a90ee0e693488d783ad43b46e6129b68c893fb0de6118e64d"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
         },
         {
           "name": "cover.png",
@@ -40,7 +50,7 @@
     {
       "id": "c-cpp",
       "name": "C and C++",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "Languages",
       "summary": "Highlighting, brackets, folding and an outline for C, C++ and headers; compile and run a file; the compilers and debuggers in Linux.",
       "cover": "cover.png",
@@ -48,13 +58,23 @@
       "files": [
         {
           "name": "module.json",
-          "size": 13577,
-          "sha256": "43d3ef6b8bc39388cbf1ebecaa8b6bd4d476fffe64c2ad574ed8457d97a228a0"
+          "size": 13631,
+          "sha256": "1bfeb4d297498a54622e11ed1a922ee2d0b52c3393d51e8eab2fba7f40121f14"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
         },
         {
           "name": "cover.png",
-          "size": 24372,
-          "sha256": "8e56b89c1ca78e4058258e26975d50305b3f51e9e24c87f1ba1c9606b7b27be9"
+          "size": 19468,
+          "sha256": "2db1bba120d05b3e3cc251b38ef44a39004f85077e702327047c4a83955c3932"
         }
       ],
       "detect": {
@@ -80,7 +100,7 @@
     {
       "id": "python",
       "name": "Python",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "Languages",
       "summary": "Highlighting, indentation, folding by blocks and an outline for Python; run a file; python3 and pip in Linux.",
       "cover": "cover.png",
@@ -88,13 +108,23 @@
       "files": [
         {
           "name": "module.json",
-          "size": 7940,
-          "sha256": "96e75fa31c845b9fe7ca8a2896c3734c599d59a42a4ee42a694adb9de8abf219"
+          "size": 7994,
+          "sha256": "6e90cda455e59138fe68f9b50a005a82a0669f833088d25567689f14b3b182e6"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 339,
+          "sha256": "b4902870c1c0396cef2934457b130f1674fc238df1b98beb6316eba41994109e"
         },
         {
           "name": "cover.png",
-          "size": 23024,
-          "sha256": "31cf770144af03e9ec77864b487c60a5353366f31d2c429fc669f596775a44f3"
+          "size": 21779,
+          "sha256": "992287dd9376a63971cc2f1be13aa2f5252f3f0b93235c7e89e0bc418020b7bd"
         }
       ],
       "detect": {
@@ -113,7 +143,7 @@
     {
       "id": "assembler",
       "name": "Assembler",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "Languages",
       "summary": "NASM and GNU assembler: instructions, registers, directives, labels and an outline of labels; nasm and QEMU in Linux.",
       "cover": "cover.png",
@@ -121,8 +151,18 @@
       "files": [
         {
           "name": "module.json",
-          "size": 18050,
-          "sha256": "10cede97d4f3c5c8758f2dda76bfe135e16f69ca8630e10e84a3f1f6bf9c39bb"
+          "size": 18104,
+          "sha256": "1790eab990e4d4b5c3caf5cfa8f4e9a869ba2be1571aa11d429b49d6f22237a8"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
         },
         {
           "name": "cover.png",
@@ -142,7 +182,7 @@
     {
       "id": "html",
       "name": "HTML",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "Languages",
       "summary": "Tags, attributes, entities and comments; tag indentation and folding, an element outline and a web page template.",
       "cover": "cover.png",
@@ -150,8 +190,28 @@
       "files": [
         {
           "name": "module.json",
-          "size": 37240,
-          "sha256": "20a810fe0a3d337637fee654ddf1a9be0867e294ee9cbe6fcbb50b4d72ff1b6b"
+          "size": 37294,
+          "sha256": "0ba19a1eb5f5729482213eca307059acccc7b19ceceed35cd92b24b06b9f76c7"
+        },
+        {
+          "name": "HTML5-CC-BY-3.0.txt",
+          "size": 19467,
+          "sha256": "e6bc9e9c474700b708f568bac9e5a8a9bcb2b1dad53442f5ba449fcb848b8e76"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "SimpleIcons-CC0.txt",
+          "size": 6569,
+          "sha256": "9046848b63a5c92bff14e4accca80bd987e0623b74adf9226ce5198d312b79d5"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 424,
+          "sha256": "423de97f125ed62de666616bdfcdd48cee1be1b6e42e55290f2b277440148db2"
         },
         {
           "name": "cover.png",
@@ -171,7 +231,7 @@
     {
       "id": "css",
       "name": "CSS",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "Languages",
       "summary": "Selectors, properties, values, colours, variables and at-rules; brace indentation, folding and a stylesheet template.",
       "cover": "cover.png",
@@ -179,8 +239,23 @@
       "files": [
         {
           "name": "module.json",
-          "size": 16425,
-          "sha256": "c81de72b41e4feb375ca83e6468735aad56cbdfabeb4bae022aba0ed2a66c697"
+          "size": 16479,
+          "sha256": "1f3d33b839f9c4564eac986a70f99d16707197c76cb210997e0d4a2807c31923"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "SimpleIcons-CC0.txt",
+          "size": 6569,
+          "sha256": "9046848b63a5c92bff14e4accca80bd987e0623b74adf9226ce5198d312b79d5"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 305,
+          "sha256": "e082ccaf54e358a1527f3d2fe080f394f0f016d2a666830cd72921a8f378f48e"
         },
         {
           "name": "cover.png",
@@ -198,7 +273,7 @@
     {
       "id": "markdown",
       "name": "Markdown",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "Documents",
       "summary": "Headings, emphasis, code, links and lists; Enter continues a list; folding and an outline by headings.",
       "cover": "cover.png",
@@ -206,8 +281,23 @@
       "files": [
         {
           "name": "module.json",
-          "size": 3961,
-          "sha256": "ac4e8eefe317237a061d0cea1edb4b6120bd5352d125c102bd8b3f1500293ac9"
+          "size": 4015,
+          "sha256": "f9faa93a2c5b677ebb1ed4bf92580c6a6c1b562fcd9198a8cecd361a15d0f126"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "SimpleIcons-CC0.txt",
+          "size": 6569,
+          "sha256": "9046848b63a5c92bff14e4accca80bd987e0623b74adf9226ce5198d312b79d5"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 331,
+          "sha256": "5be5c7fcd5e5af73781dee674b703f4136f0395c876a54a1c4b9f81c57f699d9"
         },
         {
           "name": "cover.png",
@@ -226,7 +316,7 @@
     {
       "id": "restructuredtext",
       "name": "reStructuredText",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "Documents",
       "summary": "Headings by underline, directives, roles, links and lists for .rst; folding and an outline by sections.",
       "cover": "cover.png",
@@ -234,8 +324,18 @@
       "files": [
         {
           "name": "module.json",
-          "size": 3918,
-          "sha256": "47fa3daf687fe7d1c25477c073802e0a8d0e1f2396bcd7e8e56c94b54f3ca1b4"
+          "size": 3972,
+          "sha256": "f130ea3526b05be09c442161610fe3c92fdb960edf935ea5ea0396bd2a3dcae9"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
         },
         {
           "name": "cover.png",
@@ -255,7 +355,7 @@
     {
       "id": "shell-make",
       "name": "Shell and Make",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "Languages",
       "summary": "Shell scripts, makefiles and the usual configuration files: highlighting, comments and an outline of functions and targets.",
       "cover": "cover.png",
@@ -263,13 +363,23 @@
       "files": [
         {
           "name": "module.json",
-          "size": 9306,
-          "sha256": "0402730e8671cad80deb39405f67a8bf5ba05b7c899f4e047753408ba445c78d"
+          "size": 9360,
+          "sha256": "849cca71f9aa20ab9e7f176e5a575c2cb66a900367f9f28e22f7f3da0c04c19e"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
         },
         {
           "name": "cover.png",
-          "size": 25307,
-          "sha256": "1971913a1d245fc8b388dc3eb632e457765ddc9d18891d1b1c7a27b234be8229"
+          "size": 20374,
+          "sha256": "62e2a7bfc94b9545127a2220646d5e9e92f48a354392acfde5504a219ddcd33d"
         }
       ],
       "detect": {

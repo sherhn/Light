@@ -1,0 +1,1949 @@
+{
+  "version": 1,
+  "portable_git_sha256": "4fc27b779829a36df77911e3f4dea09c66c790dd6c5f7dfa3b6a5479f1fe354f",
+  "tree_sha256": "b46f82125aa1f303da747952a014a76630f76bbd280c17367807659cf9bf0c33",
+  "packages": [
+    {
+      "name": "apr",
+      "version": "1.7.6-2",
+      "base": "apr",
+      "archive": "apr-1.7.6-2.src.tar.zst",
+      "sha256": "87ec04a3c88878f015d05d296e9d3b6b861b7c8bd1d20a89ba43b30573182cc0",
+      "url": "https://repo.msys2.org/msys/sources/apr-1.7.6-2.src.tar.zst",
+      "licenses": [
+        "spdx:Apache-2.0"
+      ]
+    },
+    {
+      "name": "apr-util",
+      "version": "1.6.5-1",
+      "base": "apr-util",
+      "archive": "apr-util-1.6.5-1.src.tar.zst",
+      "sha256": "fb10bbd32a3d6ee9ebe69ecf68b59b17c84ec327b1fceb705605ced18dbbdbfb",
+      "url": "https://repo.msys2.org/msys/sources/apr-util-1.6.5-1.src.tar.zst",
+      "licenses": [
+        "spdx:Apache-2.0"
+      ]
+    },
+    {
+      "name": "bash",
+      "version": "5.3.015-2",
+      "base": "bash",
+      "archive": "bash-5.3.015-2.src.tar.gz",
+      "sha256": "817a480aa08f0f112af9496a9335d3a48f4c479ef5e1b1740df6dcc76670d94a",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-08-20T13-55-07.365148200Z/bash-5.3.015-2.src.tar.gz",
+      "licenses": [
+        "GPL"
+      ]
+    },
+    {
+      "name": "bzip2",
+      "version": "1.0.8-4",
+      "base": "bzip2",
+      "archive": "bzip2-1.0.8-4.src.tar.zst",
+      "sha256": "a7e9ea6335ef2902508de0bbbb70e2e9909b6b7b6d05fc207f8fdf0cf44ad053",
+      "url": "https://repo.msys2.org/msys/sources/bzip2-1.0.8-4.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "ca-certificates",
+      "version": "20260816-2",
+      "base": "ca-certificates",
+      "archive": "ca-certificates-20260816-2.src.tar.zst",
+      "sha256": "f58e231efcc7f5ceb7186025d6fa3b90be6f89fa62bf94d9f1cffa49a4a796b6",
+      "url": "https://repo.msys2.org/msys/sources/ca-certificates-20260816-2.src.tar.zst",
+      "licenses": [
+        "spdx:MPL-2.0 AND GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "coreutils",
+      "version": "8.32-5",
+      "base": "coreutils",
+      "archive": "coreutils-8.32-5.src.tar.zst",
+      "sha256": "2b8689413bc50367a9995adf50ea84cd3caaff0ec68a8f32d8328842c3f83835",
+      "url": "https://repo.msys2.org/msys/sources/coreutils-8.32-5.src.tar.zst",
+      "licenses": [
+        "GPL3"
+      ]
+    },
+    {
+      "name": "dash",
+      "version": "0.5.13.5-1",
+      "base": "dash",
+      "archive": "dash-0.5.13.5-1.src.tar.zst",
+      "sha256": "fd6a1d82f3eb628b16d4405ce36812c2828063864cbd79c556b54a728c908fef",
+      "url": "https://repo.msys2.org/msys/sources/dash-0.5.13.5-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause AND GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "diffutils",
+      "version": "3.12-1",
+      "base": "diffutils",
+      "archive": "diffutils-3.12-1.src.tar.zst",
+      "sha256": "474c4a3528a2afbb8d9608c65ad1bdbbd81ff42c143a438d7d56272a61b1bfac",
+      "url": "https://repo.msys2.org/msys/sources/diffutils-3.12-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "docx2txt",
+      "version": "1.4-2",
+      "base": "docx2txt",
+      "archive": "docx2txt-1.4-2.src.tar.zst",
+      "sha256": "46a6b4472a6b8ff1845dc96785b3f78e0465874f45033e392a87e680c9ea517f",
+      "url": "https://repo.msys2.org/msys/sources/docx2txt-1.4-2.src.tar.zst",
+      "licenses": [
+        "GPL3+"
+      ]
+    },
+    {
+      "name": "dos2unix",
+      "version": "7.5.7-1",
+      "base": "dos2unix",
+      "archive": "dos2unix-7.5.7-1.src.tar.zst",
+      "sha256": "764266569a7b2a3d170bf66be0fbdab2c8459173c20fbfb1b9c8dd9595dce164",
+      "url": "https://repo.msys2.org/msys/sources/dos2unix-7.5.7-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-2-Clause"
+      ]
+    },
+    {
+      "name": "expat",
+      "version": "2.9.0-1",
+      "base": "expat",
+      "archive": "expat-2.9.0-1.src.tar.zst",
+      "sha256": "6f9d27abe3428cdc927e2c6c2855cdecf84c2ecffb84010acdf2f90ee24f1eeb",
+      "url": "https://repo.msys2.org/msys/sources/expat-2.9.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "file",
+      "version": "5.48-1",
+      "base": "file",
+      "archive": "file-5.48-1.src.tar.zst",
+      "sha256": "29859c6060a1514d8fd8f44867b509b0e7c0f004fbcbfc5b997ac0de0e977904",
+      "url": "https://repo.msys2.org/msys/sources/file-5.48-1.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "filesystem",
+      "version": "2026.03.06-1",
+      "base": "filesystem",
+      "archive": "filesystem-2026.03.06-1.src.tar.zst",
+      "sha256": "aa2444fdd7eb8456ed46b9ab014229638dabaf01f828f05bc22fe415d4cf0a2c",
+      "url": "https://repo.msys2.org/msys/sources/filesystem-2026.03.06-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "findutils",
+      "version": "4.11.0-2",
+      "base": "findutils",
+      "archive": "findutils-4.11.0-2.src.tar.zst",
+      "sha256": "92edf442f61f8873318811a688ba327a0d2878a63a9ed21992b5cce12b0ae146",
+      "url": "https://repo.msys2.org/msys/sources/findutils-4.11.0-2.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "gawk",
+      "version": "5.4.1-1",
+      "base": "gawk",
+      "archive": "gawk-5.4.1-1.src.tar.zst",
+      "sha256": "d8b8cdd6cbf72431c02cb26cf92174aca5b6f1b7791aaf29fa3a11d205a66b39",
+      "url": "https://repo.msys2.org/msys/sources/gawk-5.4.1-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "gcc-libs",
+      "version": "16.2.0-1",
+      "base": "gcc",
+      "archive": "gcc-16.2.0-1.src.tar.zst",
+      "sha256": "19c927f27da78aad25a449a4e6e3bfe8650541cc09ac2e701a4ec4d7e61137b9",
+      "url": "https://repo.msys2.org/msys/sources/gcc-16.2.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:LGPL-2.1-or-later AND GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later"
+      ]
+    },
+    {
+      "name": "gdbm",
+      "version": "1.26-1",
+      "base": "gdbm",
+      "archive": "gdbm-1.26-1.src.tar.zst",
+      "sha256": "955ecefcd32bee0ec40e3aa768b8ed068a2a1f2310f9777dcc77c02fdfa54271",
+      "url": "https://repo.msys2.org/msys/sources/gdbm-1.26-1.src.tar.zst",
+      "licenses": [
+        "GPL3"
+      ]
+    },
+    {
+      "name": "gmp",
+      "version": "6.3.0-2",
+      "base": "gmp",
+      "archive": "gmp-6.3.0-2.src.tar.zst",
+      "sha256": "02356ca25ce362edb883ce7c060050de2cec5f2b1227a1c56ef7c0a0f99ff667",
+      "url": "https://repo.msys2.org/msys/sources/gmp-6.3.0-2.src.tar.zst",
+      "licenses": [
+        "LGPL3"
+      ]
+    },
+    {
+      "name": "gnupg",
+      "version": "2.4.9-3",
+      "base": "gnupg",
+      "archive": "gnupg-2.4.9-3.src.tar.zst",
+      "sha256": "db8f75af2bf507f5dd638f93560e827ff0e079e7ce958370f57e3e7307b8c5ba",
+      "url": "https://repo.msys2.org/msys/sources/gnupg-2.4.9-3.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "grep",
+      "version": "1~3.0-7",
+      "base": "grep",
+      "archive": "grep-1~3.0-7.src.tar.zst",
+      "sha256": "acba43b9b2c3eb393f9a75d02a1eca34fa23d959541150a7ac4ffbafce3cae4e",
+      "url": "https://repo.msys2.org/msys/sources/grep-1~3.0-7.src.tar.zst",
+      "licenses": [
+        "GPL3"
+      ]
+    },
+    {
+      "name": "gzip",
+      "version": "1.15-1",
+      "base": "gzip",
+      "archive": "gzip-1.15-1.src.tar.zst",
+      "sha256": "edf0bbd51c3f366b9d19cf5d6f1f2830caefae68d0fc626ad2befbd25d5f21eb",
+      "url": "https://repo.msys2.org/msys/sources/gzip-1.15-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "heimdal-libs",
+      "version": "7.8.0-5",
+      "base": "heimdal",
+      "archive": "heimdal-7.8.0-5.src.tar.gz",
+      "sha256": "beb950ac5f0d11e18bbcb81a9e7e6ef9446cc2fa9ebb486ee2fb5670b06fd9e5",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2025-02-17T19-44-32.968336700Z/heimdal-7.8.0-5.src.tar.gz",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "iconv",
+      "version": "1.19-1",
+      "base": "libiconv",
+      "archive": "libiconv-1.19-1.src.tar.zst",
+      "sha256": "5a8bcd3242e2be94fffd9f03fadcda8d9fd64047430050c5cbd214cd3bf7f0a7",
+      "url": "https://repo.msys2.org/msys/sources/libiconv-1.19-1.src.tar.zst",
+      "licenses": [
+        "LGPL"
+      ]
+    },
+    {
+      "name": "less",
+      "version": "710-1",
+      "base": "less",
+      "archive": "less-710-1.src.tar.zst",
+      "sha256": "115d438589a12bbc1ebf4fc9c88d0e465b1650a0b272f76b2df06d993832990c",
+      "url": "https://repo.msys2.org/msys/sources/less-710-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "libassuan",
+      "version": "3.0.2-1",
+      "base": "libassuan",
+      "archive": "libassuan-3.0.2-1.src.tar.zst",
+      "sha256": "723778dd8d9205919c374cbbf694e5cc7e3c568a13d594e4032533f801e33933",
+      "url": "https://repo.msys2.org/msys/sources/libassuan-3.0.2-1.src.tar.zst",
+      "licenses": [
+        "GPL"
+      ]
+    },
+    {
+      "name": "libbz2",
+      "version": "1.0.8-4",
+      "base": "bzip2",
+      "archive": "bzip2-1.0.8-4.src.tar.zst",
+      "sha256": "a7e9ea6335ef2902508de0bbbb70e2e9909b6b7b6d05fc207f8fdf0cf44ad053",
+      "url": "https://repo.msys2.org/msys/sources/bzip2-1.0.8-4.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "libcbor",
+      "version": "0.11.0-1",
+      "base": "libcbor",
+      "archive": "libcbor-0.11.0-1.src.tar.gz",
+      "sha256": "63bce3f2d476c3551c9fd08e0c80475711cfc2b4a192a07f8b9869b2127240a1",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2024-02-05T16-30-39.000Z/libcbor-0.11.0-1.src.tar.gz",
+      "licenses": [
+        "MIT"
+      ]
+    },
+    {
+      "name": "libcurl",
+      "version": "8.23.0-1",
+      "base": "curl",
+      "archive": "curl-8.23.0-1.src.tar.gz",
+      "sha256": "0c78e7cd92d4d5d234c52ead095277c018eccaa70d49fcbc6d875909dc449d04",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-15T15-56-06.006062600Z/curl-8.23.0-1.src.tar.gz",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "libdb",
+      "version": "6.2.32-6",
+      "base": "db",
+      "archive": "db-6.2.32-6.src.tar.zst",
+      "sha256": "ca33d813847b2a544faa23cc732fdef5fcb84b6a4b73f1c22eefadb7dbcb7f17",
+      "url": "https://repo.msys2.org/msys/sources/db-6.2.32-6.src.tar.zst",
+      "licenses": [
+        "spdx:AGPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "libedit",
+      "version": "20240808_3.1-1",
+      "base": "libedit",
+      "archive": "libedit-20240808_3.1-1.src.tar.zst",
+      "sha256": "a76c0a19cbd69ef01c6c304d4776f96fc5b31dcbca7b446e6d99272affbffb97",
+      "url": "https://repo.msys2.org/msys/sources/libedit-20240808_3.1-1.src.tar.zst",
+      "licenses": [
+        "BSD"
+      ]
+    },
+    {
+      "name": "libexpat",
+      "version": "2.9.0-1",
+      "base": "expat",
+      "archive": "expat-2.9.0-1.src.tar.zst",
+      "sha256": "6f9d27abe3428cdc927e2c6c2855cdecf84c2ecffb84010acdf2f90ee24f1eeb",
+      "url": "https://repo.msys2.org/msys/sources/expat-2.9.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "libffi",
+      "version": "3.8.0-1",
+      "base": "libffi",
+      "archive": "libffi-3.8.0-1.src.tar.zst",
+      "sha256": "fc187103bfe5c32f37e0553453a2d9ab1ed78fb146bda54c6ae806f05422ce38",
+      "url": "https://repo.msys2.org/msys/sources/libffi-3.8.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "libfido2",
+      "version": "1.15.0-1",
+      "base": "libfido2",
+      "archive": "libfido2-1.15.0-1.src.tar.gz",
+      "sha256": "bf12ccd31a868bfb20a66cbfb7147b9d683bc31f30dca30ad70f38d6e935300e",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2024-06-14T09-31-36.000Z/libfido2-1.15.0-1.src.tar.gz",
+      "licenses": [
+        "BSD-2-Clause"
+      ]
+    },
+    {
+      "name": "libgcrypt",
+      "version": "1.12.4-1",
+      "base": "libgcrypt",
+      "archive": "libgcrypt-1.12.4-1.src.tar.zst",
+      "sha256": "a51332b5e6495e114eee93107a7d2872b34a28fe7f19af48710acac4185efdfb",
+      "url": "https://repo.msys2.org/msys/sources/libgcrypt-1.12.4-1.src.tar.zst",
+      "licenses": [
+        "spdx:LGPL-2.1-or-later AND GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "libgdbm",
+      "version": "1.26-1",
+      "base": "gdbm",
+      "archive": "gdbm-1.26-1.src.tar.zst",
+      "sha256": "955ecefcd32bee0ec40e3aa768b8ed068a2a1f2310f9777dcc77c02fdfa54271",
+      "url": "https://repo.msys2.org/msys/sources/gdbm-1.26-1.src.tar.zst",
+      "licenses": [
+        "GPL3"
+      ]
+    },
+    {
+      "name": "libgnutls",
+      "version": "3.8.13-2",
+      "base": "gnutls",
+      "archive": "gnutls-3.8.13-2.src.tar.zst",
+      "sha256": "fac68f2ab63f60e8da216c9533955165b8a26ef7a8559d4685f9497292a57414",
+      "url": "https://repo.msys2.org/msys/sources/gnutls-3.8.13-2.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later"
+      ]
+    },
+    {
+      "name": "libgpg-error",
+      "version": "1.61-1",
+      "base": "libgpg-error",
+      "archive": "libgpg-error-1.61-1.src.tar.zst",
+      "sha256": "760da07c2407b8da443f7b8df3d11ae35ae8f48eebee57cce6ab958b114f2a11",
+      "url": "https://repo.msys2.org/msys/sources/libgpg-error-1.61-1.src.tar.zst",
+      "licenses": [
+        "spdx:LGPL-2.1-or-later"
+      ]
+    },
+    {
+      "name": "libhogweed",
+      "version": "4.0-1",
+      "base": "nettle",
+      "archive": "nettle-4.0-1.src.tar.zst",
+      "sha256": "25454dea637f906ac5dfb1e7ff8534b289b7f1ad5a1ce60568af8ff1082015b1",
+      "url": "https://repo.msys2.org/msys/sources/nettle-4.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later OR LGPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "libiconv",
+      "version": "1.19-1",
+      "base": "libiconv",
+      "archive": "libiconv-1.19-1.src.tar.zst",
+      "sha256": "5a8bcd3242e2be94fffd9f03fadcda8d9fd64047430050c5cbd214cd3bf7f0a7",
+      "url": "https://repo.msys2.org/msys/sources/libiconv-1.19-1.src.tar.zst",
+      "licenses": [
+        "LGPL"
+      ]
+    },
+    {
+      "name": "libidn2",
+      "version": "2.3.8-1",
+      "base": "libidn2",
+      "archive": "libidn2-2.3.8-1.src.tar.zst",
+      "sha256": "c77c550e8cc2f595ed10b4a3996085cc6e6a3f5f650916a14701bd48d5d9fd7d",
+      "url": "https://repo.msys2.org/msys/sources/libidn2-2.3.8-1.src.tar.zst",
+      "licenses": [
+        "GPL3",
+        "LGPL"
+      ]
+    },
+    {
+      "name": "libintl",
+      "version": "0.22.5-1",
+      "base": "gettext",
+      "archive": "gettext-0.22.5-1.src.tar.zst",
+      "sha256": "e07a0b3e6716aae86dc0edd2dcdc8864731d56051345592b53659a3840ccfbd8",
+      "url": "https://repo.msys2.org/msys/sources/gettext-0.22.5-1.src.tar.zst",
+      "licenses": [
+        "GPL"
+      ]
+    },
+    {
+      "name": "libksba",
+      "version": "1.8.1-1",
+      "base": "libksba",
+      "archive": "libksba-1.8.1-1.src.tar.zst",
+      "sha256": "252fa970f50317381c0316b199e966321f96925564732883333c83539879b320",
+      "url": "https://repo.msys2.org/msys/sources/libksba-1.8.1-1.src.tar.zst",
+      "licenses": [
+        "spdx:LGPL-3.0-or-later OR GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "liblz4",
+      "version": "1.10.0-1",
+      "base": "lz4",
+      "archive": "lz4-1.10.0-1.src.tar.zst",
+      "sha256": "35b3406bdff46797a042bd35fd82ee9dce69040b357661dc1fb5db05f99eb421",
+      "url": "https://repo.msys2.org/msys/sources/lz4-1.10.0-1.src.tar.zst",
+      "licenses": [
+        "LGPL"
+      ]
+    },
+    {
+      "name": "liblzma",
+      "version": "5.8.4-1",
+      "base": "xz",
+      "archive": "xz-5.8.4-1.src.tar.zst",
+      "sha256": "dedeb89e94779cdf4a90ce6f6422ac218b7b1ac1e11766dcb915a823e1c4d8ee",
+      "url": "https://repo.msys2.org/msys/sources/xz-5.8.4-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later AND LGPL-2.1-or-later AND LicenseRef-xz-Public-Domain",
+        "spdx:GPL-2.0-or-later",
+        "spdx:LGPL-2.1-or-later",
+        "spdx:LGPL-2.1-or-later AND LicenseRef-xz-Public-Domain"
+      ]
+    },
+    {
+      "name": "libnettle",
+      "version": "4.0-1",
+      "base": "nettle",
+      "archive": "nettle-4.0-1.src.tar.zst",
+      "sha256": "25454dea637f906ac5dfb1e7ff8534b289b7f1ad5a1ce60568af8ff1082015b1",
+      "url": "https://repo.msys2.org/msys/sources/nettle-4.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later OR LGPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "libnghttp2",
+      "version": "1.70.0-1",
+      "base": "nghttp2",
+      "archive": "nghttp2-1.70.0-1.src.tar.zst",
+      "sha256": "78adf6db1fdcc584415483b242f37f933c9c7983819b0914d0fc5a1590eed784",
+      "url": "https://repo.msys2.org/msys/sources/nghttp2-1.70.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "libnpth",
+      "version": "1.8-1",
+      "base": "npth",
+      "archive": "npth-1.8-1.src.tar.zst",
+      "sha256": "632b95011ea51c7a883388e97171618b43d5056f653c1c26c5eeae23a07a398a",
+      "url": "https://repo.msys2.org/msys/sources/npth-1.8-1.src.tar.zst",
+      "licenses": [
+        "LGPL"
+      ]
+    },
+    {
+      "name": "libopenssl",
+      "version": "3.5.9-1",
+      "base": "openssl",
+      "archive": "openssl-3.5.9-1.src.tar.gz",
+      "sha256": "017077b0addd68b9d8aee34bd013e55746f822e7bd67833c07bc399c9e56e336",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-09-30T08-56-50.408104900Z/openssl-3.5.9-1.src.tar.gz",
+      "licenses": [
+        "spdx:Apache-2.0"
+      ]
+    },
+    {
+      "name": "libp11-kit",
+      "version": "0.26.5-1",
+      "base": "p11-kit",
+      "archive": "p11-kit-0.26.5-1.src.tar.zst",
+      "sha256": "c8ded9fc1658733c217afe5ceea817865c97094bf23faf59db83ae207cd7d5ba",
+      "url": "https://repo.msys2.org/msys/sources/p11-kit-0.26.5-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "libpcre",
+      "version": "8.45-5",
+      "base": "pcre",
+      "archive": "pcre-8.45-5.src.tar.zst",
+      "sha256": "f7104aa31f29655689b404ead9923332e2fa6aadfe97c060d0dfc02f4661d6b5",
+      "url": "https://repo.msys2.org/msys/sources/pcre-8.45-5.src.tar.zst",
+      "licenses": [
+        "BSD"
+      ]
+    },
+    {
+      "name": "libpcre2_8",
+      "version": "10.49-1",
+      "base": "pcre2",
+      "archive": "pcre2-10.49-1.src.tar.zst",
+      "sha256": "2ea315e233443321a6581ddaefc057289f91fdd4b396c1d0dffae5320e064e4b",
+      "url": "https://repo.msys2.org/msys/sources/pcre2-10.49-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause WITH PCRE2-exception"
+      ]
+    },
+    {
+      "name": "libpsl",
+      "version": "0.23.2-1",
+      "base": "libpsl",
+      "archive": "libpsl-0.23.2-1.src.tar.zst",
+      "sha256": "c570e54e0a6ea19e6b7de2ed05200f6a52fc5cc7d06f512b1822a75cfc88f91d",
+      "url": "https://repo.msys2.org/msys/sources/libpsl-0.23.2-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "libreadline",
+      "version": "8.3.006-1",
+      "base": "readline",
+      "archive": "readline-8.3.006-1.src.tar.zst",
+      "sha256": "9ddb3eb989f6ad7d696ce5a2d92322b33a20056b293e3c4fc4f6cc568a320640",
+      "url": "https://repo.msys2.org/msys/sources/readline-8.3.006-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "libsasl",
+      "version": "2.1.28-5",
+      "base": "cyrus-sasl",
+      "archive": "cyrus-sasl-2.1.28-5.src.tar.zst",
+      "sha256": "5b94ab5e9c21e41b37635db88f131aeb760e4ca0bdf7bf0400335304cd8af718",
+      "url": "https://repo.msys2.org/msys/sources/cyrus-sasl-2.1.28-5.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "libserf",
+      "version": "1.3.10-2",
+      "base": "serf",
+      "archive": "serf-1.3.10-2.src.tar.zst",
+      "sha256": "1cdec9bb11a6bbe96ecd7f04ee8a0ac953696c46de253accea64f92656a5f9bb",
+      "url": "https://repo.msys2.org/msys/sources/serf-1.3.10-2.src.tar.zst",
+      "licenses": [
+        "Apache"
+      ]
+    },
+    {
+      "name": "libsqlite",
+      "version": "3.54.0-1",
+      "base": "sqlite",
+      "archive": "sqlite-3.54.0-1.src.tar.zst",
+      "sha256": "e696013ca93e134622b20caa26a4336f382dda932b6ed432f2fa7c67ce7829b0",
+      "url": "https://repo.msys2.org/msys/sources/sqlite-3.54.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:LicenseRef-Sqlite"
+      ]
+    },
+    {
+      "name": "libssh2",
+      "version": "1.11.1-1",
+      "base": "libssh2",
+      "archive": "libssh2-1.11.1-1.src.tar.zst",
+      "sha256": "264ad84471969ca2868b8a7f74ea8095a933c6112d49325cb127ce59f0b90af4",
+      "url": "https://repo.msys2.org/msys/sources/libssh2-1.11.1-1.src.tar.zst",
+      "licenses": [
+        "BSD"
+      ]
+    },
+    {
+      "name": "libtasn1",
+      "version": "4.21.0-1",
+      "base": "libtasn1",
+      "archive": "libtasn1-4.21.0-1.src.tar.zst",
+      "sha256": "3b3f93112cd0b7c626483b1aa95a2b63f36a682f47f13f5c416547602c4602e8",
+      "url": "https://repo.msys2.org/msys/sources/libtasn1-4.21.0-1.src.tar.zst",
+      "licenses": [
+        "GPL3",
+        "LGPL"
+      ]
+    },
+    {
+      "name": "libunistring",
+      "version": "1.4.2-1",
+      "base": "libunistring",
+      "archive": "libunistring-1.4.2-1.src.tar.zst",
+      "sha256": "9a397e2ffa803f1c18abc119207186ae86ab173f30123e77bf2830afe40befc8",
+      "url": "https://repo.msys2.org/msys/sources/libunistring-1.4.2-1.src.tar.zst",
+      "licenses": [
+        "spdx:LGPL-3.0-or-later OR GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "libutil-linux",
+      "version": "2.40.2-2",
+      "base": "util-linux",
+      "archive": "util-linux-2.40.2-2.src.tar.zst",
+      "sha256": "ea018e116866c0e2d9a3d6cee3f0d09801e6725789b6f99fd1979dfc7a68b703",
+      "url": "https://repo.msys2.org/msys/sources/util-linux-2.40.2-2.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "libxcrypt",
+      "version": "4.5.2-1",
+      "base": "libxcrypt",
+      "archive": "libxcrypt-4.5.2-1.src.tar.zst",
+      "sha256": "dc3e44cea067417ff61c25c981d7d58bb0f343b824ba10fd2a0a3b8badc55746",
+      "url": "https://repo.msys2.org/msys/sources/libxcrypt-4.5.2-1.src.tar.zst",
+      "licenses": [
+        "spdx:LGPL-2.1-or-later"
+      ]
+    },
+    {
+      "name": "libzstd",
+      "version": "1.5.7-1",
+      "base": "zstd",
+      "archive": "zstd-1.5.7-1.src.tar.zst",
+      "sha256": "19e11d517b005cba22d0f04969a74ffa08443429ff9dc80596d323b9483534f5",
+      "url": "https://repo.msys2.org/msys/sources/zstd-1.5.7-1.src.tar.zst",
+      "licenses": [
+        "BSD"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-antiword",
+      "version": "0.37-3",
+      "base": "mingw-w64-antiword",
+      "archive": "mingw-w64-antiword-0.37-3.src.tar.zst",
+      "sha256": "f8a3df6bd30c947c441c12fcda67b677577816cb8484be1f9637c1421a7821dd",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-antiword-0.37-3.src.tar.zst",
+      "licenses": [
+        "GPL3+"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-brotli",
+      "version": "1.2.0-1",
+      "base": "mingw-w64-brotli",
+      "archive": "mingw-w64-brotli-1.2.0-1.src.tar.zst",
+      "sha256": "2f0f93875aac21990d20f1eaf0ad8b970eb6f186c663c77ae47aaaf9e5711fcf",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-brotli-1.2.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-bzip2",
+      "version": "1.0.8-4",
+      "base": "mingw-w64-bzip2",
+      "archive": "mingw-w64-bzip2-1.0.8-4.src.tar.zst",
+      "sha256": "fd9360917314d1cbccb3cb15ed8450d1e56b8a9f733b606504aba52c52159e54",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-bzip2-1.0.8-4.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-c-ares",
+      "version": "1.34.9-1",
+      "base": "mingw-w64-c-ares",
+      "archive": "mingw-w64-c-ares-1.34.9-1.src.tar.zst",
+      "sha256": "c595d023af3c6ded8108d388390b87629afcfebe60491d41a5536fc3aa9a43aa",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-c-ares-1.34.9-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-ca-certificates",
+      "version": "20260816-3",
+      "base": "mingw-w64-ca-certificates",
+      "archive": "mingw-w64-ca-certificates-20260816-3.src.tar.zst",
+      "sha256": "fe6b17eea64afccd14e0f70f5e45742374934f646fc9f7a5a175595a1ef88d5a",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-ca-certificates-20260816-3.src.tar.zst",
+      "licenses": [
+        "MPL",
+        "GPL"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-cc-libs",
+      "version": "16.2.0-6",
+      "base": "mingw-w64-gcc",
+      "archive": "mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "sha256": "a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later AND GFDL-1.2-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-connect",
+      "version": "1.105-5",
+      "base": "mingw-w64-connect",
+      "archive": "mingw-w64-connect-1.105-5.src.tar.zst",
+      "sha256": "514ad83b8648d1563a97d8297c0ee737df6ee81adcce827a3ad44c2c39afcf1b",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-connect-1.105-5.src.tar.zst",
+      "licenses": [
+        "GPL2+"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-curl-openssl-alternate",
+      "version": "8.23.0-1",
+      "base": "mingw-w64-curl",
+      "archive": "mingw-w64-curl-8.23.0-1.src.tar.gz",
+      "sha256": "9ce76c7fd71c214d216cb546dfa5fda8fd6ff43a2e274bc0ee34f85ae2d4e309",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-15T16-10-28.300057100Z/mingw-w64-curl-8.23.0-1.src.tar.gz",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-curl-winssl",
+      "version": "8.23.0-1",
+      "base": "mingw-w64-curl",
+      "archive": "mingw-w64-curl-8.23.0-1.src.tar.gz",
+      "sha256": "9ce76c7fd71c214d216cb546dfa5fda8fd6ff43a2e274bc0ee34f85ae2d4e309",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-15T16-10-28.300057100Z/mingw-w64-curl-8.23.0-1.src.tar.gz",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-docx2txt-rs",
+      "version": "0.2.0-1",
+      "base": "mingw-w64-docx2txt-rs",
+      "archive": "mingw-w64-docx2txt-rs-0.2.0-1.src.tar.zst",
+      "sha256": "b65fbfd8b785f0e9df84a173cd257654f04b4aa6d83602d39f8097e19b35b31d",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-docx2txt-rs-0.2.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-expat",
+      "version": "2.9.0-1",
+      "base": "mingw-w64-expat",
+      "archive": "mingw-w64-expat-2.9.0-1.src.tar.zst",
+      "sha256": "014a4b1949f65f053a9774712994db89fea290516f1c1849bbbbf7316ee1606b",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-expat-2.9.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-gcc-libs",
+      "version": "16.2.0-6",
+      "base": "mingw-w64-gcc",
+      "archive": "mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "sha256": "a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later AND GFDL-1.2-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-gettext-runtime",
+      "version": "1.0-1",
+      "base": "mingw-w64-gettext",
+      "archive": "mingw-w64-gettext-1.0-1.src.tar.zst",
+      "sha256": "cca0d0c8f60353faccc5ad40405240014e4a7ccc8b1c6ca9f4626aef3097d26e",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gettext-1.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later AND LGPL-2.1-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-credential-manager",
+      "version": "2.9.1-1",
+      "base": "mingw-w64-git-credential-manager",
+      "archive": "mingw-w64-git-credential-manager-2.9.1-1.src.tar.gz",
+      "sha256": "8d4a34639f6959ae56899da8b44526107c32a5490e21eec451e2e7df8e5b3c84",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-07-14T20-22-11.997190100Z/mingw-w64-git-credential-manager-2.9.1-1.src.tar.gz",
+      "licenses": [
+        "MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-credential-wincred",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-doc-html",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-extra",
+      "version": "1.1.715.85f886165-1",
+      "base": "mingw-w64-git-extra",
+      "archive": "mingw-w64-git-extra-1.1.715.85f886165-1.src.tar.gz",
+      "sha256": "a17b18ebe09ba357c798f8963497fd8086e4cc8a5f889e9a351a614d038cf331",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-09-10T22-57-20.747747200Z/mingw-w64-git-extra-1.1.715.85f886165-1.src.tar.gz",
+      "licenses": [
+        "GPL"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-for-windows-addons",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-gui",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-lfs",
+      "version": "3.8.0-1",
+      "base": "mingw-w64-git-lfs",
+      "archive": "mingw-w64-git-lfs-3.8.0-1.src.tar.gz",
+      "sha256": "4404aa37ef2df44e741e3e67c76648873db4cee174f8715dd845df7669ca0428",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-08-29T08-12-43.056934300Z/mingw-w64-git-lfs-3.8.0-1.src.tar.gz",
+      "licenses": [
+        "MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-perl",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-send-email",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-git-subtree",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-gitk",
+      "version": "2.56.0.3-1",
+      "base": "mingw-w64-git",
+      "archive": "mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "sha256": "0831b5fc86c38a6f91e597629ec3d12cd24712c2ff9830a49a6661178b753163",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-22T18-36-43.320113000Z/mingw-w64-git-2.56.0.3-1.src.tar.gz",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-gmp",
+      "version": "6.3.0-2",
+      "base": "mingw-w64-gmp",
+      "archive": "mingw-w64-gmp-6.3.0-2.src.tar.zst",
+      "sha256": "f288f944fd9609db220bcf6a8dd0703a5674eeb906ef35eb8485bb8192135994",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gmp-6.3.0-2.src.tar.zst",
+      "licenses": [
+        "LGPL3",
+        "GPL"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-gnutls",
+      "version": "3.8.13-3",
+      "base": "mingw-w64-gnutls",
+      "archive": "mingw-w64-gnutls-3.8.13-3.src.tar.zst",
+      "sha256": "7889cd73810d909642c0f122b40cfe0eaec5b0d2985804f145cd90c6a51c0435",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gnutls-3.8.13-3.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libatomic",
+      "version": "16.2.0-6",
+      "base": "mingw-w64-gcc",
+      "archive": "mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "sha256": "a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later AND GFDL-1.2-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libffi",
+      "version": "3.8.0-1",
+      "base": "mingw-w64-libffi",
+      "archive": "mingw-w64-libffi-3.8.0-1.src.tar.zst",
+      "sha256": "641ea78ce0333839eab5262656f03fdcfd8496d7388bd7b27e4f0638aeed9adf",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libffi-3.8.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libgcc",
+      "version": "16.2.0-6",
+      "base": "mingw-w64-gcc",
+      "archive": "mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "sha256": "a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later AND GFDL-1.2-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libgomp",
+      "version": "16.2.0-6",
+      "base": "mingw-w64-gcc",
+      "archive": "mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "sha256": "a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later AND GFDL-1.2-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libiconv",
+      "version": "1.19-1",
+      "base": "mingw-w64-libiconv",
+      "archive": "mingw-w64-libiconv-1.19-1.src.tar.zst",
+      "sha256": "74428280c17094da5b702c29b2e1a0abae59556ea5dfdd65705cc8ccc1e000fb",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libiconv-1.19-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later",
+        "documentation:spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libidn2",
+      "version": "2.3.8-4",
+      "base": "mingw-w64-libidn2",
+      "archive": "mingw-w64-libidn2-2.3.8-4.src.tar.zst",
+      "sha256": "cd83e8514fbeb6a4499299b88691b9b9ecc3114cca1e2be4f6c54aab6ae9ddd0",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libidn2-2.3.8-4.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later",
+        "spdx:LGPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libpsl",
+      "version": "0.21.5-3",
+      "base": "mingw-w64-libpsl",
+      "archive": "mingw-w64-libpsl-0.21.5-3.src.tar.zst",
+      "sha256": "102b4ab4c60322162e808c5c81f545438c346c659e8fb63e0851066f07a0e76b",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libpsl-0.21.5-3.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libquadmath",
+      "version": "16.2.0-6",
+      "base": "mingw-w64-gcc",
+      "archive": "mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "sha256": "a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later AND GFDL-1.2-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libssh2-wincng",
+      "version": "1.11.1-2",
+      "base": "mingw-w64-libssh2",
+      "archive": "mingw-w64-libssh2-1.11.1-2.src.tar.zst",
+      "sha256": "bb78f8354441190221ece18a96c09f631fe02648f5dd7d1e247ae8d00a9fea5f",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libssh2-1.11.1-2.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libstdc++",
+      "version": "16.2.0-6",
+      "base": "mingw-w64-gcc",
+      "archive": "mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "sha256": "a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND GFDL-1.3-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later AND GFDL-1.2-or-later",
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libtasn1",
+      "version": "4.21.0-1",
+      "base": "mingw-w64-libtasn1",
+      "archive": "mingw-w64-libtasn1-4.21.0-1.src.tar.zst",
+      "sha256": "c626129c5131eef0a45c736274f0844747605a105161cc0f7d39f6e1c70ed0ff",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libtasn1-4.21.0-1.src.tar.zst",
+      "licenses": [
+        "GPL3, LGPL"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libunistring",
+      "version": "1.4.2-1",
+      "base": "mingw-w64-libunistring",
+      "archive": "mingw-w64-libunistring-1.4.2-1.src.tar.zst",
+      "sha256": "a5bafb360d5c13c5c52ef071d5a8288ce2345346b902f20ed6e9322766ec60eb",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libunistring-1.4.2-1.src.tar.zst",
+      "licenses": [
+        "spdx:LGPL-3.0-or-later OR GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libwinpthread",
+      "version": "14.0.0.r495.g63ebe6cdb-2",
+      "base": "mingw-w64-winpthreads",
+      "archive": "mingw-w64-winpthreads-14.0.0.r495.g63ebe6cdb-2.src.tar.zst",
+      "sha256": "876d54338dae4e3b2ca84c4fe20bddc9274dfd827374c092ffb201e948fd9d3d",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-winpthreads-14.0.0.r495.g63ebe6cdb-2.src.tar.zst",
+      "licenses": [
+        "spdx:MIT AND BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-libzip",
+      "version": "1.12-1",
+      "base": "mingw-w64-libzip",
+      "archive": "mingw-w64-libzip-1.12-1.src.tar.zst",
+      "sha256": "ebecdda6da24f387d7d17efb98032fa68c3df16e614f7e1e9d58a4fd019783ff",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libzip-1.12-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-nettle",
+      "version": "4.0-1",
+      "base": "mingw-w64-nettle",
+      "archive": "mingw-w64-nettle-4.0-1.src.tar.zst",
+      "sha256": "453187e86139bce3c5b94542cc709ead7f523f0fc33ce4cc2b8fe9d5a9719cdd",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-nettle-4.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later",
+        "spdx:LGPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-nghttp2",
+      "version": "1.70.0-1",
+      "base": "mingw-w64-nghttp2",
+      "archive": "mingw-w64-nghttp2-1.70.0-1.src.tar.zst",
+      "sha256": "a2159c7fc94daa3dd052919bcb927db5736bbaa99c3753345e0523fcb7c9f384",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-nghttp2-1.70.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-odt2txt",
+      "version": "0.5-4",
+      "base": "mingw-w64-odt2txt",
+      "archive": "mingw-w64-odt2txt-0.5-4.src.tar.zst",
+      "sha256": "5c366e7eab4829db087b6e45d270338edb8d9140fc2cb5bd781e3771cb27e158",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-odt2txt-0.5-4.src.tar.zst",
+      "licenses": [
+        "GPL2"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-openssl",
+      "version": "3.5.9-1",
+      "base": "mingw-w64-openssl",
+      "archive": "mingw-w64-openssl-3.5.9-1.src.tar.gz",
+      "sha256": "479e68e9cfaa11d5c0371c9bd92857bf29d2704bd4d57eac133f36466d9eba9b",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-09-30T09-24-18.347486000Z/mingw-w64-openssl-3.5.9-1.src.tar.gz",
+      "licenses": [
+        "spdx:Apache-2.0"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-p11-kit",
+      "version": "0.26.5-1",
+      "base": "mingw-w64-p11-kit",
+      "archive": "mingw-w64-p11-kit-0.26.5-1.src.tar.zst",
+      "sha256": "1665c40c6237bbb9be868ecfc00ab65f9038047e4c608126de575ae4ecb5ca12",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-p11-kit-0.26.5-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-pcre2",
+      "version": "10.49-1",
+      "base": "mingw-w64-pcre2",
+      "archive": "mingw-w64-pcre2-10.49-1.src.tar.zst",
+      "sha256": "b02f0d5070b7d7f6db5c8ba9b009f28c1a07b9b52aaf7964dc0c8b098e4088d1",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-pcre2-10.49-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-tcl",
+      "version": "8.6.18-1",
+      "base": "mingw-w64-tcl",
+      "archive": "mingw-w64-tcl-8.6.18-1.src.tar.zst",
+      "sha256": "8a56e7744b3ec4c5e2fc446edafab2fc7ac6494752e4e5091580720eddcd93ef",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-tcl-8.6.18-1.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-tk",
+      "version": "8.6.18-1",
+      "base": "mingw-w64-tk",
+      "archive": "mingw-w64-tk-8.6.18-1.src.tar.zst",
+      "sha256": "3aadf0976b1ac80e09014a9c928439f1988d8c0edbc02c43ad0ab2cb556fb068",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-tk-8.6.18-1.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-tzdata",
+      "version": "2026e-1",
+      "base": "mingw-w64-tzdata",
+      "archive": "mingw-w64-tzdata-2026e-1.src.tar.zst",
+      "sha256": "6f3cae6bb0378b3ef5d8260d3a2b616aff7d3dcaaba51d7190964e6e498cc72e",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-tzdata-2026e-1.src.tar.zst",
+      "licenses": [
+        "custom: public domain"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-wineditline",
+      "version": "2.208-1",
+      "base": "mingw-w64-wineditline",
+      "archive": "mingw-w64-wineditline-2.208-1.src.tar.zst",
+      "sha256": "6ca247e876f0206538ce6c9baea59c78a7377f4369f6f734f6a78343b5580773",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-wineditline-2.208-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-xpdf-tools",
+      "version": "4.06-1",
+      "base": "mingw-w64-xpdf-tools",
+      "archive": "mingw-w64-xpdf-tools-4.06-1.src.tar.gz",
+      "sha256": "0b7b1999e7ffb392a713194343a5874aa24bfe01ca3ec836015b8512e8c6b1a3",
+      "url": "https://raw.githubusercontent.com/git-for-windows/MINGW-packages/762d8468f5384d8b7015a12f66eb3ff4197fa05c/mingw-w64-xpdf/PKGBUILD",
+      "reconstructed": true,
+      "licenses": [
+        "GPL-2.0-only OR GPL-3.0-only"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-xz",
+      "version": "5.8.4-1",
+      "base": "mingw-w64-xz",
+      "archive": "mingw-w64-xz-5.8.4-1.src.tar.zst",
+      "sha256": "b8acbc56b2bfe08df7bffff423f3bf07ee85dbec4e07416017ab04c8afb9d13e",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-xz-5.8.4-1.src.tar.zst",
+      "licenses": [
+        "spdx:0BSD AND LGPL-2.1-or-later AND GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-zlib",
+      "version": "1.3.2-2",
+      "base": "mingw-w64-zlib",
+      "archive": "mingw-w64-zlib-1.3.2-2.src.tar.zst",
+      "sha256": "eef69dea52357e01b272d6fd6dc4d7c0773f71260cb7bcde6047c8c383518db3",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-zlib-1.3.2-2.src.tar.zst",
+      "licenses": [
+        "spdx:Zlib"
+      ]
+    },
+    {
+      "name": "mingw-w64-ucrt-x86_64-zstd",
+      "version": "1.5.7-2",
+      "base": "mingw-w64-zstd",
+      "archive": "mingw-w64-zstd-1.5.7-2.src.tar.zst",
+      "sha256": "306797282df799e95d550e6d0bb4b0a7b848027b8e13893a24236e060837c217",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-zstd-1.5.7-2.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause OR GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "mintty",
+      "version": "1~3.8.3-1",
+      "base": "mintty",
+      "archive": "mintty-1~3.8.3-1.src.tar.zst",
+      "sha256": "b0366ca141b4d9e25682dd3a41ca1fd444134c0882a27afb8927ee222265a4d4",
+      "url": "https://repo.msys2.org/msys/sources/mintty-1~3.8.3-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "mpfr",
+      "version": "4.2.2-1",
+      "base": "mpfr",
+      "archive": "mpfr-4.2.2-1.src.tar.zst",
+      "sha256": "e0c56e3af3819471e74dd37e32660e4eb8f58761c4d214dabd2d62f57c548869",
+      "url": "https://repo.msys2.org/msys/sources/mpfr-4.2.2-1.src.tar.zst",
+      "licenses": [
+        "spdx:LGPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "msys2-runtime",
+      "version": "3.6.10-4",
+      "base": "msys2-runtime",
+      "archive": "msys2-runtime-3.6.10-4.src.tar.gz",
+      "sha256": "3dae788aee6bf5244f124aa7e0a04328e6585d92ed1826bb510f23aefbc40a1e",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-09-28T10-53-27.205004700Z/msys2-runtime-3.6.10-4.src.tar.gz",
+      "licenses": [
+        "GPL"
+      ]
+    },
+    {
+      "name": "nano",
+      "version": "9.2-1",
+      "base": "nano",
+      "archive": "nano-9.2-1.src.tar.zst",
+      "sha256": "515cd0d11b63cb5b4909697dd854e57c8291748bd4ce84c95f5a93779f18a651",
+      "url": "https://repo.msys2.org/msys/sources/nano-9.2-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "ncurses",
+      "version": "6.6-2",
+      "base": "ncurses",
+      "archive": "ncurses-6.6-2.src.tar.zst",
+      "sha256": "f5df12bd297e6b6930e2aa68e8014347b2193592645d93acce6774e05cbf15e6",
+      "url": "https://repo.msys2.org/msys/sources/ncurses-6.6-2.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "nettle",
+      "version": "4.0-1",
+      "base": "nettle",
+      "archive": "nettle-4.0-1.src.tar.zst",
+      "sha256": "25454dea637f906ac5dfb1e7ff8534b289b7f1ad5a1ce60568af8ff1082015b1",
+      "url": "https://repo.msys2.org/msys/sources/nettle-4.0-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later OR LGPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "openssh",
+      "version": "10.6p1-1",
+      "base": "openssh",
+      "archive": "openssh-10.6p1-1.src.tar.gz",
+      "sha256": "891deb18da3bd620d2c8fdada6c5d1e9b637f2a6344b5b4a9dc39d50de2068ae",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-10-06T21-47-39.107137000Z/openssh-10.6p1-1.src.tar.gz",
+      "licenses": [
+        "custom:BSD"
+      ]
+    },
+    {
+      "name": "openssl",
+      "version": "3.5.9-1",
+      "base": "openssl",
+      "archive": "openssl-3.5.9-1.src.tar.gz",
+      "sha256": "017077b0addd68b9d8aee34bd013e55746f822e7bd67833c07bc399c9e56e336",
+      "url": "https://github.com/git-for-windows/pacman-repo/releases/download/2026-09-30T08-56-50.408104900Z/openssl-3.5.9-1.src.tar.gz",
+      "licenses": [
+        "spdx:Apache-2.0"
+      ]
+    },
+    {
+      "name": "p11-kit",
+      "version": "0.26.5-1",
+      "base": "p11-kit",
+      "archive": "p11-kit-0.26.5-1.src.tar.zst",
+      "sha256": "c8ded9fc1658733c217afe5ceea817865c97094bf23faf59db83ae207cd7d5ba",
+      "url": "https://repo.msys2.org/msys/sources/p11-kit-0.26.5-1.src.tar.zst",
+      "licenses": [
+        "spdx:BSD-3-Clause"
+      ]
+    },
+    {
+      "name": "patch",
+      "version": "2.8-2",
+      "base": "patch",
+      "archive": "patch-2.8-2.src.tar.zst",
+      "sha256": "bc69f8c3ddd1f6e6849d5351f32a540e2dd14d19970cf24373de6c67e63a3cd9",
+      "url": "https://repo.msys2.org/msys/sources/patch-2.8-2.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "perl",
+      "version": "5.42.3-3",
+      "base": "perl",
+      "archive": "perl-5.42.3-3.src.tar.zst",
+      "sha256": "846faece39e98dfb797cda73f9f02ee21834fb93ed4b8aab6c24d9ad29c00d3c",
+      "url": "https://repo.msys2.org/msys/sources/perl-5.42.3-3.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-authen-sasl",
+      "version": "2.2100-2",
+      "base": "perl-authen-sasl",
+      "archive": "perl-authen-sasl-2.2100-2.src.tar.zst",
+      "sha256": "4850d39c6f080d38bbbe2cd93770eff8c4008d21707fa28bb8390c6785ef89dc",
+      "url": "https://repo.msys2.org/msys/sources/perl-authen-sasl-2.2100-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-clone",
+      "version": "0.51-1",
+      "base": "perl-clone",
+      "archive": "perl-clone-0.51-1.src.tar.zst",
+      "sha256": "70b20cd0690a044f0f353a53c38c3def85011e6a183d93a414597b960453e867",
+      "url": "https://repo.msys2.org/msys/sources/perl-clone-0.51-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-1.0-or-later",
+        "spdx:Artistic-1.0-Perl"
+      ]
+    },
+    {
+      "name": "perl-convert-binhex",
+      "version": "1.125-3",
+      "base": "perl-convert-binhex",
+      "archive": "perl-convert-binhex-1.125-3.src.tar.zst",
+      "sha256": "ac4671323b443a402334bd594373844e97cf14e5eb8674159bab846721b534aa",
+      "url": "https://repo.msys2.org/msys/sources/perl-convert-binhex-1.125-3.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-encode-locale",
+      "version": "1.05-3",
+      "base": "perl-encode-locale",
+      "archive": "perl-encode-locale-1.05-3.src.tar.zst",
+      "sha256": "6bc426315669483806bc6cc151e68c2158fd299e769f0abbc353fe417ac29ecf",
+      "url": "https://repo.msys2.org/msys/sources/perl-encode-locale-1.05-3.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-error",
+      "version": "0.17030-3",
+      "base": "perl-error",
+      "archive": "perl-error-0.17030-3.src.tar.zst",
+      "sha256": "c487bfb040f8c9aa042939455a00130934ffc9b23e5ccee3993745f2af47de0b",
+      "url": "https://repo.msys2.org/msys/sources/perl-error-0.17030-3.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-file-listing",
+      "version": "6.16-2",
+      "base": "perl-file-listing",
+      "archive": "perl-file-listing-6.16-2.src.tar.zst",
+      "sha256": "3dce2446330beb6e7892204af1a116e54cdd9c66d8ffe183685b83e605b4b687",
+      "url": "https://repo.msys2.org/msys/sources/perl-file-listing-6.16-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl",
+        "spdx:GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-html-parser",
+      "version": "3.86-2",
+      "base": "perl-html-parser",
+      "archive": "perl-html-parser-3.86-2.src.tar.zst",
+      "sha256": "04ad844918a6cc6d9a809387ca257769daf2a151f8fc5449d8faace5eade498f",
+      "url": "https://repo.msys2.org/msys/sources/perl-html-parser-3.86-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl",
+        "spdx:GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-html-tagset",
+      "version": "3.24-2",
+      "base": "perl-html-tagset",
+      "archive": "perl-html-tagset-3.24-2.src.tar.zst",
+      "sha256": "dab767a706bd067d0bdb23226fbf84f45cf37f34b17e809cd247979a90084619",
+      "url": "https://repo.msys2.org/msys/sources/perl-html-tagset-3.24-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-http-cookiejar",
+      "version": "0.014-2",
+      "base": "perl-http-cookiejar",
+      "archive": "perl-http-cookiejar-0.014-2.src.tar.zst",
+      "sha256": "436b32c0be74e7f0eef77b5cc94c952700aa1730f613d505f5ec4fe22abbf40a",
+      "url": "https://repo.msys2.org/msys/sources/perl-http-cookiejar-0.014-2.src.tar.zst",
+      "licenses": [
+        "spdx:Apache-2.0"
+      ]
+    },
+    {
+      "name": "perl-http-cookies",
+      "version": "6.12-2",
+      "base": "perl-http-cookies",
+      "archive": "perl-http-cookies-6.12-2.src.tar.zst",
+      "sha256": "2159f963c939fecd65b1ef69c4bff90d4b5bb7ed35a3b822af9bfcd3813b63a1",
+      "url": "https://repo.msys2.org/msys/sources/perl-http-cookies-6.12-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-http-daemon",
+      "version": "6.17-2",
+      "base": "perl-http-daemon",
+      "archive": "perl-http-daemon-6.17-2.src.tar.zst",
+      "sha256": "d5da0f87bc046d5368678a54c1aa824db78b0043e8659446e87a2cd6227128df",
+      "url": "https://repo.msys2.org/msys/sources/perl-http-daemon-6.17-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl",
+        "spdx:GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-http-date",
+      "version": "6.08-2",
+      "base": "perl-http-date",
+      "archive": "perl-http-date-6.08-2.src.tar.zst",
+      "sha256": "7ea8b251ce093c8a60e061beb46227bc7c1876191bb357333dda0ebd31694133",
+      "url": "https://repo.msys2.org/msys/sources/perl-http-date-6.08-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-http-message",
+      "version": "7.04-2",
+      "base": "perl-http-message",
+      "archive": "perl-http-message-7.04-2.src.tar.zst",
+      "sha256": "5e931132208b85aa353305d979f474f617c3b54b5de4f8cfc3bf162fc77a3cdf",
+      "url": "https://repo.msys2.org/msys/sources/perl-http-message-7.04-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-http-negotiate",
+      "version": "6.01-4",
+      "base": "perl-http-negotiate",
+      "archive": "perl-http-negotiate-6.01-4.src.tar.zst",
+      "sha256": "afeae5880678c66a455e4f86b793505bc338f330238b86b93b924a130eb1057c",
+      "url": "https://repo.msys2.org/msys/sources/perl-http-negotiate-6.01-4.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-io-html",
+      "version": "1.004-3",
+      "base": "perl-io-html",
+      "archive": "perl-io-html-1.004-3.src.tar.zst",
+      "sha256": "a46b72f65a0f0960226d708b3e9abf5b34c7e57a15535e5f3ffedac4e72be1d2",
+      "url": "https://repo.msys2.org/msys/sources/perl-io-html-1.004-3.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-io-socket-ssl",
+      "version": "2.099-2",
+      "base": "perl-io-socket-ssl",
+      "archive": "perl-io-socket-ssl-2.099-2.src.tar.zst",
+      "sha256": "845f7fa1123f54bbf68de20f5d52e875c141ee012f3fec5e14cf4e8475612ae5",
+      "url": "https://repo.msys2.org/msys/sources/perl-io-socket-ssl-2.099-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-io-stringy",
+      "version": "2.113-4",
+      "base": "perl-io-stringy",
+      "archive": "perl-io-stringy-2.113-4.src.tar.zst",
+      "sha256": "a36003ce241c2896acb20b4f60f1b3f8d9d281b45de2ac24e137430e46f943b1",
+      "url": "https://repo.msys2.org/msys/sources/perl-io-stringy-2.113-4.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-json",
+      "version": "4.11-2",
+      "base": "perl-json",
+      "archive": "perl-json-4.11-2.src.tar.zst",
+      "sha256": "1fcfa19fce26f7db0d324b00806775c65f7a1587e4d5baec0e9d1a2bf4de22ad",
+      "url": "https://repo.msys2.org/msys/sources/perl-json-4.11-2.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-1.0-or-later",
+        "spdx:Artistic-1.0-Perl"
+      ]
+    },
+    {
+      "name": "perl-libwww",
+      "version": "6.83-3",
+      "base": "perl-libwww",
+      "archive": "perl-libwww-6.83-3.src.tar.zst",
+      "sha256": "788a71037499483111e2a0448419e065c5df848cc721d54f97ec506047019461",
+      "url": "https://repo.msys2.org/msys/sources/perl-libwww-6.83-3.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl",
+        "spdx:GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-lwp-mediatypes",
+      "version": "6.05-2",
+      "base": "perl-lwp-mediatypes",
+      "archive": "perl-lwp-mediatypes-6.05-2.src.tar.zst",
+      "sha256": "28ee8adc49da4770e95cf47840c5b273c0cfe11b7c06ee7931bd7e3db996a767",
+      "url": "https://repo.msys2.org/msys/sources/perl-lwp-mediatypes-6.05-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-mailtools",
+      "version": "2.22-2",
+      "base": "perl-mailtools",
+      "archive": "perl-mailtools-2.22-2.src.tar.zst",
+      "sha256": "f4b9a53ec11e66128122f10ff4d2128365f6741685771168ce18152df89e1f28",
+      "url": "https://repo.msys2.org/msys/sources/perl-mailtools-2.22-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-mime-tools",
+      "version": "5.518-2",
+      "base": "perl-mime-tools",
+      "archive": "perl-mime-tools-5.518-2.src.tar.zst",
+      "sha256": "8143c747ac41d191c155323a40a0c48d1d97301dddd20488b3cbdba5c132d99c",
+      "url": "https://repo.msys2.org/msys/sources/perl-mime-tools-5.518-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl",
+        "spdx:GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-net-http",
+      "version": "6.24-2",
+      "base": "perl-net-http",
+      "archive": "perl-net-http-6.24-2.src.tar.zst",
+      "sha256": "caf72941bb0ee80d5019d71ec68569a03b81a6dd427a01263ce30a346ba1fa9b",
+      "url": "https://repo.msys2.org/msys/sources/perl-net-http-6.24-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-net-smtp-ssl",
+      "version": "1.04-3",
+      "base": "perl-net-smtp-ssl",
+      "archive": "perl-net-smtp-ssl-1.04-3.src.tar.zst",
+      "sha256": "de49f76a42a14bbcf28f5ae0b5d7d165d61b86c8a2df2f301528d8a0ef53cecf",
+      "url": "https://repo.msys2.org/msys/sources/perl-net-smtp-ssl-1.04-3.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-net-ssleay",
+      "version": "1.96-2",
+      "base": "perl-net-ssleay",
+      "archive": "perl-net-ssleay-1.96-2.src.tar.zst",
+      "sha256": "dfa20c1133e89b6197a196148357690bb3070799d4fe37cc0bbf9d47baf3e34b",
+      "url": "https://repo.msys2.org/msys/sources/perl-net-ssleay-1.96-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-2.0"
+      ]
+    },
+    {
+      "name": "perl-termreadkey",
+      "version": "2.38-9",
+      "base": "perl-termreadkey",
+      "archive": "perl-termreadkey-2.38-9.src.tar.zst",
+      "sha256": "ffdf50525df9df844c506f4589739842577a12762235ae7b95a4596710b3d39c",
+      "url": "https://repo.msys2.org/msys/sources/perl-termreadkey-2.38-9.src.tar.zst",
+      "licenses": [
+        "spdx:LicenseRef-TermReadKey"
+      ]
+    },
+    {
+      "name": "perl-timedate",
+      "version": "2.35-2",
+      "base": "perl-timedate",
+      "archive": "perl-timedate-2.35-2.src.tar.zst",
+      "sha256": "85bfece906cfc69cefcd3f562b6bbb6f87e09257f89a0c7e470a8156d952f860",
+      "url": "https://repo.msys2.org/msys/sources/perl-timedate-2.35-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl"
+      ]
+    },
+    {
+      "name": "perl-try-tiny",
+      "version": "0.32-2",
+      "base": "perl-try-tiny",
+      "archive": "perl-try-tiny-0.32-2.src.tar.zst",
+      "sha256": "f5839ad9faf739fad79b0c79ef2541a3b2b9d9f02360113464d0b0303412c4df",
+      "url": "https://repo.msys2.org/msys/sources/perl-try-tiny-0.32-2.src.tar.zst",
+      "licenses": [
+        "spdx:MIT"
+      ]
+    },
+    {
+      "name": "perl-uri",
+      "version": "5.40-1",
+      "base": "perl-uri",
+      "archive": "perl-uri-5.40-1.src.tar.zst",
+      "sha256": "3263f1408f8ef92f896080530a61a6cc7341e3ab58ece29c61cb25895aa377a3",
+      "url": "https://repo.msys2.org/msys/sources/perl-uri-5.40-1.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl OR GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "perl-www-robotrules",
+      "version": "6.03-2",
+      "base": "perl-www-robotrules",
+      "archive": "perl-www-robotrules-6.03-2.src.tar.zst",
+      "sha256": "2e6eb4f4ef6be7d9630f18f00f404e2dc4208d489c814246085294e54620dbc3",
+      "url": "https://repo.msys2.org/msys/sources/perl-www-robotrules-6.03-2.src.tar.zst",
+      "licenses": [
+        "spdx:Artistic-1.0-Perl",
+        "spdx:GPL-1.0-or-later"
+      ]
+    },
+    {
+      "name": "pinentry",
+      "version": "1.3.3-1",
+      "base": "pinentry",
+      "archive": "pinentry-1.3.3-1.src.tar.zst",
+      "sha256": "2233f33cda06f84d70c973ad62c77a143c1de8d5d7f7e4c6d33500ccb6262539",
+      "url": "https://repo.msys2.org/msys/sources/pinentry-1.3.3-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "rebase",
+      "version": "4.5.0-5",
+      "base": "rebase",
+      "archive": "rebase-4.5.0-5.src.tar.zst",
+      "sha256": "5e9c24c35a881888c045aa04b676f79d238e870a7391f595665e9bd9d26b09c9",
+      "url": "https://repo.msys2.org/msys/sources/rebase-4.5.0-5.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "sed",
+      "version": "4.9-1",
+      "base": "sed",
+      "archive": "sed-4.9-1.src.tar.zst",
+      "sha256": "a9686da7c1f3cb2ba7ae5f20f30d9ef38f7bba993f9c777b43bd13c7fbd7cc58",
+      "url": "https://repo.msys2.org/msys/sources/sed-4.9-1.src.tar.zst",
+      "licenses": [
+        "GPL3"
+      ]
+    },
+    {
+      "name": "ssh-pageant",
+      "version": "1.4.r15.gc804ba4-1",
+      "base": "ssh-pageant",
+      "archive": "ssh-pageant-1.4.r15.gc804ba4-1.src.tar.zst",
+      "sha256": "21e48b0979d3d79548ca7ea3cff4127c6b835a0b4797f6324a8949f80fac810c",
+      "url": "https://repo.msys2.org/msys/sources/ssh-pageant-1.4.r15.gc804ba4-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-3.0-or-later"
+      ]
+    },
+    {
+      "name": "subversion",
+      "version": "1.14.5-3",
+      "base": "subversion",
+      "archive": "subversion-1.14.5-3.src.tar.zst",
+      "sha256": "1c53f5aaa8059783414f242330063fc7e3e2624ecdea4869df410e34563c4d4a",
+      "url": "https://repo.msys2.org/msys/sources/subversion-1.14.5-3.src.tar.zst",
+      "licenses": [
+        "spdx:Apache-2.0"
+      ]
+    },
+    {
+      "name": "tar",
+      "version": "1.35-3",
+      "base": "tar",
+      "archive": "tar-1.35-3.src.tar.zst",
+      "sha256": "eeef1210f2f3db98bdf301ab72e0e8886b8348938e58dfc58897639143eebf0b",
+      "url": "https://repo.msys2.org/msys/sources/tar-1.35-3.src.tar.zst",
+      "licenses": [
+        "GPL3"
+      ]
+    },
+    {
+      "name": "tig",
+      "version": "2.6.1-1",
+      "base": "tig",
+      "archive": "tig-2.6.1-1.src.tar.zst",
+      "sha256": "7052bc63619af7d4b2bba3a42c38d547223321dcf388a1744403466cd8bcc22e",
+      "url": "https://repo.msys2.org/msys/sources/tig-2.6.1-1.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "unzip",
+      "version": "6.0-3",
+      "base": "unzip",
+      "archive": "unzip-6.0-3.src.tar.zst",
+      "sha256": "cac4880eed19117a26ee8827619e6a22110adf2ba18f4ca0d94ba5dd5d4d1453",
+      "url": "https://repo.msys2.org/msys/sources/unzip-6.0-3.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    },
+    {
+      "name": "util-linux",
+      "version": "2.40.2-2",
+      "base": "util-linux",
+      "archive": "util-linux-2.40.2-2.src.tar.zst",
+      "sha256": "ea018e116866c0e2d9a3d6cee3f0d09801e6725789b6f99fd1979dfc7a68b703",
+      "url": "https://repo.msys2.org/msys/sources/util-linux-2.40.2-2.src.tar.zst",
+      "licenses": [
+        "spdx:GPL-2.0-or-later"
+      ]
+    },
+    {
+      "name": "vim",
+      "version": "9.2.1178-1",
+      "base": "vim",
+      "archive": "vim-9.2.1178-1.src.tar.zst",
+      "sha256": "91b772e08f806ef018440189f1df4d054e1fa7dce50346f9df46821d6cefc5f3",
+      "url": "https://repo.msys2.org/msys/sources/vim-9.2.1178-1.src.tar.zst",
+      "licenses": [
+        "spdx:Vim"
+      ]
+    },
+    {
+      "name": "which",
+      "version": "2.25-1",
+      "base": "which",
+      "archive": "which-2.25-1.src.tar.zst",
+      "sha256": "374eb8f909ee69c57bdf9b4f4baf696459eb6e47e96e3e7f396661614d8628b0",
+      "url": "https://repo.msys2.org/msys/sources/which-2.25-1.src.tar.zst",
+      "licenses": [
+        "GPL3"
+      ]
+    },
+    {
+      "name": "winpty",
+      "version": "0.4.3-3",
+      "base": "winpty",
+      "archive": "winpty-0.4.3-3.src.tar.zst",
+      "sha256": "98e542802b6b2d310b4fdca678de5f19957922f19654a2f0c3c1a11aa32578ac",
+      "url": "https://repo.msys2.org/msys/sources/winpty-0.4.3-3.src.tar.zst",
+      "licenses": [
+        "MIT"
+      ]
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.2-1",
+      "base": "zlib",
+      "archive": "zlib-1.3.2-1.src.tar.zst",
+      "sha256": "b3ec151674ce25015b16b28394d679ac0eedee03d02be33f93367c3a2b4d426d",
+      "url": "https://repo.msys2.org/msys/sources/zlib-1.3.2-1.src.tar.zst",
+      "licenses": [
+        "custom"
+      ]
+    }
+  ]
+}

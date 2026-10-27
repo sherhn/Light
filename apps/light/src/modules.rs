@@ -23,6 +23,8 @@ use crate::i18n::{self, tr};
 /// Light for Lisp before modules existed has it from the first start, offline.
 const LISP_MODULE_JSON: &[u8] = include_bytes!("../../../registry/modules/lisp/module.json");
 const LISP_MODULE_COVER: &[u8] = include_bytes!("../../../registry/modules/lisp/cover.png");
+const LISP_MODULE_LICENSE: &[u8] = include_bytes!("../../../registry/modules/lisp/LICENSE");
+const LISP_MODULE_NOTICES: &[u8] = include_bytes!("../../../registry/modules/lisp/THIRD_PARTY_NOTICES.md");
 
 /// What a module is doing right now.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -193,7 +195,7 @@ impl App {
             let mut state = store.state();
             state.seeded = true;
             if used_before {
-                match store.install_bytes("lisp", &[("module.json", LISP_MODULE_JSON), ("cover.png", LISP_MODULE_COVER)]) {
+                match store.install_bytes("lisp", &[("module.json", LISP_MODULE_JSON), ("cover.png", LISP_MODULE_COVER), ("LICENSE", LISP_MODULE_LICENSE), ("THIRD_PARTY_NOTICES.md", LISP_MODULE_NOTICES)]) {
                     Ok(_) => {}
                     Err(e) => self.toast(i18n::fmt("Cannot set up the Lisp module: {}", &[&e]), Sev::Error),
                 }
