@@ -63,6 +63,15 @@ def make_fixture(tmp):
     return proj
 
 
+def screen_fits_window():
+    """Can a maximised window of this desktop hold the 1280x800 window the scripts are written for?"""
+    if os.name != "nt":
+        return True
+    import ctypes
+    metrics = ctypes.windll.user32.GetSystemMetrics
+    return metrics(16) >= 1280 and metrics(17) >= 800  # SM_CXFULLSCREEN, SM_CYFULLSCREEN
+
+
 def run_one(script_path):
     name = script_path.stem
     tmp = pathlib.Path(tempfile.mkdtemp(prefix=f"light-e2e-{name}-"))
@@ -75,6 +84,9 @@ def run_one(script_path):
         if "@needs_python" in text and not (shutil.which("py") or shutil.which("python3")):
             # a real interpreter is what the script checks files with
             return name, True, "skipped: no Python on this machine", 0.0
+        if "@full_window" in text and not screen_fits_window():
+            # its clicks are at places of the 1280x800 window, which a smaller screen shrinks (a CI runner has 1024x768)
+            return name, True, "skipped: the screen is smaller than the 1280x800 window", 0.0
         script = tmp / "script.json"
         script.write_text(text, encoding="utf-8")
         json.loads(text)  # validate
@@ -286,15 +298,19 @@ def main():
     scripts = sorted((ROOT / "tests" / "e2e").glob("*.json"))
     if filters:
         scripts = [s for s in scripts if any(f in s.stem for f in filters)]
-    failed = []
+    failed, skipped = [], []
     for s in scripts:
         name, ok, out, dt = run_one(s)
+        if ok and out.startswith("skipped:"):
+            skipped.append(name)
+            print(f"SKIP  {name:<22} {out.removeprefix('skipped: ')}")
+            continue
         print(f"{'PASS' if ok else 'FAIL'}  {name:<22} {dt:5.1f}s")
         if not ok:
             failed.append(name)
             for line in out.strip().splitlines()[-25:]:
                 print("      " + line)
-    print(f"\n{len(scripts) - len(failed)}/{len(scripts)} e2e scripts passed")
+    print(f"\n{len(scripts) - len(failed) - len(skipped)}/{len(scripts)} e2e scripts passed" + (f", {len(skipped)} skipped" if skipped else ""))
     sys.exit(1 if failed else 0)
 
 

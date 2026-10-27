@@ -1,5 +1,5 @@
 [
-  {"op": "log", "value": "@custom_theme: your own theme - a palette with colours changed by hand, kept when the theme is switched"},
+  {"op": "log", "value": "@custom_theme @full_window: your own theme - a palette with colours changed by hand, kept when the theme is switched"},
   {"op": "open_project", "path": "${PROJ}"},
   {"op": "open", "path": "${PROJ}/src/main.lisp"},
   {"op": "wait", "what": "index"},

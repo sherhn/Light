@@ -1,5 +1,5 @@
 [
-  {"op": "log", "value": "@linux_distro: the developer tools of a distribution can be chosen package by package, and tools of one's own added"},
+  {"op": "log", "value": "@linux_distro @full_window: the developer tools of a distribution can be chosen package by package, and tools of one's own added"},
   {"op": "open_project", "path": "${PROJ}"},
   {"op": "wait", "what": "index"},
   {"op": "wait", "what": "wsl_idle", "timeout": 30},

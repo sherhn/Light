@@ -1,5 +1,5 @@
 [
-  {"op": "log", "value": "@markup @modules markdown,restructuredtext,python,c-cpp: a Markdown tab is code and preview side by side, scrolled together, and has three modes"},
+  {"op": "log", "value": "@markup @full_window @modules markdown,restructuredtext,python,c-cpp: a Markdown tab is code and preview side by side, scrolled together, and has three modes"},
   {"op": "open_project", "path": "${PROJ}"},
   {"op": "wait", "what": "index"},
   {"op": "open", "path": "${PROJ}/site/guide.md"},
