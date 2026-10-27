@@ -467,7 +467,7 @@ impl App {
                     egui::ScrollArea::vertical().id_salt("new_project_fields")
                         .max_height((ctx.content_rect().height() - 160.0).max(140.0))
                         .min_scrolled_height((ctx.content_rect().height() - 180.0).clamp(100.0, 500.0))
-                        .show(ui, |ui| {
+                        .show_fading(ui, |ui| {
                     widgets::caption(ui, &pal, &tr("Name").to_uppercase());
                     ui.add_space(6.0);
                     let r = self.text_field(ui, &mut name, tr("project name"));
