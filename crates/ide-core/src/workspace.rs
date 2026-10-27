@@ -220,6 +220,13 @@ mod tests {
     use crate::testutil::TempDir;
 
     #[test]
+    fn empty_projects_do_not_seed_any_files() {
+        let temp = TempDir::new("empty-project");
+        let root = create_project(temp.path(), "empty", &Default::default()).unwrap();
+        assert_eq!(fs::read_dir(root).unwrap().count(), 0);
+    }
+
+    #[test]
     fn listing_sorts_dirs_first_and_hides_git() {
         let d = TempDir::new("list");
         fs::create_dir_all(d.path().join("b-dir")).unwrap();

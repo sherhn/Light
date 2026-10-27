@@ -283,7 +283,7 @@ impl App {
                 }
             }
             "file.new_project" => {
-                let parent = dirs_home().to_string_lossy().into_owned();
+                let parent = dirs_home().join("LightProjects").to_string_lossy().into_owned();
                 // the modules that are on are ticked; the dialog asks for the registry's list
                 let modules = self.mods.installed.iter().filter(|m| m.enabled).map(|m| m.manifest.id.clone()).collect();
                 if self.mods.index.is_none() {
@@ -292,7 +292,7 @@ impl App {
                 let linux = self.wsl_target().is_some();
                 let location = crate::project_location::ProjectLocation::new(self.suggested_distro().unwrap_or_default(), linux);
                 if cfg!(windows) && self.wsl.probe.is_none() && !self.wsl.probing() { self.wsl_probe(); }
-                self.popup = Popup::NewProject { parent, name: "my-project".into(), just_opened: true, modules, template: "@auto".into(), creating: false, location };
+                self.popup = Popup::NewProject { parent, name: "my-project".into(), just_opened: true, modules, template: String::new(), creating: false, location };
             }
             "file.clone" => self.open_clone_dialog(),
             "file.open_project" => {

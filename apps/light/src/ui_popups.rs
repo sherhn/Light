@@ -427,23 +427,7 @@ impl App {
                     self.popup = Popup::NewBranch { input, just_opened };
                 }
             }
-            Popup::NewProject { mut parent, mut name, mut just_opened, mut modules, mut template, mut creating, mut location } => {
-                let data = self.picker_data(ctx);
-                let installed_ids: Vec<String> = self.mods.installed.iter().map(|m| m.manifest.id.clone()).collect();
-                let missing: Vec<String> = modules.iter().filter(|id| !installed_ids.contains(id)).cloned().collect();
-                // templates of the ticked modules that are installed
-                let options: Vec<(String, String)> = self
-                    .mods
-                    .installed
-                    .iter()
-                    .filter(|m| modules.contains(&m.manifest.id))
-                    .flat_map(|m| m.manifest.templates.iter().map(move |t| (format!("{}/{}", m.manifest.id, t.name), format!("{} - {}", m.manifest.name, t.name))))
-                    .collect();
-                let chosen = if template == "@auto" { options.first().map(|o| o.0.clone()).unwrap_or_default() } else { template.clone() };
-                let chosen = if options.iter().any(|o| o.0 == chosen) { chosen } else { String::new() };
-                // modules that are still to be downloaded have their templates only afterwards: the first one is used then
-                let not_yet = template == "@auto" && options.is_empty() && !modules.is_empty();
-                let chosen_label = options.iter().find(|o| o.0 == chosen).map_or(tr(if not_yet { "The first template of the chosen modules" } else { "Empty project" }).to_string(), |o| o.1.clone());
+            Popup::NewProject { mut parent, mut name, mut just_opened, mut modules, template, mut creating, mut location } => {
                 if let Some(root) = location.poll() {
                     let distro = ide_core::wsl::wsl_path(&root).map(|path| path.distro);
                     let cfg = crate::app_env::ProjectConfig { modules: modules.clone(), decided: distro.is_some(), linux: distro, ..Default::default() };
@@ -451,16 +435,13 @@ impl App {
                         self.toast(i18n::fmt("Cannot save the project settings: {}", &[&error]), Sev::Error);
                     }
                     self.request_open_project(&root);
-                    let selected = self.mods.installed.iter().flat_map(|module| module.manifest.templates.iter().map(move |value| (module, value))).find(|(module, value)| format!("{}/{}", module.manifest.id, value.name) == chosen);
-                    if let Some((_, value)) = selected {
-                        let first = if value.open.is_empty() { value.files.keys().next().cloned().unwrap_or_default() } else { value.open.clone() };
-                        let first = first.replace("{{name}}", &ide_core::workspace::sanitize_project_name(&name)).replace("{{ident}}", &ide_core::workspace::identifier(&name));
-                        if !first.is_empty() { self.open_file(&root.join(first)); }
-                    }
                     return;
                 }
                 let working = location.job.is_some();
                 let (mut ok, mut cancel) = (enter && !creating && !working, esc && !working);
+                let data = self.picker_data(ctx);
+                let installed_ids: Vec<String> = self.mods.installed.iter().map(|m| m.manifest.id.clone()).collect();
+                let missing: Vec<String> = modules.iter().filter(|id| !installed_ids.contains(id)).cloned().collect();
                 let pal = self.pal;
                 self.dialog_card(ctx, "new_project", tr("New Project"), 640.0_f32.min((ctx.content_rect().width() - 64.0).max(280.0)), |ui| {
                     if working { ui.disable(); }
@@ -481,25 +462,7 @@ impl App {
                     ui.add_space(6.0);
                     crate::ui_modules::module_picker(ui, &pal, &data, &mut modules);
                     ui.add_space(14.0);
-                    widgets::caption(ui, &pal, &tr("Start from").to_uppercase());
-                    ui.add_space(6.0);
-                    let resp = widgets::Pill::new(&chosen_label).icon(Icon::File, pal.text_dim).chevron().bordered().height(widgets::FIELD_H).show(ui, &pal);
-                    egui::Popup::menu(&resp).width(340.0).show(|ui| {
-                        if ui.selectable_label(chosen.is_empty(), tr("Empty project")).clicked() {
-                            template = String::new();
-                            ui.close();
-                        }
-                        for (key, label) in &options {
-                            if ui.selectable_label(&chosen == key, label).clicked() {
-                                template = key.clone();
-                                ui.close();
-                            }
-                        }
-                    });
-                    if options.is_empty() && modules.is_empty() {
-                        ui.add_space(4.0);
-                        ui.label(RichText::new(tr("Tick a module to start from one of its templates.")).color(pal.text_dim).size(12.0));
-                    }
+                    ui.label(RichText::new(tr("The project folder starts empty. Add files with + in Project.")).color(pal.text_dim).size(12.0));
                     ui.add_space(10.0);
                     if creating {
                         ui.label(RichText::new(tr("Downloading the modules...")).color(pal.accent).size(12.5));
@@ -535,10 +498,7 @@ impl App {
                     }
                 }
                 if ok {
-                    let files: std::collections::BTreeMap<String, String> = self.mods.installed.iter()
-                        .filter_map(|module| module.manifest.templates.iter().find(|value| format!("{}/{}", module.manifest.id, value.name) == chosen))
-                        .flat_map(|value| value.files.clone()).collect();
-                    location.start(&parent, &name, files);
+                    location.start(&parent, &name, Default::default());
                 }
                 if location.job.is_some() || self.wsl.probing() { ctx.request_repaint_after(std::time::Duration::from_millis(50)); }
                 self.popup = Popup::NewProject { parent, name, just_opened, modules, template, creating, location };

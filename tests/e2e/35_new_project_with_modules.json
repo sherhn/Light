@@ -1,5 +1,5 @@
 [
-  {"op": "log", "value": "@no_modules: a new project chooses its modules, which are downloaded first, and starts from their template"},
+  {"op": "log", "value": "@no_modules: a new project downloads selected modules but creates no files"},
   {"op": "assert_modules", "installed": []},
   {"op": "command", "value": "file.new_project"},
   {"op": "assert_popup", "value": "new_project"},
@@ -15,13 +15,12 @@
   {"op": "wait", "what": "index"},
   {"op": "frames", "value": 6},
   {"op": "assert_modules", "installed": ["markdown", "python"], "enabled": ["markdown", "python"]},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/main.py", "value": "Hello, Light"},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/.light/project.json", "value": "python"},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/hello-app/.light/project.json", "value": "markdown"},
-  {"op": "assert_language", "value": "python"},
+  {"op": "assert_empty_directory", "path": "${PROJ}_new/hello-app"},
+  {"op": "assert_project_config", "path": "${PROJ}_new/hello-app", "value": "python"},
+  {"op": "assert_project_config", "path": "${PROJ}_new/hello-app", "value": "markdown"},
   {"op": "screenshot", "path": "${SHOTS}/${NAME}_created.png"},
 
-  {"op": "log", "value": "Lisp is a template of the Lisp module like any other"},
+  {"op": "log", "value": "Lisp projects also start empty, even for legacy template requests"},
   {"op": "module_install", "value": "lisp"},
   {"op": "wait", "what": "modules_idle", "timeout": 30},
   {"op": "command", "value": "file.new_project"},
@@ -31,8 +30,7 @@
   {"op": "key", "value": "Enter"},
   {"op": "wait", "what": "no_popup", "timeout": 60},
   {"op": "wait", "what": "index"},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/lisp-demo/lisp-demo.asd", "value": "(asdf:defsystem \"lisp-demo\""},
-  {"op": "assert_file_contains", "path": "${PROJ}_new/lisp-demo/src/main.lisp", "value": "(in-package :lisp-demo)"},
-  {"op": "assert_language", "value": "lisp"},
+  {"op": "assert_empty_directory", "path": "${PROJ}_new/lisp-demo"},
+  {"op": "assert_project_config", "path": "${PROJ}_new/lisp-demo", "value": "lisp"},
   {"op": "quit"}
 ]

@@ -215,6 +215,14 @@ impl App {
                     _ => crate::app_run::RunConfig::CurrentFile,
                 };
             }
+            "assert_empty_directory" => {
+                let empty = path.as_ref().and_then(|p| std::fs::read_dir(p).ok()).is_some_and(|mut entries| entries.next().is_none());
+                if !empty { self.fail(format!("directory is not empty: {path:?}")); }
+            }
+            "assert_project_modules" => {
+                let wanted: Vec<_> = step["names"].as_array().into_iter().flatten().filter_map(|v| v.as_str()).collect();
+                if !wanted.iter().all(|name| self.project_cfg.modules.iter().any(|id| id == name)) { self.fail(format!("project modules {:?} lack {wanted:?}", self.project_cfg.modules)); }
+            }
             "assert_project_config" => {
                 if let Some(root) = path.as_deref().or_else(|| self.project_root()) {
                     let config = crate::app_env::load_config(root);
