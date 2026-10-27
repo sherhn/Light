@@ -94,10 +94,11 @@ impl App {
             }
             // real time has passed (`sleep`): things that go by the clock, like scrolling while dragging, need it
             "after" => self.now >= cond["until"].as_f64().unwrap_or(0.0),
+            "file_contains" => cond["path"].as_str().and_then(|path| std::fs::read_to_string(path).ok()).is_some_and(|text| text.contains(cond["value"].as_str().unwrap_or(""))),
             "wsl_idle" => !self.wsl.busy(),
+            "project_browser_idle" => matches!(&self.popup, Popup::ProjectBrowser(browser) if browser.idle()) && !self.wsl.probing(),
             "new_project_idle" => matches!(&self.popup, Popup::NewProject { location, creating, .. } if location.job.is_none() && !creating),
             "clone_idle" => matches!(&self.popup, Popup::Clone(state) if state.run.is_none()),
-            "project_browser_idle" => matches!(&self.popup, Popup::ProjectBrowser(browser) if browser.idle()) && !self.wsl.probing(),
             // the registry has answered (with a list or an error)
             "modules_index" => self.mods.index.is_some() || self.mods.index_error.is_some(),
             "modules_idle" => self.mods.busy.is_empty() && !self.mods.loading_index && !self.mods.loading_covers,
@@ -383,6 +384,15 @@ impl App {
             "project_browser_focus" => {
                 let id = if sval == "path" { "project_browser_address" } else { "project_browser_search" };
                 ctx.memory_mut(|memory| memory.request_focus(egui::Id::unique(id)));
+            }
+            "double_click" => {
+                let s = self.script.as_mut().unwrap();
+                let click = serde_json::json!({"op": "click", "x": step["x"], "y": step["y"]});
+                // A gesture starts after the previous click chain expires. Send
+                // its presses on separate frames, as native input does.
+                s.steps.push_front(click.clone());
+                s.steps.push_front(click);
+                s.steps.push_front(serde_json::json!({"op": "sleep", "value": 0.35}));
             }
             "click" => {
                 let (x, y) = (step["x"].as_f64().unwrap_or(0.0) as f32, step["y"].as_f64().unwrap_or(0.0) as f32);
@@ -1249,10 +1259,11 @@ impl App {
                 let hit = self.github.rects.iter().find(|(n, _)| *n == sval).map(|(_, r)| egui::pos2(r.center().x, r.center().y));
                 match hit {
                     Some(pos) => {
-                        let presses = if step["double"].as_bool().unwrap_or(false) { 2 } else { 1 };
                         let s = self.script.as_mut().unwrap();
-                        s.pending.push(Event::PointerMoved(pos));
-                        for _ in 0..presses {
+                        if step["double"].as_bool().unwrap_or(false) {
+                            s.steps.push_front(serde_json::json!({"op": "double_click", "x": pos.x, "y": pos.y}));
+                        } else {
+                            s.pending.push(Event::PointerMoved(pos));
                             s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
                             s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
                         }

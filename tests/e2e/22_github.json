@@ -16,6 +16,7 @@
   {"op": "frames", "value": 6},
   {"op": "assert_github", "signed_in": false, "waiting": true},
   {"op": "screenshot", "path": "${SHOTS}/${NAME}_1b_waiting_for_browser.png"},
+  {"op": "wait", "what": "file_contains", "path": "${PROJ}/../fake-gcm.json", "value": "\"calls\": 1", "timeout": 10},
   {"op": "github_cancel_browser"},
   {"op": "wait", "what": "github_idle", "timeout": 30},
   {"op": "assert_github", "signed_in": false, "waiting": false, "no_login_error": true},
