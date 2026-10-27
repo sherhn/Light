@@ -100,6 +100,13 @@ jobs:
               sudo apt-get remove -y light-ide
               ;;
           esac
+      - name: Node.js for language-module tests
+        if: runner.os == 'Windows'
+        uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: GUI regression tests before publishing
+        if: runner.os == 'Windows'
+        run: python tests/run_e2e.py --release
       - uses: actions/upload-artifact@v4
         with:
           name: light-${{ runner.os }}-${{ runner.arch }}

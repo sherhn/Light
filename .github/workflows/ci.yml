@@ -33,3 +33,14 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --no-fail-fast --locked
       - run: cargo build --release --workspace --locked
+      - name: Node.js for language-module tests
+        if: runner.os == 'Windows'
+        uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Software OpenGL for GUI tests
+        if: runner.os == 'Windows'
+        uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with: { version: '26.0.3' }
+      - name: GUI regression tests
+        if: runner.os == 'Windows'
+        run: python tests/run_e2e.py --release
