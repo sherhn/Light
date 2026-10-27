@@ -151,6 +151,9 @@ impl App {
         if self.header_action(ui, header, 0, Icon::Refresh, "Refresh") {
             self.refresh_project();
         }
+        if self.project.is_some() && self.header_action(ui, header, 1, Icon::Plus, "New File...") {
+            self.run_command(ctx, "file.new");
+        }
         if self.project.is_none() {
             ui.add_space(28.0);
             ui.vertical_centered(|ui| {
@@ -306,8 +309,8 @@ impl App {
         }
         if let Some((a, path)) = action {
             match a.as_str() {
-                "new_file" => self.popup = Popup::NewFile { dir: path, input: String::new(), is_dir: false, just_opened: true },
-                "new_dir" => self.popup = Popup::NewFile { dir: path, input: String::new(), is_dir: true, just_opened: true },
+                "new_file" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), is_dir: false, just_opened: true },
+                "new_dir" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), is_dir: true, just_opened: true },
                 "rename" => {
                     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                     self.popup = Popup::RenameFile { path, input: name, just_opened: true };

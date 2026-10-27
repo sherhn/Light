@@ -27,6 +27,7 @@ pub const RU: &[(&str, &str)] = &[
     ("Build and run via WSL.", "Сборка и запуск в WSL."),
     ("Switch to Linux", "В Linux"),
     ("Set up Linux", "Настроить Linux"),
+    ("Full filename / no extension", "Полное имя / без расширения"),
     ("The project folder starts empty. Add files with + in Project.", "Папка проекта будет пустой. Добавляйте файлы кнопкой + в Project."),
     ("Search files by name", "Поиск файлов по имени"),
     // ---- menus and command titles (ide-core command registry)

@@ -91,6 +91,14 @@ pub fn create_file(path: &Path, content: &str) -> io::Result<()> {
     fs::write(path, content)
 }
 
+pub fn file_name_with_extension(name: &str, extension: &str) -> String {
+    let name = name.trim();
+    let extension = extension.trim().trim_start_matches('.');
+    let base = Path::new(name).file_name().and_then(|s| s.to_str()).unwrap_or(name);
+    if extension.is_empty() || Path::new(base).extension().is_some() || base.starts_with('.') { name.to_string() }
+    else { format!("{name}.{extension}") }
+}
+
 pub fn create_dir(path: &Path) -> io::Result<()> {
     if path.exists() {
         return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("{} already exists", path.display())));
@@ -218,6 +226,15 @@ pub fn create_project(parent: &Path, name: &str, files: &std::collections::BTree
 mod tests {
     use super::*;
     use crate::testutil::TempDir;
+
+    #[test]
+    fn choosing_an_extension_never_rewrites_an_explicit_filename() {
+        assert_eq!(file_name_with_extension(" main ", "js"), "main.js");
+        assert_eq!(file_name_with_extension("src/app", ".py"), "src/app.py");
+        assert_eq!(file_name_with_extension("app.mjs", "js"), "app.mjs");
+        assert_eq!(file_name_with_extension(".env", "js"), ".env");
+        assert_eq!(file_name_with_extension("Dockerfile", ""), "Dockerfile");
+    }
 
     #[test]
     fn empty_projects_do_not_seed_any_files() {

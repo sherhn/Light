@@ -7,6 +7,7 @@ use crate::lucide as l;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
+    Plus,
     Folder,
     FolderOpen,
     File,
@@ -100,6 +101,7 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::ArrowDown => l::ARROW_DOWN,
         Icon::Commit => l::GIT_COMMIT_HORIZONTAL,
         Icon::Refresh => l::REFRESH_CW,
+        Icon::Plus => '+',
         Icon::History => l::HISTORY,
         Icon::More => l::ELLIPSIS,
         Icon::Repl => l::SQUARE_TERMINAL,
@@ -134,6 +136,11 @@ pub fn glyph(icon: Icon) -> Option<char> {
 pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
     let size = rect.width().min(rect.height());
     match icon {
+        Icon::Plus => {
+            let c = rect.center();
+            painter.line_segment([c - Vec2::new(size * 0.35, 0.0), c + Vec2::new(size * 0.35, 0.0)], egui::Stroke::new(1.6, color));
+            painter.line_segment([c - Vec2::new(0.0, size * 0.35), c + Vec2::new(0.0, size * 0.35)], egui::Stroke::new(1.6, color));
+        }
         Icon::Lisp => {
             let r = Rect::from_center_size(rect.center(), Vec2::splat(size));
             painter.rect_filled(r, CornerRadius::same((size * 0.28) as u8), color.gamma_multiply(0.22));

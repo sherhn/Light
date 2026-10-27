@@ -215,6 +215,12 @@ impl App {
                     _ => crate::app_run::RunConfig::CurrentFile,
                 };
             }
+            "new_file_set" => {
+                if let Popup::NewFile { input, extension, .. } = &mut self.popup {
+                    *input = sval.clone();
+                    *extension = step["extension"].as_str().unwrap_or("").into();
+                } else { self.fail("new_file_set: no new file dialog".into()); }
+            }
             "assert_empty_directory" => {
                 let empty = path.as_ref().and_then(|p| std::fs::read_dir(p).ok()).is_some_and(|mut entries| entries.next().is_none());
                 if !empty { self.fail(format!("directory is not empty: {path:?}")); }

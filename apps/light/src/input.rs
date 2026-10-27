@@ -278,7 +278,7 @@ impl App {
             "file.new" => {
                 let dir = self.project.as_ref().map(|p| p.selected.clone().filter(|s| s.is_dir()).or_else(|| p.selected.as_ref().and_then(|s| s.parent().map(|x| x.to_path_buf()))).unwrap_or_else(|| p.root.clone()));
                 match dir {
-                    Some(dir) => self.popup = Popup::NewFile { dir, input: String::new(), is_dir: false, just_opened: true },
+                    Some(dir) => self.popup = Popup::NewFile { dir, input: String::new(), extension: String::new(), is_dir: false, just_opened: true },
                     None => self.new_untitled(),
                 }
             }

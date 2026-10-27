@@ -322,10 +322,20 @@ impl App {
                     self.popup = Popup::Rename { old, input, just_opened };
                 }
             }
-            Popup::NewFile { dir, mut input, is_dir, mut just_opened } => {
+            Popup::NewFile { dir, mut input, mut extension, is_dir, mut just_opened } => {
                 let (mut ok, mut cancel) = (enter, esc);
                 let rel = self.project_root().map(|r| ide_core::workspace::relative(r, &dir)).unwrap_or_default();
                 self.dialog_card(ctx, "new_file", if is_dir { tr("New Directory") } else { tr("New File") }, 440.0, |ui| {
+                    if !is_dir {
+                        let mut extensions: Vec<String> = self.mods.installed.iter().filter(|m| m.enabled).flat_map(|m| m.manifest.languages.iter()).flat_map(|l| l.extensions.iter().cloned()).collect();
+                        extensions.extend(["js", "jsx", "mjs", "cjs", "json", "yaml", "yml", "rs", "py", "md", "txt"].map(String::from));
+                        extensions.sort(); extensions.dedup();
+                        egui::ComboBox::from_id_salt("new_file_extension").selected_text(if extension.is_empty() { tr("Full filename / no extension").to_string() } else { format!(".{extension}") }).show_ui(ui, |ui| {
+                            ui.selectable_value(&mut extension, String::new(), tr("Full filename / no extension"));
+                            for ext in extensions { ui.selectable_value(&mut extension, ext.clone(), format!(".{ext}")); }
+                        });
+                        ui.add_space(8.0);
+                    }
                     let r = self.text_field(ui, &mut input, if is_dir { tr("directory name") } else { tr("file name (include an extension to choose a language)") });
                     widgets::focus_once(ui, &r, &mut just_opened);
                     ui.add_space(8.0);
@@ -337,7 +347,7 @@ impl App {
                 if cancel {
                     self.editor_focus = true;
                 } else if ok && !input.trim().is_empty() {
-                    let name = input.trim().to_string();
+                    let name = ide_core::workspace::file_name_with_extension(&input, &extension);
                     let path = dir.join(&name);
                     let res = if is_dir { ide_core::workspace::create_dir(&path) } else { ide_core::workspace::create_file(&path, "") };
                     match res {
@@ -354,7 +364,7 @@ impl App {
                     }
                     self.editor_focus = true;
                 } else {
-                    self.popup = Popup::NewFile { dir, input, is_dir, just_opened };
+                    self.popup = Popup::NewFile { dir, input, extension, is_dir, just_opened };
                 }
             }
             Popup::RenameFile { path, mut input, mut just_opened } => {
