@@ -150,7 +150,7 @@ pub struct Project {
     pub index: ProjectIndex,
     pub index_rx: Option<Receiver<(ProjectIndex, Vec<PathBuf>)>>,
     pub branch: Option<String>,
-    /// The folders and files the project does not show (its settings, `.light/project.json`).
+    /// The folders and files the project does not show (its settings in the IDE profile).
     pub hidden: ide_core::workspace::Hidden,
 }
 

@@ -214,6 +214,13 @@ impl App {
                     _ => crate::app_run::RunConfig::CurrentFile,
                 };
             }
+            "assert_project_config" => {
+                if let Some(root) = path.as_deref().or_else(|| self.project_root()) {
+                    let config = crate::app_env::load_config(root);
+                    let text = serde_json::to_string(&config).unwrap_or_default();
+                    if !text.contains(&sval) { self.fail(format!("project profile lacks {sval}: {text}")); }
+                } else { self.fail("no project for profile assertion".into()); }
+            }
             "assert_run_lacks" => {
                 if self.run.log.iter().any(|l| l.text.contains(&sval)) {
                     self.fail(format!("assert_run_lacks: {sval:?} is in the run log"));

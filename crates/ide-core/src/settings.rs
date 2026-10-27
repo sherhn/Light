@@ -247,6 +247,11 @@ impl Settings {
     }
 
     pub fn load_from(path: &Path) -> Settings {
+        Self::read_from(path).or_else(|| Self::read_from(&path.with_extension("json.bak")))
+            .or_else(|| Self::read_from(&path.with_extension("json.tmp"))).unwrap_or_default()
+    }
+
+    fn read_from(path: &Path) -> Option<Settings> {
         fs::read_to_string(path)
             .ok()
             .and_then(|s| serde_json::from_str::<Settings>(&s).ok())
@@ -254,14 +259,10 @@ impl Settings {
                 s.font_size = s.font_size.clamp(MIN_FONT, MAX_FONT);
                 s
             })
-            .unwrap_or_default()
     }
 
     pub fn load() -> Settings {
-        match Self::config_dir() {
-            Some(dir) => Self::load_from(&dir.join("settings.json")),
-            None => Settings::default(),
-        }
+        Self::config_dir().map(|dir| Self::load_from(&dir.join("settings.json"))).unwrap_or_default()
     }
 
     pub fn save_to(&self, path: &Path) -> io::Result<()> {
@@ -269,6 +270,7 @@ impl Settings {
             fs::create_dir_all(parent)?;
         }
         let json = serde_json::to_string_pretty(self).map_err(io::Error::other)?;
+        if Self::read_from(path).is_some() { fs::copy(path, path.with_extension("json.bak"))?; }
         // write atomically so a crash can't leave a half-written file
         let tmp = path.with_extension("json.tmp");
         fs::write(&tmp, json)?;
@@ -308,6 +310,19 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::testutil::TempDir;
+
+    #[test]
+    fn a_damaged_profile_recovers_the_last_valid_backup() {
+        let temp = TempDir::new("profile-backup");
+        let file = temp.path().join("settings.json");
+        let mut settings = Settings::default();
+        settings.push_recent_project("retained-project");
+        settings.save_to(&file).unwrap();
+        let mut updated = settings.clone(); updated.font_size = 20.0;
+        updated.save_to(&file).unwrap();
+        fs::write(&file, "{incomplete").unwrap();
+        assert_eq!(Settings::load_from(&file), settings);
+    }
 
     #[test]
     fn roundtrip_and_defaults() {

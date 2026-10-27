@@ -1020,7 +1020,7 @@ pub const RU: &[(&str, &str)] = &[
     ("Names of packages and programs may have letters, digits and . + - _ : only", "В названиях пакетов и программ допустимы только буквы, цифры и . + - _ :"),
     ("A tool called {} already exists", "Инструмент «{}» уже есть"),
     // ---- project settings: hidden folders
-    ("These settings belong to {} and are kept in its .light folder, which git does not see.", "Эти настройки относятся к проекту {} и хранятся в его папке .light, которую git не видит."),
+    ("These settings belong to {} and are kept in your IDE profile, outside the project folder.", "Эти настройки относятся к проекту {} и хранятся в вашем профиле IDE, вне папки проекта."),
     ("Hidden folders", "Скрытые папки"),
     ("Folders not shown", "Не показывать папки"),
     ("Left out of the project tree, Go to File, Find in Files and the search for definitions. One per line: a name hides every folder of that name, a path starting with / only that one, and * matches anything (*.log).", "Не попадают в дерево проекта, переход к файлу, поиск по файлам и поиск определений. По одной на строку: имя скрывает все папки с таким именем, путь с / в начале — только эту папку, * означает что угодно (*.log)."),

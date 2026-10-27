@@ -37,7 +37,7 @@
   {"op": "assert_run_contains", "value": "main.lisp main"},
 
   {"op": "log", "value": "the scenarios are kept with the project and edited in a dialog"},
-  {"op": "assert_file_contains", "path": "${PROJ}/.light/project.json", "value": "goes on"},
+  {"op": "assert_project_config", "path": "${PROJ}", "value": "goes on"},
   {"op": "command", "value": "run.scenarios"},
   {"op": "frames", "value": 4},
   {"op": "assert_popup", "value": "scenarios"},

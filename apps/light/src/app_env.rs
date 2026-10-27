@@ -1,7 +1,7 @@
 //! Where a project is built and run: on Windows, or in Linux through WSL.
 //!
 //! A project on a WSL file system (`\\wsl.localhost\Ubuntu\home\...`) is always a Linux project. Any other project
-//! can be switched; the choice is kept in `.light/project.json`, which git never sees. A Linux project runs its
+//! can be switched; the choice is kept in the user's IDE profile, keyed by project path. A Linux project runs its
 //! terminal, make targets, Lisp and REPL in the distribution, and its git runs there when it lives there.
 
 use std::path::Path;
@@ -60,11 +60,16 @@ pub fn default_hidden() -> Vec<String> {
 }
 
 fn config_path(root: &Path) -> std::path::PathBuf {
-    ide_core::paths::project_data_dir(root).join("project.json")
+    let normalized = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let key = ide_core::modules::sha256::sha256_hex(normalized.to_string_lossy().as_bytes());
+    let base = if cfg!(test) { std::env::temp_dir().join(format!("light-project-settings-tests-{}", std::process::id())) }
+        else { ide_core::settings::Settings::config_dir().unwrap_or_else(std::env::temp_dir) };
+    base.join("projects").join(key).join("project.json")
 }
 
 pub fn load_config(root: &Path) -> ProjectConfig {
-    std::fs::read_to_string(config_path(root)).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+    let current = config_path(root);
+    [current.clone(), current.with_extension("json.bak"), root.join(".light/project.json")].iter().find_map(|path| std::fs::read_to_string(path).ok().and_then(|s| serde_json::from_str(&s).ok())).unwrap_or_default()
 }
 
 pub fn save_config(root: &Path, cfg: &ProjectConfig) -> std::io::Result<()> {
@@ -72,11 +77,10 @@ pub fn save_config(root: &Path, cfg: &ProjectConfig) -> std::io::Result<()> {
     if let Some(dir) = p.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    std::fs::write(&p, serde_json::to_string_pretty(cfg).unwrap_or_default())?;
-    // like the local commits, the project settings never become a change in git
-    if let Some(repo) = ide_core::git::find_repo(root) {
-        ide_core::localvcs::LocalVcs::ensure_git_ignored(&repo);
-    }
+    if p.is_file() { std::fs::copy(&p, p.with_extension("json.bak"))?; }
+    let temporary = p.with_extension(format!("json.{}.tmp", std::process::id()));
+    std::fs::write(&temporary, serde_json::to_string_pretty(cfg).unwrap_or_default())?;
+    std::fs::rename(&temporary, &p)?;
     Ok(())
 }
 
@@ -453,6 +457,7 @@ mod tests {
         let cfg = ProjectConfig { linux: Some("Ubuntu-24.04".into()), decided: true, modules: vec!["python".into()], scenarios: vec![Scenario { name: "build".into(), commands: vec!["make".into(), "make test".into()], stop_on_error: false }], hidden: vec!["/build".into()] };
         save_config(&d, &cfg).unwrap();
         assert_eq!(load_config(&d), cfg);
+        assert!(!d.join(".light").exists(), "project metadata belongs outside the project");
         // a project that never chose hides the agents' folders; one that emptied the list hides nothing
         std::fs::write(config_path(&d), r#"{"decided":true}"#).unwrap();
         assert!(load_config(&d).hidden.iter().any(|h| h == ".claude"));

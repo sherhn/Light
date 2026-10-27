@@ -13,6 +13,6 @@
   {"op": "wait", "what": "modules_idle", "timeout": 60},
   {"op": "frames", "value": 6},
   {"op": "assert_modules", "installed": ["lisp", "markdown"], "enabled": ["lisp", "markdown"], "needed": []},
-  {"op": "assert_file_contains", "path": "${PROJ}_clones/demo/.light/project.json", "value": "markdown"},
+  {"op": "assert_project_config", "path": "${PROJ}_clones/demo", "value": "markdown"},
   {"op": "quit"}
 ]

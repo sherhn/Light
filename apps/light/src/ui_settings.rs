@@ -388,7 +388,7 @@ impl App {
         let draft = self.hidden_draft.get_or_insert_with(|| self.project_cfg.hidden.join("\n"));
         let changed = hidden_lines(draft) != self.project_cfg.hidden;
         let mut act: Option<Vec<String>> = None;
-        ui.label(RichText::new(i18n::fmt("These settings belong to {} and are kept in its .light folder, which git does not see.", &[&name])).color(pal.text_dim).size(12.5));
+        ui.label(RichText::new(i18n::fmt("These settings belong to {} and are kept in your IDE profile, outside the project folder.", &[&name])).color(pal.text_dim).size(12.5));
         ui.add_space(14.0);
         group(ui, &pal, tr("Hidden folders"), |ui, rows| {
             rows.row(ui, &pal, tr("Folders not shown"), tr("Left out of the project tree, Go to File, Find in Files and the search for definitions. One per line: a name hides every folder of that name, a path starting with / only that one, and * matches anything (*.log)."), 150.0, |ui| {

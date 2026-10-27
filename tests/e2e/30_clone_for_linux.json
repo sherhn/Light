@@ -13,6 +13,6 @@
   {"op": "assert_project_file", "value": "src/main.lisp"},
   {"op": "assert_env", "value": "linux:Ubuntu-24.04", "banner": false},
   {"op": "assert_file_contains", "path": "${PROJ}_clones/demo/.git/config", "value": "autocrlf = false"},
-  {"op": "assert_file_contains", "path": "${PROJ}_clones/demo/.light/project.json", "value": "Ubuntu-24.04"},
+  {"op": "assert_project_config", "path": "${PROJ}_clones/demo", "value": "Ubuntu-24.04"},
   {"op": "quit"}
 ]

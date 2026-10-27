@@ -101,7 +101,7 @@ pub struct App {
     pub run_config: crate::app_run::RunConfig,
     /// The scenario that is running (its other commands are still to start).
     pub scenario: Option<crate::app_scenario::ScenarioRun>,
-    /// Where the open project is built and run (`.light/project.json`).
+    /// Where the open project is built and run (its settings in the IDE profile).
     pub project_cfg: crate::app_env::ProjectConfig,
     /// The list of hidden folders as it is being typed on the Project page of the settings (one per line).
     pub hidden_draft: Option<String>,

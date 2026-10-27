@@ -1,5 +1,5 @@
 //! Run scenarios: a named list of console commands of a project that run one after another, in the project's
-//! folder - in its Linux or on Windows - with their output in the Run window. They are kept in `.light/project.json`
+//! folder - in its Linux or on Windows - with their output in the Run window. They are kept in the user's IDE profile
 //! and offered next to the files, make targets and ASDF systems in the run configuration picker.
 
 use std::path::Path;
@@ -34,7 +34,7 @@ impl App {
         &self.project_cfg.scenarios
     }
 
-    /// Keep the scenarios of the project (`.light/project.json`).
+    /// Keep the scenarios of the project (in its settings in the IDE profile).
     pub fn save_scenarios(&mut self, list: Vec<Scenario>) {
         let Some(root) = self.project_root().map(Path::to_path_buf) else { return };
         self.project_cfg.scenarios = list;
