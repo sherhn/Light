@@ -66,6 +66,8 @@ def make_fixture(tmp):
 def run_one(script_path):
     name = script_path.stem
     tmp = pathlib.Path(tempfile.mkdtemp(prefix=f"light-e2e-{name}-"))
+    # set before anything can return: the cleanup below stops it
+    github = None
     try:
         proj = make_fixture(tmp)
         text = script_path.read_text(encoding="utf-8")
@@ -212,7 +214,6 @@ def run_one(script_path):
         # the tests never read the real GitHub login (gh / Git credential store) nor call api.github.com
         env["LIGHT_GITHUB_AUTODETECT"] = "0"
         env.pop("LIGHT_GITHUB_FAKE_TOKEN", None)
-        github = None
         if "github" in name:
             remotes = tmp / "remotes"
             paths = {
