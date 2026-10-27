@@ -42,6 +42,9 @@ pub struct App {
     pub bottom_tool: Option<BottomTool>,
     pub repl: ReplState,
     pub run: RunState,
+    pub run_key: String,
+    pub run_request: Option<crate::app_run::RunRequest>,
+    pub other_runs: Vec<crate::app_run::RunTab>,
     pub compile: Option<CompileJob>,
     pub compiler_problems: Vec<ProblemRow>,
     pub find_results: FindResults,
@@ -139,6 +142,9 @@ impl App {
             bottom_tool: None,
             repl: ReplState { package: "COMMON-LISP-USER".into(), stick_to_bottom: true, ..Default::default() },
             run: RunState::default(),
+            run_key: String::new(),
+            run_request: None,
+            other_runs: Vec::new(),
             compile: None,
             compiler_problems: vec![],
             find_results: FindResults::default(),
@@ -194,7 +200,7 @@ impl App {
             shift_tap: (false, false, -10.0),
             settings,
         };
-        app.modules_init();
+        if !cfg!(test) { app.modules_init(); }
         app
     }
 
@@ -227,8 +233,14 @@ impl App {
     pub fn save_settings(&mut self) {
         self.settings.open_files = self.docs.iter().filter_map(|d| d.path.as_ref().map(|p| p.to_string_lossy().into_owned())).collect();
         self.settings.active_file = self.doc().and_then(|d| d.path.as_ref()).map(|p| p.to_string_lossy().into_owned());
+        if let Some(project) = &self.project {
+            self.settings.project_sessions.insert(project.root.to_string_lossy().into_owned(), ide_core::settings::ProjectSession {
+                files: self.settings.open_files.clone(), active: self.settings.active_file.clone(),
+                expanded: project.expanded.iter().map(|p| p.to_string_lossy().into_owned()).collect(),
+            });
+        }
         self.settings.show_project_panel = self.left_tool.is_some();
-        if let Err(e) = self.settings.save() {
+        if !cfg!(test) && let Err(e) = self.settings.save() {
             eprintln!("could not save settings: {e}");
         }
     }
@@ -259,7 +271,9 @@ impl App {
             self.toast(i18n::fmt("{} is not a folder", &[&path.display()]), Sev::Error);
             return;
         }
+        if self.project.is_some() { self.save_settings(); }
         let root = path.to_path_buf();
+        let session = self.settings.project_sessions.get(&root.to_string_lossy().into_owned()).cloned();
         self.project_filter.clear();
         // another project in this window: nothing of the old one stays (tabs, search results, history, problems...)
         if self.project.as_ref().is_some_and(|p| p.root != root) {
@@ -275,6 +289,9 @@ impl App {
         });
         let mut expanded = HashSet::new();
         expanded.insert(root.clone());
+        if let Some(session) = &session {
+            expanded = session.expanded.iter().map(PathBuf::from).filter(|p| p.starts_with(&root) && p.is_dir()).collect();
+        }
         let branch = workspace::git_branch(&root);
         self.project = Some(Project { tree_ver: 0, tree_cache: None, ignore: IgnoreMatcher::new(&root), root: root.clone(), name, expanded, selected: None, dir_cache: HashMap::new(), files: vec![], files_rel: vec![], index: ProjectIndex::default(), index_rx: Some(rx), branch });
         self.settings.push_recent_project(&root.to_string_lossy());
@@ -285,6 +302,10 @@ impl App {
         // restart the REPL in the new working directory (and environment) on next use
         if self.repl.session.is_some() {
             self.repl_restart();
+        }
+        if let Some(session) = session {
+            for file in session.files { let path = PathBuf::from(file); if path.is_file() { self.open_file(&path); } }
+            if let Some(active) = session.active { let path = PathBuf::from(active); if path.is_file() { self.open_file(&path); } }
         }
         self.save_settings();
     }
@@ -297,6 +318,9 @@ impl App {
         if let Some(h) = self.run.handle.take() {
             h.kill();
         }
+        self.stop_other_runs();
+        self.run_key.clear();
+        self.run_request = None;
         self.run = RunState::default();
         if let Some(c) = self.compile.take() {
             c.handle.kill();
@@ -333,6 +357,8 @@ impl App {
     }
 
     pub fn close_project(&mut self) {
+        self.save_settings();
+        self.leave_project();
         self.project = None;
         self.load_project_env();
         self.docs.clear();
@@ -974,11 +1000,10 @@ impl App {
             self.toast(tr("SBCL not found - set the path in Settings"), Sev::Error);
             return;
         };
-        if let Some(h) = self.run.handle.take() {
-            h.kill();
-        }
         match runner::run_file(&imp, &path, self.project_root()) {
             Ok(h) => {
+                self.prepare_run(format!("file:{}", path.display()));
+                self.run_request = Some(crate::app_run::RunRequest::File(path.clone()));
                 self.run = RunState { handle: Some(h), title: format!("Run '{}'", path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()), log: vec![], running: true, exit_code: None };
                 self.run.log.push(LogLine { kind: LogKind::Info, text: format!("{} --non-interactive --load {}", imp.path.display(), path.display()) });
                 self.bottom_tool = Some(BottomTool::Run);
@@ -1003,6 +1028,15 @@ impl App {
     }
 
     pub fn poll_run(&mut self) {
+        self.poll_selected_run();
+        for index in 0..self.other_runs.len() {
+            self.select_run_tab(index);
+            self.poll_selected_run();
+            self.select_run_tab(index);
+        }
+    }
+
+    fn poll_selected_run(&mut self) {
         let mut exited = None;
         let mut lines = Vec::new();
         if let Some(h) = &self.run.handle {
@@ -1718,3 +1752,7 @@ pub struct DefinitionParts {
     /// Byte offset of the name in the file.
     pub name_start: usize,
 }
+
+#[cfg(test)]
+#[path = "app_session_tests.rs"]
+mod session_tests;

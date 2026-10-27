@@ -474,6 +474,7 @@ impl App {
             }
             // ---- run / REPL
             "run.run_file" => self.run_selected(),
+            "run.current_file" => self.run_current_file(),
             "run.load_system" => self.repl_load_system(),
             "run.test_system" => {
                 let sys = match &self.run_config {
@@ -726,9 +727,9 @@ pub fn dirs_home() -> std::path::PathBuf {
     std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(std::path::PathBuf::from).unwrap_or_else(|| std::path::PathBuf::from("."))
 }
 
-/// Open `url` (an https link) in the default browser.
+/// Open an HTTP or HTTPS link in the default browser.
 pub fn open_url(url: &str) {
-    if !url.starts_with("https://") || url.contains(['"', '\n', '\r', ' ']) {
+    if !(url.starts_with("https://") || url.starts_with("http://")) || url.contains(['"', '\n', '\r', ' ']) {
         return;
     }
     #[cfg(windows)]
