@@ -320,40 +320,39 @@ impl App {
         let checking = self.wsl.probing();
         let mut act: Option<Option<Option<String>>> = None;
         let mut setup = false;
-        egui::Frame::new().fill(pal.accent.gamma_multiply(0.12)).corner_radius(widgets::radius()).inner_margin(egui::Margin::symmetric(14, 10)).outer_margin(egui::Margin { left: 12, right: 12, top: 8, bottom: 0 }).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                let (r, _) = ui.allocate_exact_size(Vec2::splat(18.0), Sense::hover());
-                icons::paint(ui.painter(), r, Icon::Linux, pal.accent);
-                ui.vertical(|ui| {
-                    // a makefile or shell scripts say so; otherwise it is the languages of the files that can run there too
-                    let title = if self.unix_project { tr("This project is built the Linux way (make, shell scripts)") } else { tr("This project can run in Linux") };
-                    ui.label(RichText::new(title).font(fonts::semibold(13.0)));
-                    ui.label(RichText::new(tr("Build it, run it and use the terminal in Linux through WSL? Files stay where they are.")).color(pal.text_dim).size(12.0));
-                });
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if widgets::icon_button(ui, &pal, Icon::Close, 26.0, pal.text_dim, tr("Not now")).clicked() {
-                        act = Some(None);
-                    }
-                    if widgets::secondary_button(ui, &pal, tr("Keep Windows")).clicked() {
-                        act = Some(Some(None));
-                    }
-                    match &suggested {
-                        Some(d) => {
-                            if widgets::primary_button(ui, &pal, &i18n::fmt("Use Linux ({})", &[d])).clicked() {
-                                act = Some(Some(Some(d.clone())));
-                            }
-                        }
-                        None if checking => {
-                            ui.add(egui::Spinner::new().size(16.0).color(pal.accent));
-                        }
-                        None => {
-                            if widgets::primary_button(ui, &pal, tr("Set up Linux...")).clicked() {
-                                setup = true;
-                            }
-                        }
-                    }
-                });
+        egui::Frame::new().fill(pal.panel_bg.to_opaque()).stroke(egui::Stroke::new(1.0, pal.border)).corner_radius(egui::CornerRadius::same(9)).inner_margin(egui::Margin::symmetric(10, 8)).outer_margin(egui::Margin { left: 12, right: 12, top: 8, bottom: 0 }).show(ui, |ui| {
+            let primary = tr(if suggested.is_some() { "Switch to Linux" } else if checking { "Checking..." } else { "Set up Linux" });
+            let secondary = tr("Keep Windows");
+            let primary_w = ui.painter().layout_no_wrap(primary.to_owned(), fonts::semibold(12.5), pal.text).size().x + 20.0;
+            let secondary_w = ui.painter().layout_no_wrap(secondary.to_owned(), fonts::ui(12.5), pal.text).size().x + 20.0;
+            let controls_w = primary_w + secondary_w + 24.0 + 12.0;
+            let width = ui.available_width();
+            let narrow = width < controls_w + 158.0;
+            let (body, _) = ui.allocate_exact_size(Vec2::new(width, if narrow { 54.0 } else { 32.0 }), Sense::hover());
+            let text_right = if narrow { body.right() - 32.0 } else { body.right() - controls_w - 12.0 };
+            let text_rect = egui::Rect::from_min_max(body.min + egui::vec2(26.0, 0.0), egui::pos2(text_right, body.top() + if narrow { 20.0 } else { 32.0 }));
+            let icon_y = if narrow { body.top() + 10.0 } else { body.center().y };
+            icons::paint(ui.painter(), egui::Rect::from_center_size(egui::pos2(body.left() + 8.0, icon_y), Vec2::splat(16.0)), Icon::Linux, pal.accent);
+            let painter = ui.painter_at(text_rect);
+            painter.text(text_rect.min + egui::vec2(0.0, 2.0), egui::Align2::LEFT_TOP, tr("Run in Linux?"), fonts::semibold(12.5), pal.text);
+            if !narrow {
+                painter.text(text_rect.min + egui::vec2(0.0, 18.0), egui::Align2::LEFT_TOP, tr("Build and run via WSL."), fonts::ui(11.5), pal.text_dim);
+            }
+            ui.interact(text_rect, ui.scope_id().with("linux_notice_text"), Sense::hover()).on_hover_text(tr("Build it, run it and use the terminal in Linux through WSL? Files stay where they are."));
+            let actions = egui::Rect::from_min_max(egui::pos2(body.right() - if narrow { controls_w - 30.0 } else { controls_w }, body.top() + if narrow { 24.0 } else { 1.0 }), body.max);
+            let mut buttons = ui.new_child(egui::UiBuilder::new().max_rect(actions).layout(Layout::left_to_right(Align::Center)));
+            buttons.spacing_mut().item_spacing.x = 6.0;
+            buttons.add_enabled_ui(suggested.is_some() || !checking, |ui| {
+                let response = widgets::compact_button(ui, &pal, primary, true);
+                let response = if let Some(distro) = &suggested { response.on_hover_text(distro) } else { response };
+                if response.clicked() { if let Some(distro) = &suggested { act = Some(Some(Some(distro.clone()))); } else { setup = true; } }
             });
+            if widgets::compact_button(&mut buttons, &pal, secondary, false).clicked() { act = Some(Some(None)); }
+            if narrow {
+                let close = egui::Rect::from_min_size(egui::pos2(body.right() - 24.0, body.top() - 2.0), Vec2::splat(24.0));
+                let mut close_ui = ui.new_child(egui::UiBuilder::new().max_rect(close));
+                if widgets::icon_button(&mut close_ui, &pal, Icon::Close, 24.0, pal.text_dim, tr("Not now")).clicked() { act = Some(None); }
+            } else if widgets::icon_button(&mut buttons, &pal, Icon::Close, 24.0, pal.text_dim, tr("Not now")).clicked() { act = Some(None); }
         });
         if setup {
             self.open_settings_page(crate::ui_settings::WSL_PAGE);
@@ -430,6 +429,31 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn linux_banner_wraps_text_and_actions_in_narrow_editor_panes() {
+        for width in [300.0, 525.0, 640.0, 900.0] {
+            let ctx = egui::Context::default();
+            fonts::install(&ctx);
+            let mut app = App::new(ide_core::settings::Settings::default());
+            app.env_banner = true;
+            let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(width, 500.0))), ..Default::default() }, |ui| {
+                app.draw_env_banner(ui);
+                assert!(ui.min_rect().right() <= width + 1.0, "banner exceeds pane at {width}: {:?}", ui.min_rect());
+            });
+            let texts: Vec<_> = output.shapes.iter().filter_map(|shape| match &shape.shape { egui::Shape::Text(text) => Some((text.galley.job.text.as_str(), text.pos, text.galley.size())), _ => None }).collect();
+            let title = texts.iter().find(|(text, _, _)| *text == "Run in Linux?").unwrap();
+            let button = texts.iter().find(|(text, _, _)| *text == "Keep Windows").unwrap();
+            if width < 400.0 {
+                assert!(button.1.y >= title.1.y + title.2.y, "narrow banner action overlaps the title");
+            } else {
+                let description = texts.iter().find(|(text, _, _)| *text == "Build and run via WSL.").unwrap();
+                assert!(button.1.x > description.1.x + description.2.x, "banner action overlaps the description");
+                assert!(button.1.y < description.1.y + description.2.y, "wide banner unexpectedly stacks its actions");
+            }
+            output.textures_delta.clear();
+        }
+    }
 
     #[test]
     fn existing_project_scenarios_keep_their_configuration() {

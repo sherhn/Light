@@ -198,6 +198,19 @@ pub fn secondary_button(ui: &mut egui::Ui, pal: &Palette, label: &str) -> egui::
     resp
 }
 
+/// A compact action for inline notices; deliberately quieter than dialog buttons.
+pub fn compact_button(ui: &mut egui::Ui, pal: &Palette, label: &str, primary: bool) -> egui::Response {
+    let color = if primary { pal.text_on_accent } else { pal.text };
+    let font = if primary { fonts::semibold(12.5) } else { fonts::ui(12.5) };
+    let galley = ui.painter().layout_no_wrap(label.to_owned(), font, color);
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(galley.size().x + 20.0, 30.0), Sense::click());
+    let fill = if primary { pal.accent } else if response.hovered() { pal.hover } else { Color32::TRANSPARENT };
+    ui.painter().rect_filled(rect, CornerRadius::same(7), fill);
+    if !primary { ui.painter().rect_stroke(rect, CornerRadius::same(7), Stroke::new(1.0, pal.border), StrokeKind::Inside); }
+    ui.painter().galley(rect.center() - galley.size() * 0.5, galley, color);
+    response
+}
+
 /// A single-line text input: a rounded tonal field of fixed height whose text (and hint) is centred vertically,
 /// with an optional leading icon. Clicking anywhere on the field focuses it.
 pub struct TextField<'a> {
