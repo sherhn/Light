@@ -250,6 +250,21 @@ impl App {
             self.completion.active = false;
         }
         self.update_hover(ctx, idx, &out);
+        if let Some(action) = out.context_action {
+            self.show_doc(idx);
+            self.editor_focus = true;
+            let path = self.docs[idx].path.clone();
+            let rel = self.current_vcs_rel_path();
+            match action {
+                "context.run" => self.run_current_file(),
+                "context.rename" => if let Some(path) = path { let input = path.file_name().unwrap_or_default().to_string_lossy().into_owned(); self.popup = Popup::RenameFile { path, input, just_opened: true }; },
+                "context.delete" => if let Some(path) = path { self.popup = Popup::Confirm { message: crate::i18n::fmt("Delete '{}'? This cannot be undone.", &[&path.display()]), kind: ConfirmKind::Delete(path) }; },
+                "context.diff" => if let Some(rel) = rel { self.open_diff_tab(&rel); },
+                "context.rollback" => if let Some(rel) = rel { self.popup = Popup::Confirm { message: crate::i18n::fmt("Discard all local changes to '{}'? This cannot be undone.", &[&rel]), kind: ConfirmKind::Rollback(rel) }; },
+                "context.stage" | "context.unstage" => if let Some(rel) = rel { let stage = action == "context.stage"; self.save_doc(idx); self.git_run_sync(if stage { "Stage" } else { "Unstage" }, move |repo| if stage { repo.stage(&[rel]).map(|_| String::new()) } else { repo.unstage(&[rel]).map(|_| String::new()) }); },
+                action => self.run_command(ctx, action),
+            }
+        }
         if let Some(off) = out.ctrl_click {
             self.show_doc(idx);
             let doc = &mut self.docs[idx];

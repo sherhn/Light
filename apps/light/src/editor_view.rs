@@ -73,6 +73,7 @@ pub struct ViewCfg<'a> {
 
 #[derive(Default)]
 pub struct ViewOut {
+    pub context_action: Option<&'static str>,
     pub clicked: bool,
     /// Ctrl/Cmd+click target offset (go to declaration).
     pub ctrl_click: Option<usize>,
@@ -89,6 +90,12 @@ pub struct ViewOut {
     /// A change marker in the gutter was clicked: (0-based line, screen position just below that line).
     pub gutter_click: Option<(usize, Pos2)>,
     pub gutter_rect: Option<Rect>,
+}
+
+fn editor_menu_item(ui: &mut egui::Ui, label: &'static str, shortcut: &'static str, action: &'static str, enabled: bool, out: &mut ViewOut, rects: &mut Vec<(&'static str, Rect)>) {
+    let response = ui.add_enabled(enabled, egui::Button::new(crate::i18n::tr(label)).shortcut_text(shortcut));
+    rects.push((action, response.rect));
+    if response.clicked() { out.context_action = Some(action); ui.close(); }
 }
 
 // Gutter, left to right: padding, line numbers, gap, change marker, fold chevron; then the code.
@@ -280,6 +287,43 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     let mut hover_marker: Option<String> = None;
     let area = scroll.show_viewport(&mut child, |ui, viewport| {
         let (rect, resp) = ui.allocate_exact_size(Vec2::new(content_w.max(viewport.width()), content_h.max(viewport.height())), Sense::click_and_drag());
+        resp.context_menu(|ui| {
+            ui.set_width(220.0);
+            ui.spacing_mut().button_padding = egui::vec2(8.0, 3.0);
+            ui.spacing_mut().interact_size.y = 22.0;
+            ui.spacing_mut().item_spacing.y = 2.0;
+            let mut menu_rects: Vec<(&'static str, Rect)> = Vec::new();
+            editor_menu_item(ui, "Undo", "Ctrl+Z", "edit.undo", ed.can_undo(), &mut out, &mut menu_rects);
+            editor_menu_item(ui, "Redo", "Ctrl+Shift+Z", "edit.redo", ed.can_redo(), &mut out, &mut menu_rects);
+            ui.separator();
+            for (label, shortcut, action) in [("Cut", "Ctrl+X", "edit.cut"), ("Copy", "Ctrl+C", "edit.copy"), ("Paste", "Ctrl+V", "edit.paste"), ("Select All", "Ctrl+A", "edit.select_all")] {
+                editor_menu_item(ui, label, shortcut, action, true, &mut out, &mut menu_rects);
+            }
+            ui.separator();
+            editor_menu_item(ui, "Run Current File", "Ctrl+Shift+F10", "context.run", true, &mut out, &mut menu_rects);
+            editor_menu_item(ui, "Save", "Ctrl+S", "file.save", true, &mut out, &mut menu_rects);
+            let file = ui.menu_button(crate::i18n::tr("File"), |ui| {
+                ui.set_width(220.0);
+                for (label, shortcut, action) in [("Save As...", "Ctrl+Shift+S", "file.save_as"), ("Rename...", "", "context.rename"), ("Copy Path", "", "file.copy_path"), ("Reveal in File Manager", "", "file.reveal")] {
+                    editor_menu_item(ui, label, shortcut, action, true, &mut out, &mut menu_rects);
+                }
+                ui.separator();
+                editor_menu_item(ui, "Delete...", "", "context.delete", true, &mut out, &mut menu_rects);
+            });
+            menu_rects.push(("submenu.file", file.response.rect));
+            let git = ui.menu_button("Git", |ui| {
+                ui.set_width(220.0);
+                for (label, action) in [("Show Diff", "context.diff"), ("Stage", "context.stage"), ("Unstage", "context.unstage")] {
+                    editor_menu_item(ui, label, "", action, true, &mut out, &mut menu_rects);
+                }
+                ui.separator();
+                editor_menu_item(ui, "Rollback...", "", "context.rollback", true, &mut out, &mut menu_rects);
+                ui.separator();
+                editor_menu_item(ui, "Local Commit", "", "git.local_commit", true, &mut out, &mut menu_rects);
+            });
+            menu_rects.push(("submenu.git", git.response.rect));
+            ui.data_mut(|data| data.insert_temp(egui::Id::unique("editor_context_rects"), menu_rects));
+        });
         let painter = ui.painter_at(text_rect);
         let origin = rect.min + Vec2::new(TEXT_PAD, 0.0);
         let first = ((viewport.min.y / lh).floor().max(0.0)) as usize;

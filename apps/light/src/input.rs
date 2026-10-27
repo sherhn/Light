@@ -408,8 +408,7 @@ impl App {
                 }
             }
             "edit.paste" => {
-                // Paste arrives as Event::Paste (Ctrl+V); the menu cannot read the clipboard.
-                self.toast(tr("Use Ctrl+V to paste"), Sev::Weak);
+                ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste);
             }
             // ---- find
             "find.find" => self.open_find(false),

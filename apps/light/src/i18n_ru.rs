@@ -706,7 +706,6 @@ pub const RU: &[(&str, &str)] = &[
     ("Save changes before opening another project?", "Сохранить изменения перед открытием другого проекта?"),
     ("Save changes before closing the project?", "Сохранить изменения перед закрытием проекта?"),
     ("Path copied", "Путь скопирован"),
-    ("Use Ctrl+V to paste", "Для вставки используйте Ctrl+V"),
     ("Save changes before exiting?", "Сохранить изменения перед выходом?"),
     ("No .asd system found in this project", "В проекте не найдена система .asd"),
     ("REPL interrupted (restarted)", "REPL прерван (перезапущен)"),

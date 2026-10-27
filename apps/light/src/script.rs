@@ -222,6 +222,14 @@ impl App {
                     if !text.contains(&sval) { self.fail(format!("project profile lacks {sval}: {text}")); }
                 } else { self.fail("no project for profile assertion".into()); }
             }
+            "editor_context_open" => {
+                if let Some(rect) = self.editor_rect {
+                    let pos = rect.min + egui::vec2(100.0, 45.0);
+                    let s = self.script.as_mut().unwrap();
+                    s.pending.push(Event::PointerMoved(pos));
+                    for pressed in [true, false] { s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Secondary, pressed, modifiers: egui::Modifiers::NONE }); }
+                } else { self.fail("no editor rectangle".into()); }
+            }
             "recent_project_menu" | "recent_clone" | "confirm_accept" | "confirm_discard" => {
                 let id = if op == "confirm_discard" { "confirm_discard_button" } else if op == "confirm_accept" { "confirm_accept_button" } else if op == "recent_clone" { "recent_clone_button" } else { "recent_project_button" };
                 if let Some(rect) = ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique(id))) {
@@ -229,6 +237,15 @@ impl App {
                     s.pending.push(Event::PointerMoved(pos));
                     for pressed in [true, false] { s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE }); }
                 } else { self.fail(format!("missing button {id}")); }
+            }
+            "editor_menu_click" => {
+                let rects = ctx.data(|data| data.get_temp::<Vec<(&'static str, egui::Rect)>>(egui::Id::unique("editor_context_rects"))).unwrap_or_default();
+                if let Some((_, rect)) = rects.iter().find(|(action, _)| *action == sval) {
+                    let pos = rect.center();
+                    let s = self.script.as_mut().unwrap();
+                    s.pending.push(Event::PointerMoved(pos));
+                    for pressed in [true, false] { s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE }); }
+                } else { self.fail(format!("editor menu lacks {sval}")); }
             }
             "assert_run_lacks" => {
                 if self.run.log.iter().any(|l| l.text.contains(&sval)) {
