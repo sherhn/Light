@@ -92,7 +92,7 @@ impl App {
         let mut inner = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_max(bar.min, Pos2::new(bar.max.x - BTN_W * 3.0, bar.max.y))).layout(egui::Layout::left_to_right(egui::Align::Center)));
         inner.add_space(12.0);
         let (r, _) = inner.allocate_exact_size(Vec2::splat(24.0), Sense::hover());
-        crate::brand::paint_logo(inner.painter(), r, self.logo.as_ref(), pal.accent);
+        crate::brand::paint_logo(inner.painter(), r, self.logo.as_ref(), if pal.dark { Color32::WHITE } else { pal.text });
         inner.add_space(8.0);
         self.draw_menu_bar(&mut inner, ctx);
     }

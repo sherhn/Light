@@ -39,16 +39,14 @@ pub fn load_logo(ctx: &egui::Context) -> Option<TextureHandle> {
     Some(ctx.load_texture("light-logo", img, TextureOptions::LINEAR))
 }
 
-/// Paint the logo into `rect`; falls back to a plain accent tile if the texture is missing.
-pub fn paint_logo(painter: &egui::Painter, rect: Rect, tex: Option<&TextureHandle>, accent: Color32) {
+/// Paint the transparent logo into `rect`.
+pub fn paint_logo(painter: &egui::Painter, rect: Rect, tex: Option<&TextureHandle>, tint: Color32) {
     match tex {
         Some(t) => {
-            // A neutral backing keeps the approved white mark legible in both themes.
-            painter.rect_filled(rect, egui::CornerRadius::same((rect.width() * 0.18) as u8), Color32::from_rgb(0x10, 0x12, 0x13));
-            painter.image(t.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
+            painter.image(t.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), tint);
         }
         None => {
-            painter.rect_filled(rect, egui::CornerRadius::same((rect.width() * 0.22) as u8), accent);
+            painter.add(egui::Shape::line(vec![rect.right_top(), rect.left_center(), rect.right_bottom()], egui::Stroke::new(rect.width() * 0.16, tint)));
         }
     }
 }
