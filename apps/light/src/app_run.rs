@@ -71,6 +71,32 @@ pub fn message_path(run: &MakeRun, dir: &str, file: &str) -> PathBuf {
 }
 
 impl App {
+    pub fn html_browser_available(&self) -> bool {
+        self.doc().is_some_and(|doc| doc.diff.is_none() && doc.page.is_none()
+            && (doc.ed.language().is_some_and(|language| language.id() == "html")
+                || doc.path.as_ref().and_then(|path| path.extension()).is_some_and(|extension|
+                    ["html", "htm", "xhtml"].iter().any(|candidate| extension.eq_ignore_ascii_case(candidate)))))
+    }
+
+    pub fn show_html_in_browser(&mut self) {
+        self.show_html_in_browser_with(|path| {
+            let path = path.to_str().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid file path"))?;
+            webbrowser::open(path)
+        });
+    }
+
+    fn show_html_in_browser_with(&mut self, open: impl FnOnce(&Path) -> std::io::Result<()>) {
+        if !self.html_browser_available() {
+            self.toast(tr("Open an HTML file first"), Sev::Weak);
+            return;
+        }
+        if !self.save_doc(self.active) { return; }
+        let Some(path) = self.doc().and_then(|doc| doc.path.as_ref()) else { return };
+        if let Err(error) = std::path::absolute(path).and_then(|path| open(&path)) {
+            self.toast(i18n::fmt("Cannot open in browser: {}", &[&error]), Sev::Error);
+        }
+    }
+
     pub fn run_config_label(&self) -> String {
         match &self.run_config {
             RunConfig::CurrentFile => self.doc().filter(|d| d.diff.is_none()).map_or(tr("Current File").to_string(), |d| d.name()),
@@ -312,6 +338,61 @@ impl App {
         );
         self.bottom_tool = Some(BottomTool::Repl);
         self.repl_eval(&code, true);
+    }
+}
+
+#[cfg(test)]
+mod browser_tests {
+    use super::*;
+
+    fn html_app() -> (App, PathBuf, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("light-html-browser-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir(&dir).unwrap();
+        let path = dir.join("страница & #1.HTML");
+        std::fs::write(&path, "<p>old</p>").unwrap();
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.docs = vec![crate::doc::Doc::open(&path).unwrap()];
+        app.active = 0;
+        (app, dir, path)
+    }
+
+    #[test]
+    fn browser_receives_the_current_html_after_saving() {
+        let (mut app, dir, path) = html_app();
+        app.docs[0].ed.select_all();
+        app.docs[0].ed.insert_text_raw("<h1>latest</h1>");
+        let mut opened = false;
+        app.show_html_in_browser_with(|target| {
+            assert_eq!(target, path);
+            assert_eq!(std::fs::read_to_string(target).unwrap(), "<h1>latest</h1>");
+            opened = true;
+            Ok(())
+        });
+        assert!(opened);
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn browser_is_not_opened_when_saving_fails_or_the_file_is_not_html() {
+        let (mut app, dir, path) = html_app();
+        app.docs[0].path = Some(dir.join("missing-parent/page.html"));
+        app.show_html_in_browser_with(|_| panic!("must not open an unsaved file"));
+        assert!(app.toasts.iter().any(|toast| toast.sev == Sev::Error));
+        app.docs[0].path = Some(dir.join("style.css"));
+        assert!(!app.html_browser_available());
+        app.show_html_in_browser_with(|_| panic!("must not open a CSS file"));
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn browser_launch_failures_are_reported() {
+        let (mut app, dir, path) = html_app();
+        app.show_html_in_browser_with(|_| Err(std::io::Error::other("browser unavailable")));
+        assert!(app.toasts.iter().any(|toast| toast.sev == Sev::Error && toast.text.contains("browser unavailable")));
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_dir(dir).unwrap();
     }
 }
 

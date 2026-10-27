@@ -265,6 +265,12 @@ impl App {
                 if resp.on_hover_text(tr("Run (Shift+F10)")).clicked() {
                     self.run_command(ctx, "run.run_file");
                 }
+                if self.html_browser_available() {
+                    let response = widgets::secondary_button(ui, &pal, tr("Show in browser"));
+                    if response.clicked() {
+                        self.run_command(ctx, "run.show_in_browser");
+                    }
+                }
                 let label = self.run_config_label();
                 let icon = if matches!(self.run_config, RunConfig::Make(_)) {
                     (Icon::Hammer, pal.accent)
