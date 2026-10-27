@@ -279,7 +279,7 @@ impl App {
                         if let Some(f) = first_change {
                             area = area.vertical_scroll_offset(f.saturating_sub(3) as f32 * row_h);
                         }
-                        area.show_rows(&mut vui, row_h, st.diff.len(), |ui, range| {
+                        area.show_rows_fading(&mut vui, row_h, st.diff.len(), |ui, range| {
                             ui.spacing_mut().item_spacing.y = 0.0;
                             for l in &st.diff[range] {
                                 let (r, _) = ui.allocate_exact_size(vec2(ui.available_width().max(row_w), row_h), Sense::hover());
