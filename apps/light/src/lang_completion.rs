@@ -134,7 +134,7 @@ impl App {
         }
         self.ensure_lang_index();
         // the project's names: in this language first, then (assembly labels for C...) the other languages'
-        let all = self.hover.index.with_prefix(&prefix, 200);
+        let all = self.hover.index.with_prefix(&prefix, 200, Some(&lang_id));
         for (name, kind, lang) in &all {
             if *lang == lang_id {
                 push(name.clone(), kind_of_outline(kind), 1, &mut items);

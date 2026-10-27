@@ -697,7 +697,8 @@ impl App {
                 return;
             };
             self.save_all();
-            let hits = ide_core::search::find_in_files(&root, query, opts, 20_000);
+            let hidden = self.project.as_ref().map(|p| p.hidden.clone()).unwrap_or_default();
+            let hits = ide_core::search::find_in_project(&root, &hidden, query, opts, 20_000);
             let mut files: Vec<std::path::PathBuf> = hits.iter().map(|h| h.path.clone()).collect();
             files.sort();
             files.dedup();

@@ -28,8 +28,18 @@ pub enum SetupTask {
     InstallSbcl(String),
     /// make, gcc (32-bit too), nasm, gdb, git and QEMU for C/assembly projects.
     InstallTools(String),
+    /// The same developer tools on this computer, when Light runs on Linux itself.
+    InstallHostTools,
     /// Git in the distribution: name, e-mail and the Windows credential manager.
     GitSetup(String),
+}
+
+/// Where the tools found on this computer are kept in [`WslState::tools`] (no distribution is called that).
+pub const HOST: &str = "@host";
+
+/// Light runs on Linux itself: its developer tools are this computer's, installed with its package manager.
+pub fn host_is_linux() -> bool {
+    cfg!(target_os = "linux")
 }
 
 pub struct RunningTask {
@@ -47,7 +57,7 @@ impl SetupTask {
             SetupTask::InstallWsl => Kind::Wsl,
             SetupTask::InstallDistro(_) => Kind::Distro,
             SetupTask::ImportFile(_) => Kind::Import,
-            SetupTask::InstallSbcl(_) | SetupTask::InstallTools(_) => Kind::Packages,
+            SetupTask::InstallSbcl(_) | SetupTask::InstallTools(_) | SetupTask::InstallHostTools => Kind::Packages,
             SetupTask::GitSetup(_) => Kind::Config,
         }
     }
@@ -340,6 +350,31 @@ impl App {
 
     pub fn wsl_checking_tools(&self) -> bool {
         self.wsl.tools_rx.is_some()
+    }
+
+    /// Look for the developer tools on this computer (Light runs on Linux), in the background.
+    pub fn host_check_tools(&mut self) {
+        if self.wsl.tools_rx.is_some() {
+            return;
+        }
+        let (tx, rx) = mpsc::channel();
+        self.wsl.tools_rx = Some(rx);
+        let groups = self.tool_groups();
+        std::thread::spawn(move || {
+            let _ = tx.send((HOST.to_string(), wsl::check_tools_here(&groups)));
+        });
+    }
+
+    /// Install the chosen developer tools on this computer; the groups that bring a program of `needed` are installed
+    /// whole. The desktop asks for the administrator password.
+    pub fn host_install_tools_with(&mut self, needed: &[String]) {
+        let groups = self.chosen_tool_groups(needed);
+        if groups.is_empty() {
+            self.toast(tr("No tool is chosen: tick the ones to install"), Sev::Weak);
+            return;
+        }
+        let title = tr("Installing developer tools on this computer (confirm the administrator prompt)...").to_string();
+        self.wsl_start(SetupTask::InstallHostTools, wsl::install_tools_here_command(&groups), title);
     }
 
     /// The set of tools changed (one was added, changed or removed): what was found in the distributions is looked
@@ -644,6 +679,8 @@ impl App {
             SetupTask::InstallSbcl(d) => fail(i18n::fmt("SBCL was not installed in {}", &[&d])),
             SetupTask::InstallTools(d) if ok => Ok(i18n::fmt("The developer tools are installed in {}.", &[&d])),
             SetupTask::InstallTools(d) => fail(i18n::fmt("The developer tools were not installed in {}", &[&d])),
+            SetupTask::InstallHostTools if ok => Ok(tr("The developer tools are installed on this computer.").to_string()),
+            SetupTask::InstallHostTools => fail(tr("The developer tools were not installed on this computer").to_string()),
             SetupTask::GitSetup(d) if ok => Ok(i18n::fmt("Git in {} uses your name, e-mail and Windows logins.", &[&d])),
             SetupTask::GitSetup(d) => fail(i18n::fmt("Git in {} was not set up", &[&d])),
         });
@@ -651,6 +688,11 @@ impl App {
             SetupTask::InstallTools(d) => {
                 self.wsl.tools.remove(&d);
                 self.wsl_check_tools(&d);
+            }
+            SetupTask::InstallHostTools => {
+                self.wsl.tools.remove(HOST);
+                self.tools_banner_dismissed = false;
+                self.host_check_tools();
             }
             SetupTask::GitSetup(_) => {}
             SetupTask::InstallSbcl(d) => {

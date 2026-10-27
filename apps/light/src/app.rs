@@ -26,6 +26,18 @@ pub use crate::app_run::RunConfig;
 /// Seconds a file has to stay untouched before it is saved automatically.
 pub const AUTOSAVE_DELAY: f64 = 1.0;
 
+/// Read the project's files and their Lisp definitions in the background, leaving out what it hides.
+fn read_project_files(root: &Path, hidden: &workspace::Hidden) -> mpsc::Receiver<(ProjectIndex, Vec<PathBuf>)> {
+    let (tx, rx) = mpsc::channel();
+    let (root, hidden) = (root.to_path_buf(), hidden.clone());
+    std::thread::spawn(move || {
+        let files = workspace::list_project_files(&root, &hidden, 50_000);
+        let idx = ProjectIndex::build_from(files.iter().cloned());
+        let _ = tx.send((idx, files));
+    });
+    rx
+}
+
 pub struct App {
     pub settings: Settings,
     pub pal: Palette,
@@ -91,6 +103,10 @@ pub struct App {
     pub scenario: Option<crate::app_scenario::ScenarioRun>,
     /// Where the open project is built and run (`.light/project.json`).
     pub project_cfg: crate::app_env::ProjectConfig,
+    /// The list of hidden folders as it is being typed on the Project page of the settings (one per line).
+    pub hidden_draft: Option<String>,
+    /// Where the files of the project were left, the latest first (kept in its session).
+    pub file_positions: Vec<(PathBuf, ide_core::settings::FilePos)>,
     /// Ask whether the open (Unix-style) project should be built in Linux.
     pub env_banner: bool,
     /// The open project has a makefile, a configure script or shell scripts at its top.
@@ -183,6 +199,8 @@ impl App {
             run_config: Default::default(),
             scenario: None,
             project_cfg: Default::default(),
+            hidden_draft: None,
+            file_positions: vec![],
             env_banner: false,
             unix_project: false,
             project_modules: vec![],
@@ -233,10 +251,15 @@ impl App {
     pub fn save_settings(&mut self) {
         self.settings.open_files = self.docs.iter().filter_map(|d| d.path.as_ref().map(|p| p.to_string_lossy().into_owned())).collect();
         self.settings.active_file = self.doc().and_then(|d| d.path.as_ref()).map(|p| p.to_string_lossy().into_owned());
+        for i in 0..self.docs.len() {
+            self.remember_position(i);
+        }
         if let Some(project) = &self.project {
+            let positions = self.file_positions.iter().filter(|(p, _)| p.starts_with(&project.root)).map(|(p, pos)| (p.to_string_lossy().into_owned(), *pos)).collect();
             self.settings.project_sessions.insert(project.root.to_string_lossy().into_owned(), ide_core::settings::ProjectSession {
                 files: self.settings.open_files.clone(), active: self.settings.active_file.clone(),
                 expanded: project.expanded.iter().map(|p| p.to_string_lossy().into_owned()).collect(),
+                positions,
             });
         }
         self.settings.show_project_panel = self.left_tool.is_some();
@@ -280,20 +303,15 @@ impl App {
             self.leave_project();
         }
         let name = root.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| root.to_string_lossy().into_owned());
-        let (tx, rx) = mpsc::channel();
-        let r2 = root.clone();
-        std::thread::spawn(move || {
-            let idx = ProjectIndex::build(&r2);
-            let files = workspace::list_files(&r2, 50_000);
-            let _ = tx.send((idx, files));
-        });
+        let hidden = workspace::Hidden::new(&root, &crate::app_env::load_config(&root).hidden);
+        let rx = read_project_files(&root, &hidden);
         let mut expanded = HashSet::new();
         expanded.insert(root.clone());
         if let Some(session) = &session {
             expanded = session.expanded.iter().map(PathBuf::from).filter(|p| p.starts_with(&root) && p.is_dir()).collect();
         }
         let branch = workspace::git_branch(&root);
-        self.project = Some(Project { tree_ver: 0, tree_cache: None, ignore: IgnoreMatcher::new(&root), root: root.clone(), name, expanded, selected: None, dir_cache: HashMap::new(), files: vec![], files_rel: vec![], index: ProjectIndex::default(), index_rx: Some(rx), branch });
+        self.project = Some(Project { tree_ver: 0, tree_cache: None, ignore: IgnoreMatcher::new(&root), root: root.clone(), name, expanded, selected: None, dir_cache: HashMap::new(), files: vec![], files_rel: vec![], files_gen: 0, index: ProjectIndex::default(), index_rx: Some(rx), branch, hidden });
         self.settings.push_recent_project(&root.to_string_lossy());
         self.left_tool = Some(LeftTool::Project);
         self.compiler_problems.clear();
@@ -303,6 +321,7 @@ impl App {
         if self.repl.session.is_some() {
             self.repl_restart();
         }
+        self.file_positions = session.as_ref().map(|s| s.positions.iter().map(|(p, pos)| (PathBuf::from(p), *pos)).collect()).unwrap_or_default();
         if let Some(session) = session {
             for file in session.files { let path = PathBuf::from(file); if path.is_file() { self.open_file(&path); } }
             if let Some(active) = session.active { let path = PathBuf::from(active); if path.is_file() { self.open_file(&path); } }
@@ -375,6 +394,7 @@ impl App {
             p.index = idx;
             p.files_rel = files.iter().map(|f| workspace::relative(&p.root, f)).collect();
             p.files = files;
+            p.files_gen += 1;
             p.index_rx = None;
             p.tree_ver += 1;
             self.refresh_needed_modules();
@@ -386,7 +406,8 @@ impl App {
         if let Some(v) = p.dir_cache.get(dir) {
             return v.clone();
         }
-        let v = workspace::list_dir(dir).unwrap_or_default();
+        let mut v = workspace::list_dir(dir).unwrap_or_default();
+        v.retain(|e| !p.hidden.is_hidden(&e.path, e.is_dir));
         p.dir_cache.insert(dir.to_path_buf(), v.clone());
         v
     }
@@ -399,16 +420,24 @@ impl App {
             p.ignore.reset();
             p.branch = workspace::git_branch(&root);
             if p.index_rx.is_none() {
-                let (tx, rx) = mpsc::channel();
-                let r2 = root.clone();
-                std::thread::spawn(move || {
-                    let idx = ProjectIndex::build(&r2);
-                    let files = workspace::list_files(&r2, 50_000);
-                    let _ = tx.send((idx, files));
-                });
-                p.index_rx = Some(rx);
+                p.index_rx = Some(read_project_files(&root, &p.hidden));
             }
         }
+    }
+
+    /// The project's hidden folders changed: keep them, and read the tree, the file list and the indexes again.
+    pub fn set_hidden_folders(&mut self, patterns: Vec<String>) {
+        let Some(root) = self.project_root().map(Path::to_path_buf) else { return };
+        self.project_cfg.hidden = patterns;
+        if let Err(e) = crate::app_env::save_config(&root, &self.project_cfg) {
+            self.toast(i18n::fmt("Cannot save the project settings: {}", &[&e]), Sev::Error);
+        }
+        if let Some(p) = self.project.as_mut() {
+            p.hidden = workspace::Hidden::new(&root, &self.project_cfg.hidden);
+            // a list that is being read was read with the old rules
+            p.index_rx = None;
+        }
+        self.refresh_project();
     }
 
     pub fn reindex_open_docs(&mut self) {
@@ -444,6 +473,7 @@ impl App {
                 }
                 self.docs.push(d);
                 self.active = self.docs.len() - 1;
+                self.restore_position(self.active);
                 // a file that was just opened is checked too
                 self.schedule_check(self.active);
                 self.editor_focus = true;
@@ -579,6 +609,14 @@ impl App {
             // a save may create or change files shown in the tree
             proj.dir_cache.clear();
             proj.tree_ver += 1;
+            // a file saved for the first time joins the project's list (Go to File, the definitions of other languages)
+            if p.starts_with(&proj.root) && !proj.files.contains(p) && !proj.hidden.is_hidden(p, false) {
+                proj.files_rel.push(workspace::relative(&proj.root, p));
+                proj.files.push(p.clone());
+            }
+        }
+        if let Some(p) = path.as_ref() {
+            self.lang_index_saved(p, &text);
         }
         self.git.last_refresh = -100.0;
         // the language's own check looks at what was just written
@@ -658,10 +696,34 @@ impl App {
         }
     }
 
+    /// Remember where `doc` is (its caret and the line at the top), for when its file is opened again.
+    fn remember_position(&mut self, idx: usize) {
+        let Some(d) = self.docs.get(idx).filter(|d| d.diff.is_none()) else { return };
+        let Some(p) = d.path.clone() else { return };
+        // a tab that was never shown has not been scrolled yet: it is still where it was put
+        let pos = ide_core::settings::FilePos { caret: d.ed.caret(), top_line: d.view.scroll_to_line_f.unwrap_or(d.view.top_line_f) };
+        self.file_positions.retain(|(q, _)| *q != p);
+        self.file_positions.insert(0, (p, pos));
+        self.file_positions.truncate(ide_core::settings::MAX_POSITIONS);
+    }
+
+    /// Put a file that was just opened back where it was left.
+    fn restore_position(&mut self, idx: usize) {
+        let Some(d) = self.docs.get_mut(idx) else { return };
+        let Some(path) = d.path.as_ref() else { return };
+        let Some((_, pos)) = self.file_positions.iter().find(|(p, _)| p == path) else { return };
+        let text = d.ed.text();
+        let o = pos.caret.min(text.len());
+        let o = (0..=o).rev().find(|&i| text.is_char_boundary(i)).unwrap_or(0);
+        d.ed.set_caret(o, false);
+        d.view.scroll_to_line_f = Some(pos.top_line.max(0.0));
+    }
+
     pub fn close_doc(&mut self, idx: usize) {
         if idx >= self.docs.len() {
             return;
         }
+        self.remember_position(idx);
         let doc = self.docs.remove(idx);
         // an empty scratch file is not worth keeping
         if let (Some(p), Some(dir)) = (doc.path.as_ref(), Settings::config_dir().map(|d| d.join("scratches")))
@@ -956,7 +1018,8 @@ impl App {
                     let byte = std::fs::read_to_string(&p).ok().map(|t| t.char_indices().nth(char_off).map_or(t.len(), |(b, _)| b)).unwrap_or(0);
                     self.goto(&p, byte, true);
                 } else {
-                    self.toast(i18n::fmt("Cannot find declaration of {}", &[&name]), Sev::Weak);
+                    // the image does not know it either: read the project's text for it
+                    self.search_definition_text(&name);
                 }
             }
         }
@@ -1206,7 +1269,8 @@ impl App {
                     return;
                 }
                 if !self.repl_request("definition", &name, Pending::Definition { name: name.clone() }) {
-                    self.toast(i18n::fmt("Cannot find declaration of '{}'", &[&name]), Sev::Weak);
+                    // no REPL to ask: read the project's text for it
+                    self.search_definition_text(&name);
                 }
             }
             1 => {
@@ -1362,8 +1426,9 @@ impl App {
         let title = i18n::fmt("Find '{}'", &[&query]);
         self.find_results = FindResults { title: i18n::fmt("{} - searching...", &[&title]), hits: vec![] };
         self.find_rx = Some(rx);
+        let hidden = self.project.as_ref().map(|p| p.hidden.clone()).unwrap_or_default();
         std::thread::spawn(move || {
-            let hits = search::find_in_files(&root, &q, opts, 3000);
+            let hits = search::find_in_project(&root, &hidden, &q, opts, 3000);
             let _ = tx.send((title, hits));
         });
         self.bottom_tool = Some(BottomTool::Find);

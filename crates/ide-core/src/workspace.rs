@@ -13,6 +13,43 @@ pub struct Entry {
     pub is_dir: bool,
 }
 
+/// Folders the coding agents keep their settings, memory and caches in: a project hides them unless it says otherwise.
+pub const AGENT_FOLDERS: [&str; 16] = [".claude", ".codex", ".cursor", ".gemini", ".windsurf", ".continue", ".cline", ".roo", ".kilocode", ".junie", ".aider.tags.cache.v3", ".amazonq", ".opencode", ".qwen", ".kiro", ".augment"];
+
+/// What a project leaves out of its tree, Go to File, search and the symbol index: patterns as `.gitignore` writes them,
+/// one per entry - `.claude` is every folder (or file) of that name, `/docs/old` only that one under the root,
+/// `*.log` every log file.
+#[derive(Clone, Debug, Default)]
+pub struct Hidden {
+    rules: Option<ignore::gitignore::Gitignore>,
+}
+
+impl Hidden {
+    pub fn new(root: &Path, patterns: &[String]) -> Hidden {
+        let mut b = ignore::gitignore::GitignoreBuilder::new(root);
+        let mut any = false;
+        for p in patterns.iter().map(|p| p.trim()).filter(|p| !p.is_empty() && !p.starts_with('#')) {
+            // a pattern that does not make sense is left out, the others still apply
+            any |= b.add_line(None, p).is_ok();
+        }
+        Hidden { rules: any.then(|| b.build().ok()).flatten() }
+    }
+
+    /// Is `path` (under the root) or a folder it is in hidden?
+    pub fn is_hidden(&self, path: &Path, is_dir: bool) -> bool {
+        let Some(g) = &self.rules else { return false };
+        // the matcher only answers for paths under the root (it panics on others), and never hides the root itself
+        match path.strip_prefix(g.path()) {
+            Ok(rel) if !rel.as_os_str().is_empty() => g.matched_path_or_any_parents(path, is_dir).is_ignore(),
+            _ => false,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rules.is_none()
+    }
+}
+
 /// Directory listing for the project tree: folders first, then files, case-insensitive order.
 pub fn list_dir(path: &Path) -> io::Result<Vec<Entry>> {
     let mut v: Vec<Entry> = fs::read_dir(path)?
@@ -33,6 +70,11 @@ pub fn list_dir(path: &Path) -> io::Result<Vec<Entry>> {
 /// All project files (relative paths use `/`), for Go to File.
 pub fn list_files(root: &Path, limit: usize) -> Vec<PathBuf> {
     walk_files(root).take(limit).collect()
+}
+
+/// All project files that are not `hidden`.
+pub fn list_project_files(root: &Path, hidden: &Hidden, limit: usize) -> Vec<PathBuf> {
+    crate::search::walk_project(root, hidden).take(limit).collect()
 }
 
 pub fn relative(root: &Path, p: &Path) -> String {
@@ -372,6 +414,31 @@ mod ignore_tests {
         let idx = crate::index::ProjectIndex::build(d.path());
         assert!(idx.find_definitions("v").is_empty() && idx.find_definitions("nm").is_empty());
         assert_eq!(idx.find_definitions("c").len(), 1);
+    }
+
+    #[test]
+    fn hidden_folders_leave_the_project() {
+        let d = TempDir::new("hidden");
+        for dir in [".claude/agents", "src/.cursor", "docs/old", "docs/new"] {
+            fs::create_dir_all(d.path().join(dir)).unwrap();
+        }
+        for f in [".claude/agents/a.md", "src/.cursor/rules.md", "src/main.c", "docs/old/x.md", "docs/new/y.md", "build.log"] {
+            fs::write(d.path().join(f), "").unwrap();
+        }
+        let pats: Vec<String> = [".claude", ".cursor", "/docs/old", "*.log", "", "# a comment"].iter().map(|s| s.to_string()).collect();
+        let h = Hidden::new(d.path(), &pats);
+        assert!(h.is_hidden(&d.path().join(".claude"), true));
+        assert!(h.is_hidden(&d.path().join(".claude/agents/a.md"), false), "what is inside a hidden folder");
+        assert!(h.is_hidden(&d.path().join("src/.cursor"), true), "a name hides the folder at any depth");
+        assert!(h.is_hidden(&d.path().join("docs/old"), true) && !h.is_hidden(&d.path().join("docs/new"), true));
+        assert!(!h.is_hidden(d.path(), true), "never the project itself");
+        assert!(!h.is_hidden(&std::env::temp_dir().join("elsewhere/.claude"), true), "nor anything outside it");
+        let names: Vec<String> = list_project_files(d.path(), &h, 100).iter().map(|f| relative(d.path(), f)).collect();
+        let mut names = names;
+        names.sort();
+        assert_eq!(names, ["docs/new/y.md", "src/main.c"]);
+        assert!(Hidden::new(d.path(), &[]).is_empty() && !Hidden::new(d.path(), &[]).is_hidden(&d.path().join(".claude"), true));
+        assert_eq!(list_project_files(d.path(), &Hidden::default(), 100).len(), 6);
     }
 
     #[test]

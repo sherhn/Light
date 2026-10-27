@@ -113,39 +113,150 @@ pub fn usages_in(path: &Path, text: &str, names: &[String], spans: &[lisp_syntax
     hits
 }
 
+/// The definitions of a file in a language of a module, as the index keeps them: (name, where).
+pub fn file_definitions(path: &Path, text: &str, lang: &light_lang::Language) -> Vec<(String, DefEntry)> {
+    lang.outline(text).into_iter().map(|d| (d.name, DefEntry { path: path.to_path_buf(), line: d.line, kind: d.kind.label().to_string(), lang: lang.id().to_string() })).collect()
+}
+
+/// Is `path` read by the index of the languages of modules (not Lisp, which has its own, nor plain text or documents)?
+fn indexed_language(path: &Path, langs: &LanguageSet) -> Option<Arc<light_lang::Language>> {
+    let lang = langs.find(path, None)?;
+    (!lang.is_plain() && crate::preview::markup_of(&lang).is_none() && !lisp_syntax::dialect::is_lisp_file(path)).then_some(lang)
+}
+
+/// Files whose text is data or prose, not code: a definition is not looked for in them.
+const NOT_CODE: [&str; 14] = ["md", "markdown", "rst", "txt", "json", "lock", "csv", "tsv", "svg", "log", "xml", "map", "min.js", "sum"];
+
+/// Read `files` for the definitions of `name` that `finder` recognises (see [`ide_core::defsearch`]): comments and
+/// strings are skipped where the language is known, the open files are read as they are in the editor. The files of
+/// the language of `near` (by extension) and those beside it come first.
+pub fn definitions_in_text(finder: &ide_core::defsearch::DefFinder, name: &str, files: Vec<PathBuf>, open: &[(PathBuf, String)], root: &Path, langs: &LanguageSet, near: Option<&Path>) -> Vec<LangDefHit> {
+    let ext = |p: &Path| p.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    let (near_ext, near_dir) = (near.map(ext), near.and_then(Path::parent));
+    let mut files: Vec<PathBuf> = files.into_iter().take(40_000).filter(|p| {
+        let n = p.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+        !NOT_CODE.iter().any(|x| n.ends_with(&format!(".{x}")))
+    }).collect();
+    files.sort_by_cached_key(|p| (near_ext.as_ref() != Some(&ext(p)), near_dir != p.parent(), p.clone()));
+    let mut out: Vec<LangDefHit> = vec![];
+    for path in files {
+        let text = match open.iter().find(|(p, _)| *p == path) {
+            Some((_, t)) => t.clone(),
+            None => match std::fs::metadata(&path) {
+                Ok(m) if m.len() <= 2_000_000 => match std::fs::read_to_string(&path) {
+                    Ok(t) => t,
+                    Err(_) => continue,
+                },
+                _ => continue,
+            },
+        };
+        // a cheap look first: most files do not even mention the name
+        if !text.contains(name) {
+            continue;
+        }
+        let lang = langs.find(&path, None).filter(|l| !l.is_plain());
+        let spans: Vec<lisp_syntax::highlight::Span> = match &lang {
+            Some(l) => l.highlight(&text),
+            None if lisp_syntax::dialect::is_lisp_file(&path) => {
+                let d = lisp_syntax::Dialect::from_path(&path).unwrap_or_default();
+                lisp_syntax::highlight::highlight(&text, &lisp_syntax::parse(&text, d))
+            }
+            None => vec![],
+        };
+        let dead = |at: usize| {
+            let i = spans.partition_point(|s| s.end <= at);
+            spans.get(i).is_some_and(|s| s.start <= at && matches!(s.class, Class::Comment | Class::String | Class::Char))
+        };
+        for d in finder.find(&text, dead) {
+            let doc = lang.as_ref().map(|l| docinfo::definition_doc(&text, d.line, l)).unwrap_or_default();
+            let source = if path.starts_with(root) { format!("{}:{}", ide_core::workspace::relative(root, &path), d.line + 1) } else { format!("{}:{}", path.display(), d.line + 1) };
+            out.push(LangDefHit { name: name.to_string(), path: path.clone(), kind: d.kind.to_string(), offset: d.offset, doc, source });
+        }
+        if out.len() >= 30 {
+            break;
+        }
+    }
+    out.truncate(30);
+    out
+}
+
+/// Name -> where it is defined.
+type Names = HashMap<String, Vec<DefEntry>>;
+/// File -> the names it defines.
+type Files = HashMap<PathBuf, Vec<String>>;
+
 /// The definitions of the whole project, whatever the language: name -> where they are.
 #[derive(Default)]
 pub struct LangIndex {
-    map: HashMap<String, Vec<DefEntry>>,
+    map: Names,
+    /// The names each file defines, to take them out again when the file changes.
+    by_path: Files,
     rx: Option<Receiver<Vec<(String, DefEntry)>>>,
-    /// What the index was built for (the project and the modules that were on).
+    /// What the index was built for (the project, its list of files and the modules that were on).
     built_for: String,
+    /// A build that replaces an index already there: it is gathered here and takes over when it is complete, so that
+    /// the old one answers meanwhile.
+    next: Option<(Names, Files)>,
+    /// Files saved while a build runs: what they define now, which the build (reading older text) must not undo.
+    fresh: HashMap<PathBuf, Vec<(String, DefEntry)>>,
+    /// The names sorted by their lower case spelling, for completion (made again after a change).
+    sorted: std::cell::RefCell<Option<Vec<(String, String)>>>,
+    /// The project's list of files is still being read: the index cannot be built yet.
+    pub waiting: bool,
+}
+
+fn insert_all(map: &mut Names, by_path: &mut Files, entries: Vec<(String, DefEntry)>) {
+    for (name, e) in entries {
+        let names = by_path.entry(e.path.clone()).or_default();
+        if !names.contains(&name) {
+            names.push(name.clone());
+        }
+        map.entry(name).or_default().push(e);
+    }
+}
+
+fn remove_path(map: &mut Names, by_path: &mut Files, path: &Path) {
+    for name in by_path.remove(path).unwrap_or_default() {
+        if let Some(v) = map.get_mut(&name) {
+            v.retain(|e| e.path != path);
+            if v.is_empty() {
+                map.remove(&name);
+            }
+        }
+    }
 }
 
 impl LangIndex {
     /// Build the index in the background, unless it already is (or is being) built for `key`.
     pub fn ensure(&mut self, key: String, files: Vec<PathBuf>, langs: LanguageSet) {
+        self.waiting = false;
         if self.built_for == key {
             return;
         }
+        // another project: nothing of the old index is worth showing; the same project read again: it is, until the
+        // new one is complete
+        let same_project = self.built_for.split('|').next() == key.split('|').next() && !self.map.is_empty();
         self.built_for = key;
-        self.map.clear();
+        self.fresh.clear();
+        self.next = None;
+        if same_project {
+            self.next = Some(Default::default());
+        } else {
+            self.map.clear();
+            self.by_path.clear();
+            *self.sorted.borrow_mut() = None;
+        }
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
         std::thread::spawn(move || {
             let mut batch = vec![];
             for path in files.into_iter().take(40_000) {
-                let Some(lang) = langs.find(&path, None) else { continue };
-                if lang.is_plain() || crate::preview::markup_of(&lang).is_some() || lisp_syntax::dialect::is_lisp_file(&path) {
-                    continue;
-                }
+                let Some(lang) = indexed_language(&path, &langs) else { continue };
                 if std::fs::metadata(&path).map(|m| m.len() > 600_000).unwrap_or(true) {
                     continue;
                 }
                 let Ok(text) = std::fs::read_to_string(&path) else { continue };
-                for d in lang.outline(&text) {
-                    batch.push((d.name.clone(), DefEntry { path: path.clone(), line: d.line, kind: d.kind.label().to_string(), lang: lang.id().to_string() }));
-                }
+                batch.extend(file_definitions(&path, &text, &lang));
                 if batch.len() >= 400 && tx.send(std::mem::take(&mut batch)).is_err() {
                     return;
                 }
@@ -160,36 +271,79 @@ impl LangIndex {
         loop {
             match rx.try_recv() {
                 Ok(batch) => {
-                    for (name, e) in batch {
-                        self.map.entry(name).or_default().push(e);
+                    let batch: Vec<(String, DefEntry)> = batch.into_iter().filter(|(_, e)| !self.fresh.contains_key(&e.path)).collect();
+                    match self.next.as_mut() {
+                        Some((map, by_path)) => insert_all(map, by_path, batch),
+                        None => {
+                            insert_all(&mut self.map, &mut self.by_path, batch);
+                            *self.sorted.borrow_mut() = None;
+                        }
                     }
                 }
                 Err(TryRecvError::Empty) => return,
                 Err(TryRecvError::Disconnected) => {
                     self.rx = None;
+                    if let Some((map, by_path)) = self.next.take() {
+                        self.map = map;
+                        self.by_path = by_path;
+                    }
+                    // what was saved meanwhile is newer than what the build read
+                    for (path, entries) in std::mem::take(&mut self.fresh) {
+                        remove_path(&mut self.map, &mut self.by_path, &path);
+                        insert_all(&mut self.map, &mut self.by_path, entries);
+                    }
+                    *self.sorted.borrow_mut() = None;
                     return;
                 }
             }
         }
     }
 
-    /// The background build is still running.
+    /// A file was saved (or changed on disk): what it defines now.
+    pub fn update_file(&mut self, path: &Path, entries: Vec<(String, DefEntry)>) {
+        remove_path(&mut self.map, &mut self.by_path, path);
+        if self.rx.is_some() {
+            self.fresh.insert(path.to_path_buf(), entries.clone());
+        }
+        insert_all(&mut self.map, &mut self.by_path, entries);
+        *self.sorted.borrow_mut() = None;
+    }
+
+    /// The background build is still running, or cannot start before the project's files are known.
     pub fn building(&self) -> bool {
-        self.rx.is_some()
+        self.rx.is_some() || self.waiting
     }
 
     /// The names that start with `prefix` (any case): the name, the kind and the language of its first definition.
-    pub fn with_prefix(&self, prefix: &str, limit: usize) -> Vec<(String, String, String)> {
+    /// The names of `lang` come first, up to `limit` of them, then the others' up to `limit` in all.
+    pub fn with_prefix(&self, prefix: &str, limit: usize, lang: Option<&str>) -> Vec<(String, String, String)> {
         let low = prefix.to_lowercase();
-        let mut out: Vec<(String, String, String)> = self
-            .map
-            .iter()
-            .filter(|(n, v)| !v.is_empty() && n.to_lowercase().starts_with(&low))
-            .map(|(n, v)| (n.clone(), v[0].kind.clone(), v[0].lang.clone()))
-            .collect();
-        out.sort();
-        out.truncate(limit);
-        out
+        let mut sorted = self.sorted.borrow_mut();
+        let sorted = sorted.get_or_insert_with(|| {
+            let mut v: Vec<(String, String)> = self.map.iter().filter(|(_, v)| !v.is_empty()).map(|(n, _)| (n.to_lowercase(), n.clone())).collect();
+            v.sort();
+            v
+        });
+        let start = sorted.partition_point(|(l, _)| l.as_str() < low.as_str());
+        let (mut mine, mut others) = (vec![], vec![]);
+        for (_, name) in sorted[start..].iter().take_while(|(l, _)| l.starts_with(&low)) {
+            let Some(v) = self.map.get(name) else { continue };
+            let e = v.iter().find(|e| Some(e.lang.as_str()) == lang).unwrap_or(&v[0]);
+            let item = (name.clone(), e.kind.clone(), e.lang.clone());
+            if Some(e.lang.as_str()) == lang {
+                if mine.len() < limit {
+                    mine.push(item);
+                }
+            } else if others.len() < limit {
+                others.push(item);
+            }
+            if mine.len() >= limit {
+                break;
+            }
+        }
+        let room = limit.saturating_sub(mine.len());
+        mine.extend(others.into_iter().take(room));
+        mine
     }
 
     pub fn get(&self, name: &str) -> &[DefEntry] {
@@ -210,6 +364,8 @@ pub struct HoverState {
     rect: Option<Rect>,
     cache: HashMap<String, (f64, Option<Arc<HoverInfo>>)>,
     pub index: LangIndex,
+    /// The text search for a definition the index does not know: the name, and where its answer comes.
+    pub def_search: Option<(String, Receiver<Vec<LangDefHit>>)>,
 }
 
 fn kind_name(code: &str) -> &'static str {
@@ -401,29 +557,31 @@ impl App {
         self.ensure_lang_index();
         let mut cands: Vec<(String, DefEntry)> = variants.iter().flat_map(|v| self.hover.index.get(v).iter().map(|e| (v.clone(), e.clone())).collect::<Vec<_>>()).filter(|(_, e)| !open_paths.contains(&e.path)).collect();
         cands.sort_by_key(|(_, e)| (Some(e.lang.as_str()) != lang_first, near.as_deref().and_then(|n| n.parent()) != e.path.parent(), e.path.clone(), e.line));
-        raw.extend(cands.into_iter().take(12).map(|(n, e)| Raw { name: n, path: e.path, line: e.line, kind: e.kind, lang: e.lang, text: None }));
+        raw.extend(cands.into_iter().take(30).map(|(n, e)| Raw { name: n, path: e.path, line: e.line, kind: e.kind, lang: e.lang, text: None }));
         let root = self.project_root().map(Path::to_path_buf);
         let rel = |path: &Path, line: usize| match &root {
             Some(r) if path.starts_with(r) => format!("{}:{}", ide_core::workspace::relative(r, path), line + 1),
             _ => format!("{}:{}", path.display(), line + 1),
         };
-        let mut out: Vec<LangDefHit> = vec![];
+        // (hit, whether the number of arguments of the call fits it)
+        let mut found: Vec<(LangDefHit, bool)> = vec![];
         for r in raw {
             let Some(lang) = self.mods.langs.by_id(&r.lang) else { continue };
             let Some(text) = r.text.or_else(|| std::fs::read_to_string(&r.path).ok()) else { continue };
             let doc = docinfo::definition_doc(&text, r.line, &lang);
-            if !docinfo::arity_fits(args, docinfo::signature_arity(&doc.signature, &r.name)) {
-                continue;
-            }
+            // a class, a struct or a type is called with what its constructor takes, not with what its header lists
+            // (`class Shape(Base):` is not a function of one argument)
+            let callable = matches!(r.kind.as_str(), "function" | "method" | "macro");
+            let fits = !callable || docinfo::arity_fits(args, docinfo::signature_arity(&doc.signature, &r.name));
             // where the name is on its line
             let line_start: usize = text.split_inclusive('\n').take(r.line).map(str::len).sum();
             let col = text[line_start.min(text.len())..].lines().next().and_then(|l| l.find(&r.name)).unwrap_or(0);
             let source = rel(&r.path, r.line);
-            out.push(LangDefHit { name: r.name, path: r.path, kind: r.kind, offset: line_start + col, doc, source });
-            if out.len() >= 8 {
-                break;
-            }
+            found.push((LangDefHit { name: r.name, path: r.path, kind: r.kind, offset: line_start + col, doc, source }, fits));
         }
+        // the definitions the call fits; when none does, the count was a poor guess and all of them are shown
+        let any_fits = found.iter().any(|(_, f)| *f);
+        let mut out: Vec<LangDefHit> = found.into_iter().filter(|(_, f)| *f || !any_fits).map(|(h, _)| h).take(12).collect();
         // what the project defines in Lisp
         if with_lisp {
             self.reindex_open_docs();
@@ -437,14 +595,72 @@ impl App {
         out
     }
 
-    /// Start reading the project's definitions in the languages of the modules that are on, unless that is done.
+    /// Start reading the project's definitions in the languages of the modules that are on, unless that is done. It
+    /// waits for the project's list of files (an index built before it would stay empty), and is read again whenever
+    /// the list is (a refresh, files added or removed, other folders hidden).
     pub fn ensure_lang_index(&mut self) {
         if let Some(p) = self.project.as_ref() {
-            let key = format!("{}|{}", p.root.display(), self.mods.installed.iter().filter(|m| m.enabled).map(|m| format!("{}@{}", m.manifest.id, m.manifest.version)).collect::<Vec<_>>().join(","));
-            let (files, langs) = (p.files.clone(), self.mods.langs.clone());
-            self.hover.index.ensure(key, files, langs);
+            if p.files_gen == 0 {
+                self.hover.index.waiting = true;
+            } else {
+                let modules = self.mods.installed.iter().filter(|m| m.enabled).map(|m| format!("{}@{}", m.manifest.id, m.manifest.version)).collect::<Vec<_>>().join(",");
+                let key = format!("{}|{}|{}", p.root.display(), p.files_gen, modules);
+                let (files, langs) = (p.files.clone(), self.mods.langs.clone());
+                self.hover.index.ensure(key, files, langs);
+            }
         }
         self.hover.index.poll();
+    }
+
+    /// A file of the project was saved: the index learns what it defines now (a function just written is found
+    /// before the next time the project is read).
+    pub fn lang_index_saved(&mut self, path: &Path, text: &str) {
+        let Some(lang) = indexed_language(path, &self.mods.langs) else { return };
+        let entries = file_definitions(path, text, &lang);
+        self.hover.index.update_file(path, entries);
+    }
+
+    /// The last resort of Go to Declaration: read every file of the project for the shapes definitions have (see
+    /// [`ide_core::defsearch`]), in the background; [`App::poll_definition_search`] goes there when it is done.
+    pub fn search_definition_text(&mut self, name: &str) {
+        let Some(finder) = ide_core::defsearch::DefFinder::new(name) else {
+            self.toast(crate::i18n::fmt("Cannot find declaration of '{}'", &[&name]), crate::editor_view::Sev::Weak);
+            return;
+        };
+        let Some(p) = self.project.as_ref() else {
+            self.toast(crate::i18n::fmt("Cannot find declaration of '{}'", &[&name]), crate::editor_view::Sev::Weak);
+            return;
+        };
+        let (files, root, langs) = (p.files.clone(), p.root.clone(), self.mods.langs.clone());
+        let near = self.doc().and_then(|d| d.path.clone());
+        // the open files as they are in the editor
+        let open: Vec<(PathBuf, String)> = self.docs.iter().filter(|d| d.diff.is_none()).filter_map(|d| d.path.clone().map(|p| (p, d.ed.text().to_string()))).collect();
+        let (tx, rx) = mpsc::channel();
+        self.hover.def_search = Some((name.to_string(), rx));
+        self.status = crate::i18n::fmt("Searching the project for the declaration of '{}'...", &[&name]);
+        let name = name.to_string();
+        std::thread::spawn(move || {
+            let _ = tx.send(definitions_in_text(&finder, &name, files, &open, &root, &langs, near.as_deref()));
+        });
+    }
+
+    /// The text search of [`App::search_definition_text`] finished: go to what it found.
+    pub fn poll_definition_search(&mut self, ctx: &egui::Context) {
+        let Some((name, rx)) = &self.hover.def_search else { return };
+        match rx.try_recv() {
+            Ok(hits) => {
+                let name = name.clone();
+                self.hover.def_search = None;
+                self.status.clear();
+                if hits.is_empty() {
+                    self.toast(crate::i18n::fmt("Cannot find declaration of '{}'", &[&name]), crate::editor_view::Sev::Weak);
+                } else {
+                    self.show_hits(hits);
+                }
+            }
+            Err(TryRecvError::Empty) => ctx.request_repaint_after(std::time::Duration::from_millis(60)),
+            Err(TryRecvError::Disconnected) => self.hover.def_search = None,
+        }
     }
 
     /// The hover popup for a name of a language of a module: what the first definition that fits the call says.
@@ -470,18 +686,24 @@ impl App {
         self.goto_hits(&name, hits);
     }
 
-    /// Go to the one definition found, or let the user choose between several; say so when there is none.
+    /// Go to the one definition found, or let the user choose between several. When the index knows none, the whole
+    /// project is read for it (the outline of a language may not know every shape of definition).
     pub fn goto_hits(&mut self, name: &str, hits: Vec<LangDefHit>) {
-        match hits.len() {
-            0 => {
-                // the project may still be being read
-                let msg = if self.hover.index.building() {
-                    crate::i18n::fmt("Cannot find declaration of '{}' yet: the project is still being read", &[&name])
-                } else {
-                    crate::i18n::fmt("Cannot find declaration of '{}'", &[&name])
-                };
-                self.toast(msg, crate::editor_view::Sev::Weak);
+        if hits.is_empty() {
+            if self.project.as_ref().is_some_and(|p| p.files_gen == 0) {
+                self.toast(crate::i18n::fmt("Cannot find declaration of '{}' yet: the project is still being read", &[&name]), crate::editor_view::Sev::Weak);
+            } else {
+                self.search_definition_text(name);
             }
+            return;
+        }
+        self.show_hits(hits);
+    }
+
+    /// Go to the one definition, or let the user choose between several.
+    fn show_hits(&mut self, hits: Vec<LangDefHit>) {
+        match hits.len() {
+            0 => {}
             1 => {
                 let h = &hits[0];
                 self.goto(&h.path, h.offset, true);
@@ -580,6 +802,7 @@ impl App {
         if self.hover.index_poll_needed() {
             self.hover.index.poll();
         }
+        self.poll_definition_search(ctx);
         let Some(info) = self.hover.info.clone() else {
             self.hover.rect = None;
             return;
@@ -697,6 +920,147 @@ mod tests {
         assert_eq!(hits.len(), 1);
         assert_eq!((hits[0].line, hits[0].kind.as_str()), (1, "function"));
         assert!(index.get("sub").is_empty());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// The languages of the registry's modules, as the app has them when the modules are on.
+    fn registry_langs(modules: &[&str]) -> LanguageSet {
+        let mut langs = LanguageSet::new();
+        for m in modules {
+            let json = std::fs::read_to_string(format!("{}/../../registry/modules/{m}/module.json", env!("CARGO_MANIFEST_DIR"))).unwrap();
+            for l in ide_core::modules::Manifest::parse(&json).unwrap().languages {
+                langs.add(l).unwrap();
+            }
+        }
+        langs
+    }
+
+    fn wait_built(index: &mut LangIndex) {
+        for _ in 0..300 {
+            index.poll();
+            if !index.building() {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        panic!("the index was not built");
+    }
+
+    fn temp_project(tag: &str, files: &[(&str, &str)]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("light-defs-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        for (rel, text) in files {
+            let p = dir.join(rel);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, text).unwrap();
+        }
+        dir
+    }
+
+    #[test]
+    fn saved_files_and_rebuilds_keep_the_index_current() {
+        let dir = temp_project("index", &[("a.py", "def alpha():\n    pass\n"), ("b.py", "class Beta:\n    pass\n")]);
+        let langs = registry_langs(&["python"]);
+        let files = vec![dir.join("a.py"), dir.join("b.py")];
+        let mut index = LangIndex::default();
+        index.ensure(format!("{}|1|python", dir.display()), files.clone(), langs.clone());
+        wait_built(&mut index);
+        assert_eq!(index.get("alpha").len(), 1);
+        // a save replaces what the file defined
+        let lang = langs.by_id("python").unwrap();
+        let a = dir.join("a.py");
+        index.update_file(&a, file_definitions(&a, "def alpha2():\n    pass\n", &lang));
+        assert!(index.get("alpha").is_empty() && index.get("alpha2").len() == 1);
+        // the project read again (a new list of files): the old index answers until the new one is complete
+        std::fs::write(dir.join("c.py"), "def gamma(): pass\n").unwrap();
+        let mut more = files.clone();
+        more.push(dir.join("c.py"));
+        index.ensure(format!("{}|2|python", dir.display()), more, langs.clone());
+        assert_eq!(index.get("Beta").len(), 1, "still there while the new index is read");
+        // and a file saved meanwhile is not undone by the build, which read it from the disk before
+        index.update_file(&a, file_definitions(&a, "def alpha3(): pass\n", &lang));
+        wait_built(&mut index);
+        assert_eq!(index.get("gamma").len(), 1);
+        assert_eq!(index.get("alpha3").len(), 1);
+        assert!(index.get("alpha").is_empty() && index.get("alpha2").is_empty());
+        // completion: a prefix in any case, the names of the language asked for first
+        let names: Vec<String> = index.with_prefix("AL", 10, Some("python")).into_iter().map(|(n, _, _)| n).collect();
+        assert_eq!(names, ["alpha3"]);
+        assert_eq!(index.with_prefix("", 2, Some("python")).len(), 2);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn the_index_waits_for_the_files_of_the_project() {
+        let dir = temp_project("wait", &[("m.py", "def late(): pass\n")]);
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.mods.langs = registry_langs(&["python"]);
+        app.open_project(&dir);
+        // asked before the list of files is read: not built empty for good, but waiting
+        app.ensure_lang_index();
+        assert!(app.hover.index.building() && app.hover.index.get("late").is_empty());
+        for _ in 0..300 {
+            app.poll_index();
+            if app.project.as_ref().unwrap().files_gen > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        app.ensure_lang_index();
+        wait_built(&mut app.hover.index);
+        assert_eq!(app.hover.index.get("late").len(), 1);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_class_is_found_whatever_its_constructor_is_called_with() {
+        let dir = temp_project("class", &[("shapes.py", "class Shape(Base):\n    def __init__(self):\n        pass\n\ndef area(w, h):\n    return w * h\n"), ("main.py", "s = Shape()\narea(1)\n")]);
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.mods.langs = registry_langs(&["python"]);
+        app.open_project(&dir);
+        for _ in 0..300 {
+            app.poll_index();
+            app.ensure_lang_index();
+            if !app.hover.index.building() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        // `Shape()` passes nothing, its header lists a base class: it is still the definition
+        let hits = app.project_definitions("Shape", Some(0), None, Some("python"), false);
+        assert_eq!(hits.len(), 1, "{hits:?}");
+        assert!(hits[0].source.ends_with("shapes.py:1"));
+        // a call with a count no definition takes still goes to the function, the only one there is
+        assert_eq!(app.project_definitions("area", Some(1), None, Some("python"), false).len(), 1);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn the_text_search_finds_what_outlines_miss() {
+        let dir = temp_project("text", &[
+            ("src/vec.c", "/* Vec2 x; */\ntypedef struct {\n    float x, y;\n} Vec2;\n\nstatic int\nadd(int a, int b)\n{\n    return a + b;\n}\n"),
+            ("src/main.c", "int main(void) {\n    Vec2 v;\n    return add(1, 2);\n}\n"),
+            ("lib/util.go", "package util\n\nfunc Clamp(x int) int { return x }\n"),
+            ("README.md", "func Clamp is described here\n"),
+        ]);
+        let langs = registry_langs(&["c-cpp"]);
+        let files = vec![dir.join("src/vec.c"), dir.join("src/main.c"), dir.join("lib/util.go"), dir.join("README.md")];
+        let find = |name: &str| {
+            let f = ide_core::defsearch::DefFinder::new(name).unwrap();
+            definitions_in_text(&f, name, files.clone(), &[], &dir, &langs, Some(&dir.join("src/main.c")))
+        };
+        let v = find("Vec2");
+        assert_eq!(v.len(), 1, "the one in the comment is not a definition: {v:?}");
+        assert!(v[0].source.ends_with("src/vec.c:4") && v[0].kind == "struct");
+        let a = find("add");
+        assert_eq!(a.len(), 1);
+        assert!(a[0].source.ends_with("src/vec.c:7"));
+        assert_eq!(&std::fs::read_to_string(dir.join("src/vec.c")).unwrap()[a[0].offset..a[0].offset + 3], "add");
+        // a language no module knows, and never in the documentation
+        let c = find("Clamp");
+        assert_eq!(c.len(), 1);
+        assert!(c[0].source.ends_with("lib/util.go:3"));
+        assert!(find("missing").is_empty());
         let _ = std::fs::remove_dir_all(dir);
     }
 }

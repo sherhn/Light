@@ -33,8 +33,13 @@ pub struct ProjectIndex {
 
 impl ProjectIndex {
     pub fn build(root: &Path) -> ProjectIndex {
+        ProjectIndex::build_from(search::walk_files(root))
+    }
+
+    /// The index of these files (the project's, without what it hides).
+    pub fn build_from(files: impl IntoIterator<Item = PathBuf>) -> ProjectIndex {
         let mut idx = ProjectIndex::default();
-        for p in search::walk_files(root) {
+        for p in files {
             idx.update_file_from_disk(&p);
         }
         idx

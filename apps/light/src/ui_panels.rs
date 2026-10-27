@@ -256,6 +256,10 @@ impl App {
                         action = Some(("delete".into(), row.path.clone()));
                         ui.close();
                     }
+                    if row.is_dir && row.depth > 0 && ui.button(tr("Hide Folder")).on_hover_text(tr("Leave it out of the tree, search and Go to File (Settings > Project)")).clicked() {
+                        action = Some(("hide".into(), row.path.clone()));
+                        ui.close();
+                    }
                     if !row.is_dir && self.git.repo.is_some() {
                         ui.separator();
                         if ui.button(tr("Git: Show Diff")).clicked() {
@@ -323,6 +327,7 @@ impl App {
                     }
                 }
                 "refresh" => self.refresh_project(),
+                "hide" => self.hide_folder(&path),
                 _ => {}
             }
         }
@@ -1316,7 +1321,7 @@ mod layout_tests {
     fn project() -> Project {
         let root = PathBuf::from("C:/light-layout-project");
         let rows: Vec<_> = (0..200).map(|i| TreeRow { path: root.join(format!("file{i:03}.rs")), depth: 1, is_dir: false, expanded: false, name: format!("file{i:03}.rs"), ignored: false }).collect();
-        Project { root: root.clone(), name: "layout".into(), tree_ver: 0, tree_cache: Some((0, rows)), ignore: ide_core::workspace::IgnoreMatcher::new(&root), expanded: Default::default(), selected: None, dir_cache: Default::default(), files: vec![root.join("collapsed/Navigator.rs"), root.join("other.rs")], files_rel: vec![], index: Default::default(), index_rx: None, branch: None }
+        Project { root: root.clone(), name: "layout".into(), tree_ver: 0, tree_cache: Some((0, rows)), ignore: ide_core::workspace::IgnoreMatcher::new(&root), expanded: Default::default(), selected: None, dir_cache: Default::default(), files: vec![root.join("collapsed/Navigator.rs"), root.join("other.rs")], files_rel: vec![], files_gen: 0, index: Default::default(), index_rx: None, branch: None, hidden: Default::default() }
     }
 
     #[test]

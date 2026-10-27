@@ -10,7 +10,7 @@ use lisp_runtime::setup_progress::{Progress, clock};
 use lisp_runtime::wsl::Presence;
 
 use crate::app::App;
-use crate::app_wsl::SetupTask;
+use crate::app_wsl::{HOST, SetupTask};
 use crate::editor_view::Sev;
 use crate::fonts;
 use crate::i18n::{self, tr};
@@ -97,6 +97,124 @@ fn draw_overview(ui: &mut egui::Ui, pal: &Palette, steps: &[(&str, bool)], runni
 }
 
 impl App {
+    /// What the running (or the last) setup step is doing: its stage, how far it has got, how it ended and its output.
+    /// Returns whether Cancel was pressed.
+    fn draw_setup_progress(&mut self, ui: &mut egui::Ui) -> bool {
+        let pal = self.pal;
+        let running = self.wsl.task.as_ref().map(|t| t.task.clone());
+        let busy_task = running.is_some();
+        if !busy_task && self.wsl.log.is_empty() && self.wsl.outcome.is_none() {
+            return false;
+        }
+        let task_progress: Option<(Progress, u64)> = self.wsl.task.as_ref().map(|t| (t.tracker.progress(), t.started.elapsed().as_secs()));
+        let outcome = self.wsl.outcome.clone();
+        let log = self.wsl.log.clone();
+        let mut cancel = false;
+        group(ui, &pal, tr("Progress"), |ui, _rows| {
+            ui.add_space(10.0);
+            ui.horizontal(|ui| {
+                if busy_task {
+                    let what = match &running {
+                        Some(SetupTask::InstallWsl) => tr("Installing WSL...").to_string(),
+                        Some(SetupTask::InstallDistro(n)) | Some(SetupTask::ImportFile(n)) => i18n::fmt("Installing {}...", &[n]),
+                        Some(SetupTask::InstallSbcl(d)) => i18n::fmt("Installing SBCL in {}...", &[d]),
+                        Some(SetupTask::InstallTools(d)) => i18n::fmt("Installing developer tools in {}...", &[d]),
+                        Some(SetupTask::InstallHostTools) => tr("Installing developer tools on this computer...").to_string(),
+                        Some(SetupTask::GitSetup(d)) => i18n::fmt("Setting up git in {}...", &[d]),
+                        None => String::new(),
+                    };
+                    ui.label(RichText::new(what).font(fonts::semibold(13.0)));
+                    if !matches!(running, Some(SetupTask::InstallWsl)) {
+                        widgets::right_row(ui, 30.0, |ui| {
+                            if widgets::secondary_button(ui, &pal, tr("Cancel")).clicked() {
+                                cancel = true;
+                            }
+                        });
+                    }
+                }
+            });
+            if let Some((p, secs)) = task_progress {
+                // what it is doing now, how much is done (when that is known) and for how long
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(tr(p.stage.label())).color(pal.text_dim).size(12.5));
+                    widgets::right_row(ui, 18.0, |ui| {
+                        let text = match p.fraction {
+                            Some(f) => format!("{:.0}%  ·  {}", (f * 100.0).floor(), clock(secs)),
+                            None => clock(secs),
+                        };
+                        ui.label(RichText::new(text).color(pal.text_dim).font(egui::FontId::monospace(12.0)));
+                    });
+                });
+                ui.add_space(4.0);
+                widgets::progress_bar_opt(ui, &pal, p.fraction, ui.available_width());
+                ui.add_space(4.0);
+            }
+            if let Some(o) = &outcome {
+                let (text, color) = match o {
+                    Ok(t) => (t.as_str(), pal.ok),
+                    Err(t) => (t.as_str(), pal.error),
+                };
+                ui.add_space(6.0);
+                ui.label(RichText::new(text).color(color).size(12.5));
+            }
+            if !log.is_empty() {
+                ui.add_space(8.0);
+                egui::Frame::new().fill(pal.editor_bg).corner_radius(CornerRadius::same(10)).inner_margin(Margin::symmetric(10, 8)).show(ui, |ui| {
+                    egui::ScrollArea::vertical().id_salt("wsl_log").max_height(170.0).auto_shrink([false, true]).stick_to_bottom(true).show_fading(ui, |ui| {
+                        for l in &log {
+                            ui.label(RichText::new(l).font(egui::FontId::monospace(11.5)).color(pal.plain));
+                        }
+                    });
+                });
+            }
+            ui.add_space(12.0);
+        });
+        cancel
+    }
+
+    /// The Linux page when Light runs on Linux itself: no WSL, the developer tools are installed on this computer with
+    /// its package manager (apt, dnf, zypper, pacman or apk), the same choice of tools as for a distribution.
+    pub fn draw_host_tools_page(&mut self, ui: &mut egui::Ui) {
+        let pal = self.pal;
+        if !self.wsl.tools.contains_key(HOST) && !self.wsl_checking_tools() {
+            self.host_check_tools();
+        }
+        if self.wsl.busy() {
+            ui.ctx().request_repaint_after(Duration::from_millis(120));
+        }
+        let busy_task = self.wsl.task.is_some();
+        let (mut recheck, mut install) = (false, false);
+        ui.label(RichText::new(tr("Light runs on Linux: the compilers, debuggers and everyday tools your projects need are installed on this computer with its package manager. Installing asks for the administrator password.")).color(pal.text_dim).size(12.5));
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if widgets::secondary_button(ui, &pal, tr("Check again")).clicked() {
+                recheck = true;
+            }
+            if self.wsl_checking_tools() {
+                spinner(ui, &pal);
+            }
+        });
+        ui.add_space(14.0);
+        if self.draw_setup_progress(ui) {
+            self.wsl_cancel();
+        }
+        let tools = self.wsl.tools.get(HOST).cloned();
+        let checking = self.wsl_checking_tools();
+        let place = tr("this computer").to_string();
+        group(ui, &pal, tr("Developer tools"), |ui, rows| {
+            install = self.draw_tool_rows(ui, rows, &place, busy_task, &tools, checking);
+            ui.add_space(10.0);
+        });
+        if recheck && !checking {
+            self.wsl.tools.remove(HOST);
+            self.host_check_tools();
+        }
+        if install {
+            self.host_install_tools_with(&[]);
+        }
+    }
+
     pub fn draw_wsl_page(&mut self, ui: &mut egui::Ui) {
         let pal = self.pal;
         if !self.wsl.requested {
@@ -150,73 +268,13 @@ impl App {
             SetupTask::InstallWsl => Some(0),
             SetupTask::InstallDistro(_) | SetupTask::ImportFile(_) => Some(1),
             SetupTask::InstallTools(_) => Some(2),
-            SetupTask::InstallSbcl(_) | SetupTask::GitSetup(_) => None,
+            SetupTask::InstallSbcl(_) | SetupTask::GitSetup(_) | SetupTask::InstallHostTools => None,
         });
         group(ui, &pal, tr("Setup progress"), |ui, _rows| draw_overview(ui, &pal, &steps, running_step, task_progress.map(|(p, _)| p.fraction)));
 
         // ---------------------------------------------------------------- progress of the running / last setup step
-        if busy_task || !self.wsl.log.is_empty() || self.wsl.outcome.is_some() {
-            let outcome = self.wsl.outcome.clone();
-            let log = self.wsl.log.clone();
-            group(ui, &pal, tr("Progress"), |ui, _rows| {
-                ui.add_space(10.0);
-                ui.horizontal(|ui| {
-                    if busy_task {
-                        let what = match &running {
-                            Some(SetupTask::InstallWsl) => tr("Installing WSL...").to_string(),
-                            Some(SetupTask::InstallDistro(n)) | Some(SetupTask::ImportFile(n)) => i18n::fmt("Installing {}...", &[n]),
-                            Some(SetupTask::InstallSbcl(d)) => i18n::fmt("Installing SBCL in {}...", &[d]),
-                            Some(SetupTask::InstallTools(d)) => i18n::fmt("Installing developer tools in {}...", &[d]),
-                            Some(SetupTask::GitSetup(d)) => i18n::fmt("Setting up git in {}...", &[d]),
-                            None => String::new(),
-                        };
-                        ui.label(RichText::new(what).font(fonts::semibold(13.0)));
-                        if !matches!(running, Some(SetupTask::InstallWsl)) {
-                            widgets::right_row(ui, 30.0, |ui| {
-                                if widgets::secondary_button(ui, &pal, tr("Cancel")).clicked() {
-                                    act = Some(Act::Cancel);
-                                }
-                            });
-                        }
-                    }
-                });
-                if let Some((p, secs)) = task_progress {
-                    // what it is doing now, how much is done (when that is known) and for how long
-                    ui.add_space(8.0);
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(tr(p.stage.label())).color(pal.text_dim).size(12.5));
-                        widgets::right_row(ui, 18.0, |ui| {
-                            let text = match p.fraction {
-                                Some(f) => format!("{:.0}%  ·  {}", (f * 100.0).floor(), clock(secs)),
-                                None => clock(secs),
-                            };
-                            ui.label(RichText::new(text).color(pal.text_dim).font(egui::FontId::monospace(12.0)));
-                        });
-                    });
-                    ui.add_space(4.0);
-                    widgets::progress_bar_opt(ui, &pal, p.fraction, ui.available_width());
-                    ui.add_space(4.0);
-                }
-                if let Some(o) = &outcome {
-                    let (text, color) = match o {
-                        Ok(t) => (t.as_str(), pal.ok),
-                        Err(t) => (t.as_str(), pal.error),
-                    };
-                    ui.add_space(6.0);
-                    ui.label(RichText::new(text).color(color).size(12.5));
-                }
-                if !log.is_empty() {
-                    ui.add_space(8.0);
-                    egui::Frame::new().fill(pal.editor_bg).corner_radius(CornerRadius::same(10)).inner_margin(Margin::symmetric(10, 8)).show(ui, |ui| {
-                        egui::ScrollArea::vertical().id_salt("wsl_log").max_height(170.0).auto_shrink([false, true]).stick_to_bottom(true).show_fading(ui, |ui| {
-                            for l in &log {
-                                ui.label(RichText::new(l).font(egui::FontId::monospace(11.5)).color(pal.plain));
-                            }
-                        });
-                    });
-                }
-                ui.add_space(12.0);
-            });
+        if self.draw_setup_progress(ui) {
+            act = Some(Act::Cancel);
         }
 
         // ---------------------------------------------------------------- mode

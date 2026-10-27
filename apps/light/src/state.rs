@@ -145,9 +145,13 @@ pub struct Project {
     pub files: Vec<PathBuf>,
     /// Project-relative paths parallel to `files` (computed once, used by Go to File).
     pub files_rel: Vec<String>,
+    /// Bumped every time `files` is read anew (the definitions of the other languages are read again then).
+    pub files_gen: u64,
     pub index: ProjectIndex,
     pub index_rx: Option<Receiver<(ProjectIndex, Vec<PathBuf>)>>,
     pub branch: Option<String>,
+    /// The folders and files the project does not show (its settings, `.light/project.json`).
+    pub hidden: ide_core::workspace::Hidden,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

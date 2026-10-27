@@ -7,6 +7,7 @@ pub mod clone;
 pub mod cmdhistory;
 pub mod cmdscript;
 pub mod commands;
+pub mod defsearch;
 pub mod diff;
 pub mod docinfo;
 pub mod editor;

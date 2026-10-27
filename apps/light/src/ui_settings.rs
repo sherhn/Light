@@ -14,12 +14,19 @@ use crate::theme::Palette;
 use crate::widgets::{self, TextField};
 
 /// The settings pages; `WSL_PAGE` is the index of the Linux (WSL) one.
-pub const PAGES: [(&str, Icon); 7] = [("Appearance", Icon::Palette), ("Editor", Icon::Code), ("Lisp & REPL", Icon::Repl), ("Linux (WSL)", Icon::Linux), ("Modules", Icon::Puzzle), ("Version Control", Icon::Branch), ("Keymap", Icon::Keyboard)];
+pub const PAGES: [(&str, Icon); 8] = [("Appearance", Icon::Palette), ("Editor", Icon::Code), ("Lisp & REPL", Icon::Repl), ("Linux (WSL)", Icon::Linux), ("Modules", Icon::Puzzle), ("Version Control", Icon::Branch), ("Keymap", Icon::Keyboard), ("Project", Icon::Folder)];
 pub const WSL_PAGE: usize = 3;
 pub const LISP_PAGE: usize = 2;
+/// The settings of the open project (only while one is open).
+pub const PROJECT_PAGE: usize = 7;
 
 pub(crate) fn page_visible(page: usize, lisp_enabled: bool) -> bool {
     page < PAGES.len() && (page != LISP_PAGE || lisp_enabled)
+}
+
+/// The name of a page in the sidebar: on Linux itself the Linux page is about this computer's developer tools.
+fn page_title(page: usize) -> &'static str {
+    if page == WSL_PAGE && crate::app_wsl::host_is_linux() { "Linux" } else { PAGES[page].0 }
 }
 
 const DIALOG_W: f32 = 860.0;
@@ -122,7 +129,9 @@ impl App {
         let pal = self.pal;
         let Popup::Settings { mut lisp_path, mut detected, mut filter, mut page } = std::mem::replace(&mut self.popup, Popup::None) else { return };
         let lisp_enabled = self.lisp_enabled();
-        if !page_visible(page, lisp_enabled) {
+        let has_project = self.project.is_some();
+        let visible = |i: usize| page_visible(i, lisp_enabled) && (i != PROJECT_PAGE || has_project);
+        if !visible(page) {
             page = 0;
         }
         let mut close = ctx.input(|i| i.key_pressed(Key::Escape));
@@ -138,7 +147,8 @@ impl App {
 
                 // ---------------------------------------------------------------- sidebar
                 ui.painter().text(pos2(full.min.x + 28.0, full.min.y + 38.0), Align2::LEFT_CENTER, tr("Settings"), fonts::semibold(18.0), pal.text);
-                for (row, (i, (name, icon))) in PAGES.iter().enumerate().filter(|(i, _)| page_visible(*i, lisp_enabled)).enumerate() {
+                for (row, (i, (_, icon))) in PAGES.iter().enumerate().filter(|(i, _)| visible(*i)).enumerate() {
+                    let name = page_title(i);
                     let r = Rect::from_min_size(pos2(full.min.x + 12.0, full.min.y + 78.0 + row as f32 * 40.0), vec2(SIDEBAR_W - 24.0, 38.0));
                     let resp = ui.interact(r, egui::Id::unique(("settings_page", i)), Sense::click());
                     widgets::row_background(ui, &pal, r.expand2(vec2(8.0, 1.0)), i == page, resp.hovered());
@@ -152,7 +162,7 @@ impl App {
 
                 // ---------------------------------------------------------------- content
                 let content = Rect::from_min_max(pos2(full.min.x + SIDEBAR_W + 8.0, full.min.y), pos2(full.max.x - 28.0, full.max.y));
-                ui.painter().text(pos2(content.min.x + 6.0, full.min.y + 38.0), Align2::LEFT_CENTER, tr(PAGES[page].0), fonts::semibold(16.0), pal.text);
+                ui.painter().text(pos2(content.min.x + 6.0, full.min.y + 38.0), Align2::LEFT_CENTER, tr(page_title(page)), fonts::semibold(16.0), pal.text);
                 let close_rect = Rect::from_center_size(pos2(full.max.x - 30.0, full.min.y + 38.0), Vec2::splat(32.0));
                 let mut cui = ui.new_child(egui::UiBuilder::new().max_rect(close_rect));
                 if widgets::icon_button(&mut cui, &pal, Icon::Close, 32.0, pal.text_dim, tr("Close (Esc)")).clicked() {
@@ -250,7 +260,9 @@ impl App {
                                 ui.add_space(14.0);
                             });
                         }
+                        WSL_PAGE if crate::app_wsl::host_is_linux() => self.draw_host_tools_page(ui),
                         WSL_PAGE => self.draw_wsl_page(ui),
+                        PROJECT_PAGE => self.draw_project_page(ui),
                         4 => {
                             group(ui, &pal, tr("Where modules come from"), |ui, rows| {
                                 rows.row(ui, &pal, tr("Registry"), tr("A web address or a folder with the list of modules; leave empty for the published one"), 130.0, |ui| {
@@ -347,6 +359,9 @@ impl App {
             close = true;
         }
         if close {
+            // the hidden folders typed and not applied yet are kept as they are
+            self.apply_hidden_draft();
+            self.hidden_draft = None;
             self.settings.lisp_path = lisp_path;
             self.lisp = self.resolve_lisp();
             self.save_settings();
@@ -357,6 +372,74 @@ impl App {
         } else {
             self.popup = Popup::Settings { lisp_path, detected, filter, page };
         }
+    }
+}
+
+/// The lines of the hidden-folders box as patterns: blank lines go, each line is trimmed.
+pub(crate) fn hidden_lines(text: &str) -> Vec<String> {
+    text.lines().map(str::trim).filter(|l| !l.is_empty()).map(str::to_string).collect()
+}
+
+impl App {
+    /// The settings of the open project: what its tree, search and Go to File leave out.
+    fn draw_project_page(&mut self, ui: &mut egui::Ui) {
+        let pal = self.pal;
+        let name = self.project.as_ref().map(|p| p.name.clone()).unwrap_or_default();
+        let draft = self.hidden_draft.get_or_insert_with(|| self.project_cfg.hidden.join("\n"));
+        let changed = hidden_lines(draft) != self.project_cfg.hidden;
+        let mut act: Option<Vec<String>> = None;
+        ui.label(RichText::new(i18n::fmt("These settings belong to {} and are kept in its .light folder, which git does not see.", &[&name])).color(pal.text_dim).size(12.5));
+        ui.add_space(14.0);
+        group(ui, &pal, tr("Hidden folders"), |ui, rows| {
+            rows.row(ui, &pal, tr("Folders not shown"), tr("Left out of the project tree, Go to File, Find in Files and the search for definitions. One per line: a name hides every folder of that name, a path starting with / only that one, and * matches anything (*.log)."), 150.0, |ui| {
+                if widgets::secondary_button(ui, &pal, tr("Reset")).on_hover_text(tr("The folders of the coding agents (.claude, .codex, .cursor...)")).clicked() {
+                    act = Some(crate::app_env::default_hidden());
+                }
+            });
+            widgets::text_area(ui, &pal, draft, tr("nothing is hidden"), 190.0, Some(egui::Id::unique("project_hidden_folders")));
+            ui.add_space(10.0);
+            ui.horizontal(|ui| {
+                ui.add_enabled_ui(changed, |ui| {
+                    if widgets::primary_button(ui, &pal, tr("Apply")).clicked() {
+                        act = Some(hidden_lines(draft));
+                    }
+                });
+                if changed {
+                    ui.label(RichText::new(tr("Not applied yet")).color(pal.text_dim).size(12.0));
+                }
+            });
+            ui.add_space(14.0);
+        });
+        if let Some(list) = act {
+            self.hidden_draft = Some(list.join("\n"));
+            self.set_hidden_folders(list);
+        }
+    }
+
+    /// Keep the hidden folders typed on the Project page when they differ from the project's.
+    pub(crate) fn apply_hidden_draft(&mut self) {
+        let Some(d) = &self.hidden_draft else { return };
+        let list = hidden_lines(d);
+        if self.project.is_some() && list != self.project_cfg.hidden {
+            self.set_hidden_folders(list);
+        }
+    }
+
+    /// Hide a folder of the tree from now on (as a path from the root, so that only it goes).
+    pub fn hide_folder(&mut self, path: &std::path::Path) {
+        let Some(root) = self.project_root() else { return };
+        let rel = ide_core::workspace::relative(root, path);
+        if rel.is_empty() {
+            return;
+        }
+        let pattern = format!("/{rel}");
+        let mut list = self.project_cfg.hidden.clone();
+        if !list.contains(&pattern) {
+            list.push(pattern);
+        }
+        self.hidden_draft = None;
+        self.set_hidden_folders(list);
+        self.toast(i18n::fmt("{} is hidden. Show it again in Settings > Project.", &[&rel]), crate::editor_view::Sev::Weak);
     }
 }
 

@@ -136,7 +136,22 @@ pub struct ProjectSession {
     pub files: Vec<String>,
     pub active: Option<String>,
     pub expanded: Vec<String>,
+    /// Where each file was left: a file opened again (or after a restart) comes back there.
+    pub positions: BTreeMap<String, FilePos>,
 }
+
+/// Where a file was left in the editor.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FilePos {
+    /// Byte offset of the caret.
+    pub caret: usize,
+    /// The (fractional) line at the top of the view.
+    pub top_line: f32,
+}
+
+/// The most files whose places a project remembers.
+pub const MAX_POSITIONS: usize = 200;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]

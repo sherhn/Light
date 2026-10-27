@@ -66,6 +66,9 @@ pub struct ViewCfg<'a> {
     pub git_marks: &'a [Mark],
     /// Code overview (minimap) next to the scrollbar.
     pub minimap: bool,
+    /// Which document this is: each keeps its own scrolling (a fling or a scroll animation of one tab must not carry
+    /// on in the tab shown after it).
+    pub doc_id: u64,
 }
 
 #[derive(Default)]
@@ -273,7 +276,7 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
 
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(text_rect).layout(egui::Layout::top_down(egui::Align::Min)));
     child.set_clip_rect(text_rect.intersect(ui.clip_rect()));
-    let scroll = egui::ScrollArea::both().min_scrolled_height(0.0).min_scrolled_width(0.0).max_height(text_rect.height()).max_width(text_rect.width()).auto_shrink([false, false]).scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).scroll_offset(state.scroll).id_salt("editor_scroll");
+    let scroll = egui::ScrollArea::both().min_scrolled_height(0.0).min_scrolled_width(0.0).max_height(text_rect.height()).max_width(text_rect.width()).auto_shrink([false, false]).scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).scroll_offset(state.scroll).id_salt(("editor_scroll", cfg.doc_id));
     let mut hover_marker: Option<String> = None;
     let area = scroll.show_viewport(&mut child, |ui, viewport| {
         let (rect, resp) = ui.allocate_exact_size(Vec2::new(content_w.max(viewport.width()), content_h.max(viewport.height())), Sense::click_and_drag());
@@ -398,6 +401,14 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                     if ch == ' ' {
                         let x = x0 + display_col(line, i) as f32 * cw + cw * 0.5;
                         painter.circle_filled(Pos2::new(x, y + lh * 0.5), 1.0, pal.whitespace);
+                    } else if ch == '\t' {
+                        // an arrow across the width the tab takes
+                        let (xa, xb) = (x0 + display_col(line, i) as f32 * cw + cw * 0.3, x0 + display_col(line, i + 1) as f32 * cw - cw * 0.3);
+                        let my = y + lh * 0.5;
+                        let stroke = Stroke::new(1.0, pal.whitespace);
+                        painter.line_segment([Pos2::new(xa, my), Pos2::new(xb, my)], stroke);
+                        painter.line_segment([Pos2::new(xb - cw * 0.35, my - cw * 0.3), Pos2::new(xb, my)], stroke);
+                        painter.line_segment([Pos2::new(xb - cw * 0.35, my + cw * 0.3), Pos2::new(xb, my)], stroke);
                     }
                 }
             }
@@ -730,7 +741,7 @@ mod scrollbar_tests {
         let mut editor = Editor::new(&"x".repeat(500), lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0 };
         let mut track = Pos2::ZERO;
         for frame in 0..6 {
             let position = track + Vec2::new(if frame >= 3 { 80.0 } else { 0.0 }, 0.0);
@@ -795,7 +806,7 @@ mod problem_tests {
         let mut editor = Editor::new(text, lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0 };
         let (mut tint, mut underline) = (false, false);
         for _ in 0..2 {
             let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(500.0, 200.0))), ..Default::default() }, |ui| {

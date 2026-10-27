@@ -625,6 +625,37 @@ pub fn install_tools_command(distro: &str, groups: &[ToolGroup]) -> Command {
     c
 }
 
+// ---------------------------------------------------------------------------------------------- Linux itself
+
+/// Look for the developer tools on this computer, when Light itself runs on Linux (a login shell, as in a distribution).
+pub fn check_tools_here(groups: &[ToolGroup]) -> Result<Vec<(String, bool)>, String> {
+    let mut c = Command::new("sh");
+    c.args(["-lc", &tools_check_script(groups)]);
+    let out = capture(c, Duration::from_secs(90)).map_err(|e| e.to_string())?;
+    if out.timed_out {
+        return Err("the check did not finish in time".into());
+    }
+    let first = all_programs(groups).into_iter().next().unwrap_or_default();
+    if !out.text.contains(&format!("{first}=")) {
+        return Err(out.text.trim().to_string());
+    }
+    Ok(parse_tools(&out.text, groups))
+}
+
+/// What runs the install script on this computer: directly when Light runs as root, else through pkexec, which asks
+/// for the password in a window of the desktop (there is no terminal to ask in).
+pub const AS_ROOT_HERE: &str = "if [ \"$(id -u)\" = 0 ]; then exec sh -c \"$0\"; fi
+if command -v pkexec >/dev/null 2>&1; then exec pkexec sh -c \"$0\"; fi
+echo 'Installing needs administrator rights: pkexec (polkit) was not found. Install it, or run the tools install with sudo in a terminal.' >&2
+exit 126";
+
+/// Install the developer tools on this computer with its package manager, as root (see [`AS_ROOT_HERE`]).
+pub fn install_tools_here_command(groups: &[ToolGroup]) -> Command {
+    let mut c = Command::new("sh");
+    c.args(["-c", AS_ROOT_HERE, &install_tools_script(groups)]);
+    c
+}
+
 /// Where Git for Windows keeps its credential manager, as Linux sees it: Linux git can then use the logins already
 /// saved on Windows (GitHub included), the way Microsoft's WSL guide sets it up.
 pub fn windows_credential_manager(t: &Target) -> Option<String> {
@@ -1130,6 +1161,17 @@ mod tests {
         let i = install_distro_command("Ubuntu-24.04", Some(Path::new(r"C:\WSL\Ubuntu")));
         assert!(args(&i).ends_with(&["--install".into(), "-d".into(), "Ubuntu-24.04".into(), "--no-launch".into(), "--web-download".into(), "--location".into(), r"C:\WSL\Ubuntu".into()]));
         assert!(args(&install_sbcl_command("Debian")).ends_with(&["-u".into(), "root".into(), "-e".into(), "sh".into(), "-c".into(), INSTALL_SBCL_SCRIPT.into()]));
+    }
+
+    #[test]
+    fn tools_are_installed_on_linux_itself_as_root() {
+        let groups = module_groups();
+        let c = install_tools_here_command(&groups);
+        assert_eq!(c.get_program(), "sh");
+        assert_eq!(args(&c), vec!["-c".to_string(), AS_ROOT_HERE.to_string(), install_tools_script(&groups)]);
+        // the script reaches root without a terminal: directly as root, else through pkexec, else it says why not
+        assert!(AS_ROOT_HERE.contains("id -u") && AS_ROOT_HERE.contains("pkexec sh -c \"$0\""));
+        assert!(AS_ROOT_HERE.trim_end().ends_with("exit 126"));
     }
 
     #[test]

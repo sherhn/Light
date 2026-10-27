@@ -80,6 +80,18 @@ enum Class {
     Other,
 }
 
+/// A rule of a makefile (`all: main.o`, `%.o: %.c`), not a variable (`X := 1`, `Y = a:b`) nor a recipe or a comment.
+fn is_make_rule(line: &str) -> bool {
+    if line.starts_with(['\t', ' ', '#']) {
+        return false;
+    }
+    let code = line.split('#').next().unwrap_or("");
+    match code.find(':') {
+        Some(i) => !code[..i].contains('=') && !code[i..].starts_with(":=") && !code[i..].starts_with("::="),
+        None => false,
+    }
+}
+
 fn class_of(c: char) -> Class {
     if c.is_alphanumeric() || c == '_' {
         Class::Word
@@ -957,7 +969,11 @@ impl Editor {
         let le = self.line_end_of(ls);
         let cur = self.text[ls..le].to_string();
         let ws = cur.len() - cur.trim_start_matches([' ', '\t']).len();
-        let want = lang.indent_for(&prev, &cur);
+        let mut want = lang.indent_for(&prev, &cur);
+        // the line under a rule of a makefile is its recipe: it starts with a tab
+        if lang.id() == "make" && want.is_empty() && is_make_rule(&prev) {
+            want = "\t".into();
+        }
         self.splice(ls, ls + ws, &want);
         let c = ls + want.len();
         self.set_caret_raw(c, c);
@@ -1201,9 +1217,31 @@ impl Editor {
         self.caret = fix(c0).min(self.text.len());
     }
 
+    /// Tab puts a tab character in, not spaces: a makefile (its recipes must start with one) or a file whose lines are
+    /// indented with tabs.
+    pub fn indents_with_tabs(&self) -> bool {
+        if self.other.as_ref().is_some_and(|l| l.id() == "make") {
+            return true;
+        }
+        let (mut tabs, mut spaces) = (0usize, 0usize);
+        for l in self.text.lines().take(2000) {
+            match l.as_bytes().first() {
+                Some(b'\t') => tabs += 1,
+                Some(b' ') if l.starts_with("  ") => spaces += 1,
+                _ => {}
+            }
+        }
+        tabs > spaces
+    }
+
     pub fn indent_lines(&mut self) {
+        let tabs = self.indents_with_tabs();
         self.transact(EditKind::Other, |ed| {
             if !ed.has_selection() || ed.line_of(ed.selection().0) == ed.line_of(ed.selection().1) && !ed.selection_covers_full_line() {
+                if tabs {
+                    ed.replace_selection_with("\t");
+                    return;
+                }
                 let col = ed.line_col(ed.caret).1;
                 let n = INDENT_WIDTH - col % INDENT_WIDTH;
                 ed.replace_selection_with(&" ".repeat(n));
@@ -1211,7 +1249,7 @@ impl Editor {
             }
             let (l1, l2) = ed.selected_lines();
             let (a, c) = (ed.anchor, ed.caret);
-            let pad = " ".repeat(INDENT_WIDTH);
+            let pad = if tabs { "\t".to_string() } else { " ".repeat(INDENT_WIDTH) };
             let mut a2 = a;
             let mut c2 = c;
             for l in (l1..=l2).rev() {
@@ -1221,10 +1259,10 @@ impl Editor {
                 }
                 ed.splice(ls, ls, &pad);
                 if ls <= a {
-                    a2 += INDENT_WIDTH;
+                    a2 += pad.len();
                 }
                 if ls <= c {
-                    c2 += INDENT_WIDTH;
+                    c2 += pad.len();
                 }
             }
             ed.anchor = a2;
@@ -1903,6 +1941,38 @@ mod tests {
         e.set_caret(5, false);
         e.toggle_line_comment();
         assert_eq!(e.text(), "all:\n\t# make -C x\n\t");
+    }
+
+    #[test]
+    fn tab_puts_a_tab_into_makefiles_and_tab_indented_files() {
+        // at the start of a line, of the file, anywhere: a real tab, which recipes need
+        let mut e = with_lang("", "shell-make", "make");
+        e.indent_lines();
+        assert_eq!(e.text(), "\t");
+        let mut e = with_lang("all: main.o\ncc -o all main.o", "shell-make", "make");
+        e.set_caret(12, false);
+        e.indent_lines();
+        assert_eq!(e.text(), "all: main.o\n\tcc -o all main.o");
+        // the whole selection moves by a tab, and Shift+Tab takes it back
+        e.select_range(0, e.text().len());
+        e.indent_lines();
+        assert_eq!(e.text(), "\tall: main.o\n\t\tcc -o all main.o");
+        e.unindent_lines();
+        assert_eq!(e.text(), "all: main.o\n\tcc -o all main.o");
+        // Enter under a rule starts its recipe with a tab; under a variable it does not
+        let mut e = with_lang("build: a.c", "shell-make", "make");
+        e.insert_newline();
+        assert_eq!(e.text(), "build: a.c\n\t");
+        let mut e = with_lang("CFLAGS := -O2", "shell-make", "make");
+        e.insert_newline();
+        assert_eq!(e.text(), "CFLAGS := -O2\n");
+        // a C file indented with tabs keeps to tabs, one indented with spaces to spaces
+        let mut c = with_lang("int f() {\n\treturn 1;\n}\n", "c-cpp", "c");
+        assert!(c.indents_with_tabs());
+        c.indent_lines();
+        assert!(c.text().ends_with("}\n\t"));
+        assert!(!with_lang("int f() {\n    return 1;\n}\n", "c-cpp", "c").indents_with_tabs());
+        assert!(is_make_rule("%.o: %.c") && is_make_rule("all:") && !is_make_rule("X = a:b") && !is_make_rule("Y ::= 1") && !is_make_rule("\tcc a:b") && !is_make_rule("# a: b"));
     }
 
     #[test]

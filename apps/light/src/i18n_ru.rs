@@ -1019,4 +1019,27 @@ pub const RU: &[(&str, &str)] = &[
     ("Name at least one package", "Укажите хотя бы один пакет"),
     ("Names of packages and programs may have letters, digits and . + - _ : only", "В названиях пакетов и программ допустимы только буквы, цифры и . + - _ :"),
     ("A tool called {} already exists", "Инструмент «{}» уже есть"),
+    // ---- project settings: hidden folders
+    ("These settings belong to {} and are kept in its .light folder, which git does not see.", "Эти настройки относятся к проекту {} и хранятся в его папке .light, которую git не видит."),
+    ("Hidden folders", "Скрытые папки"),
+    ("Folders not shown", "Не показывать папки"),
+    ("Left out of the project tree, Go to File, Find in Files and the search for definitions. One per line: a name hides every folder of that name, a path starting with / only that one, and * matches anything (*.log).", "Не попадают в дерево проекта, переход к файлу, поиск по файлам и поиск определений. По одной на строку: имя скрывает все папки с таким именем, путь с / в начале — только эту папку, * означает что угодно (*.log)."),
+    ("Reset", "Сбросить"),
+    ("The folders of the coding agents (.claude, .codex, .cursor...)", "Папки ИИ-агентов (.claude, .codex, .cursor...)"),
+    ("nothing is hidden", "ничего не скрыто"),
+    ("Apply", "Применить"),
+    ("Not applied yet", "Ещё не применено"),
+    ("Hide Folder", "Скрыть папку"),
+    ("Leave it out of the tree, search and Go to File (Settings > Project)", "Убрать из дерева, поиска и перехода к файлу (Настройки > Проект)"),
+    ("{} is hidden. Show it again in Settings > Project.", "Папка {} скрыта. Вернуть её можно в Настройки > Проект."),
+    // ---- developer tools on Linux itself
+    ("Linux", "Linux"),
+    ("this computer", "этот компьютер"),
+    ("Light runs on Linux: the compilers, debuggers and everyday tools your projects need are installed on this computer with its package manager. Installing asks for the administrator password.", "Light работает в Linux: компиляторы, отладчики и повседневные инструменты для ваших проектов устанавливаются на этот компьютер его менеджером пакетов. Установка попросит пароль администратора."),
+    ("Installing developer tools on this computer (confirm the administrator prompt)...", "Установка инструментов разработчика на этот компьютер (подтвердите запрос администратора)..."),
+    ("Installing developer tools on this computer...", "Установка инструментов разработчика на этот компьютер..."),
+    ("The developer tools are installed on this computer.", "Инструменты разработчика установлены на этот компьютер."),
+    ("The developer tools were not installed on this computer", "Инструменты разработчика не установлены на этот компьютер"),
+    // ---- go to declaration
+    ("Searching the project for the declaration of '{}'...", "Поиск объявления '{}' по всему проекту..."),
 ];

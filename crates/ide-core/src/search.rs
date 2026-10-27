@@ -208,16 +208,23 @@ pub fn is_probably_text(bytes: &[u8]) -> bool {
 
 /// Walk project files honouring .gitignore, skipping VCS metadata and build output.
 pub fn walk_files(root: &Path) -> impl Iterator<Item = PathBuf> {
+    walk_project(root, &crate::workspace::Hidden::default())
+}
+
+/// [`walk_files`] without the folders and files the project hides.
+pub fn walk_project(root: &Path, hidden: &crate::workspace::Hidden) -> impl Iterator<Item = PathBuf> + use<> {
     let root = root.to_path_buf();
+    let hidden = hidden.clone();
     WalkBuilder::new(&root)
         .hidden(false)
         .git_ignore(true)
         .git_global(false)
         .git_exclude(true)
         .require_git(false)
-        .filter_entry(|e| {
+        .filter_entry(move |e| {
             let name = e.file_name().to_string_lossy();
             !matches!(name.as_ref(), ".git" | ".idea" | "node_modules" | "target" | "fasl-cache" | ".light" | ".air" | ".DS_Store")
+                && !hidden.is_hidden(e.path(), e.file_type().is_some_and(|t| t.is_dir()))
         })
         .build()
         .filter_map(Result::ok)
@@ -226,11 +233,16 @@ pub fn walk_files(root: &Path) -> impl Iterator<Item = PathBuf> {
 }
 
 pub fn find_in_files(root: &Path, needle: &str, opts: TextQuery, limit: usize) -> Vec<FileHit> {
+    find_in_project(root, &crate::workspace::Hidden::default(), needle, opts, limit)
+}
+
+/// [`find_in_files`] in the files the project does not hide.
+pub fn find_in_project(root: &Path, hidden: &crate::workspace::Hidden, needle: &str, opts: TextQuery, limit: usize) -> Vec<FileHit> {
     let mut hits = Vec::new();
     if needle.is_empty() {
         return hits;
     }
-    for path in walk_files(root) {
+    for path in walk_project(root, hidden) {
         if hits.len() >= limit {
             break;
         }

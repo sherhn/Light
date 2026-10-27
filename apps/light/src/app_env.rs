@@ -32,7 +32,7 @@ impl Default for Scenario {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ProjectConfig {
     /// The distribution the project is built and run in; `None`: Windows.
@@ -43,6 +43,20 @@ pub struct ProjectConfig {
     pub modules: Vec<String>,
     /// Lists of console commands the project runs with one click.
     pub scenarios: Vec<Scenario>,
+    /// What the project tree, Go to File, search and the index leave out (see [`ide_core::workspace::Hidden`]); a
+    /// project that never said starts with the folders of the coding agents.
+    pub hidden: Vec<String>,
+}
+
+impl Default for ProjectConfig {
+    fn default() -> Self {
+        ProjectConfig { linux: None, decided: false, modules: vec![], scenarios: vec![], hidden: default_hidden() }
+    }
+}
+
+/// The folders a project hides until it is told otherwise.
+pub fn default_hidden() -> Vec<String> {
+    ide_core::workspace::AGENT_FOLDERS.iter().map(|s| s.to_string()).collect()
 }
 
 fn config_path(root: &Path) -> std::path::PathBuf {
@@ -82,6 +96,7 @@ pub fn usable_distro(name: &str) -> bool {
 impl App {
     /// Read the project's environment when it is opened.
     pub fn load_project_env(&mut self) {
+        self.hidden_draft = None;
         let Some(root) = self.project_root().map(Path::to_path_buf) else {
             self.project_cfg = ProjectConfig::default();
             self.env_banner = false;
@@ -172,9 +187,24 @@ impl App {
     /// offer to install them again if they are missing.
     fn forget_build_tools(&mut self) {
         self.tools_banner_dismissed = false;
-        if let Some(t) = self.wsl_target() {
-            self.wsl.tools.remove(&t.distro);
+        if let Some(place) = self.tools_place() {
+            self.wsl.tools.remove(&place);
         }
+    }
+
+    /// Where the project's build tools are looked for: the distribution it runs in, or this computer
+    /// ([`crate::app_wsl::HOST`]) when Light runs on Linux itself.
+    pub fn tools_place(&self) -> Option<String> {
+        match self.wsl_target() {
+            Some(t) => Some(t.distro),
+            None if crate::app_wsl::host_is_linux() => Some(crate::app_wsl::HOST.to_string()),
+            None => None,
+        }
+    }
+
+    /// How a place of [`App::tools_place`] is named on screen.
+    pub fn place_name(place: &str) -> String {
+        if place == crate::app_wsl::HOST { tr("this computer").to_string() } else { place.to_string() }
     }
 
     /// The project builds in Linux and the distribution lacks tools it needs: (distribution, missing programs).
@@ -182,8 +212,8 @@ impl App {
         if !self.linux_relevant() {
             return None;
         }
-        let t = self.wsl_target()?;
-        let Some(Ok(found)) = self.wsl.tools.get(&t.distro) else { return None };
+        let place = self.tools_place()?;
+        let Some(Ok(found)) = self.wsl.tools.get(&place) else { return None };
         // what a project built the Unix way needs; the other developer tools are offered on the Linux page
         let mut missing = if self.unix_project { lisp_runtime::wsl::missing_core(found) } else { vec![] };
         // and what the languages of its files cannot do without (python3 for Python...)
@@ -194,7 +224,7 @@ impl App {
                 }
             }
         }
-        (!missing.is_empty()).then_some((t.distro, missing))
+        (!missing.is_empty()).then_some((place, missing))
     }
 
     /// Whether the "install the build tools" banner is on screen.
@@ -221,16 +251,21 @@ impl App {
     pub fn draw_tools_banner(&mut self, ui: &mut egui::Ui) {
         // the check runs once per project (and again when a command was not found)
         if self.linux_relevant()
-            && let Some(t) = self.wsl_target()
-            && !self.wsl.tools.contains_key(&t.distro)
+            && let Some(place) = self.tools_place()
+            && !self.wsl.tools.contains_key(&place)
             && !self.wsl_checking_tools()
         {
-            self.wsl_check_tools(&t.distro);
+            if place == crate::app_wsl::HOST {
+                self.host_check_tools();
+            } else {
+                self.wsl_check_tools(&place);
+            }
         }
         if !self.tools_banner_visible() {
             return;
         }
         let Some((distro, missing)) = self.missing_build_tools() else { return };
+        let shown = App::place_name(&distro);
         let pal = self.pal;
         let (mut install, mut later) = (false, false);
         let list = if missing.len() > 4 { format!("{}…", missing[..4].join(", ")) } else { missing.join(", ") };
@@ -239,7 +274,7 @@ impl App {
                 let (r, _) = ui.allocate_exact_size(Vec2::splat(18.0), Sense::hover());
                 icons::paint(ui.painter(), r, Icon::Hammer, pal.warning);
                 ui.vertical(|ui| {
-                    ui.label(RichText::new(i18n::fmt("Build tools are missing in {}", &[&distro])).font(fonts::semibold(13.0)));
+                    ui.label(RichText::new(i18n::fmt("Build tools are missing in {}", &[&shown])).font(fonts::semibold(13.0)));
                     ui.label(RichText::new(i18n::fmt("Needed to build and run this project, but not found: {}", &[&list])).color(pal.text_dim).size(12.0));
                 });
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -263,7 +298,11 @@ impl App {
     /// Install the developer tools and show the progress on the Linux page; the groups that bring the `missing`
     /// programs (the project cannot be built without them) are installed whole, whatever was chosen.
     pub fn install_build_tools_here(&mut self, distro: &str, missing: &[String]) {
-        self.wsl_install_tools_with(distro, missing);
+        if distro == crate::app_wsl::HOST {
+            self.host_install_tools_with(missing);
+        } else {
+            self.wsl_install_tools_with(distro, missing);
+        }
         self.open_settings_page(crate::ui_settings::WSL_PAGE);
     }
 
@@ -411,9 +450,14 @@ mod tests {
         assert!(!looks_like_linux_project(&d));
         std::fs::write(d.join("makefile"), "all:\n").unwrap();
         assert!(looks_like_linux_project(&d));
-        let cfg = ProjectConfig { linux: Some("Ubuntu-24.04".into()), decided: true, modules: vec!["python".into()], scenarios: vec![Scenario { name: "build".into(), commands: vec!["make".into(), "make test".into()], stop_on_error: false }] };
+        let cfg = ProjectConfig { linux: Some("Ubuntu-24.04".into()), decided: true, modules: vec!["python".into()], scenarios: vec![Scenario { name: "build".into(), commands: vec!["make".into(), "make test".into()], stop_on_error: false }], hidden: vec!["/build".into()] };
         save_config(&d, &cfg).unwrap();
         assert_eq!(load_config(&d), cfg);
+        // a project that never chose hides the agents' folders; one that emptied the list hides nothing
+        std::fs::write(config_path(&d), r#"{"decided":true}"#).unwrap();
+        assert!(load_config(&d).hidden.iter().any(|h| h == ".claude"));
+        std::fs::write(config_path(&d), r#"{"hidden":[]}"#).unwrap();
+        assert!(load_config(&d).hidden.is_empty());
         assert!(usable_distro("Ubuntu") && !usable_distro("docker-desktop") && !usable_distro("docker-desktop-data"));
         let _ = std::fs::remove_dir_all(&d);
     }
