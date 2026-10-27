@@ -295,10 +295,21 @@ impl App {
                 let current_env = self.project_distro();
                 let mut env_choice: Option<Option<String>> = None;
                 let mut chosen: Option<RunConfig> = None;
+                let module_runs = self.available_module_runs();
                 egui::Popup::menu(&resp).width(240.0).show(|ui| {
+                    egui::ScrollArea::vertical().id_salt("run_configuration_menu").max_height((ctx.content_rect().height() - 120.0).max(100.0)).show_fading(ui, |ui| {
                     if ui.button(tr("Current File")).clicked() {
                         chosen = Some(RunConfig::CurrentFile);
                         ui.close();
+                    }
+                    if !module_runs.is_empty() {
+                        ui.separator();
+                        for (module, def) in &module_runs {
+                            if ui.button(&def.name).clicked() {
+                                chosen = Some(RunConfig::Module(module.clone(), def.name.clone()));
+                                ui.close();
+                            }
+                        }
                     }
                     if !targets.is_empty() {
                         ui.separator();
@@ -350,6 +361,7 @@ impl App {
                             }
                         }
                     }
+                    });
                 });
                 if let Some(c) = env_choice {
                     self.set_project_env(c);

@@ -22,6 +22,7 @@ pub enum RunConfig {
     Make(String),
     /// A scenario of the project: console commands one after another.
     Scenario(String),
+    Module(String, String),
 }
 
 /// Where a make run happened, to find the files its compiler messages name.
@@ -104,6 +105,7 @@ impl App {
             RunConfig::Test(s) => i18n::fmt("Test {}", &[&s]),
             RunConfig::Make(t) => format!("make {t}"),
             RunConfig::Scenario(n) => n.clone(),
+            RunConfig::Module(_, name) => name.clone(),
         }
     }
 
@@ -128,6 +130,11 @@ impl App {
             RunConfig::Test(s) => self.run_asdf_system(&s, true),
             RunConfig::Make(t) => self.run_make(&t),
             RunConfig::Scenario(n) => self.run_scenario(&n),
+            RunConfig::Module(module, name) => {
+                let def = self.available_module_runs().into_iter().find(|(id, def)| *id == module && def.name == name).map(|(_, def)| def);
+                if let (Some(def), Some(path)) = (def, self.doc().and_then(|d| d.path.clone())) { self.run_language_command(&def, &path); }
+                else { self.toast(tr("Choose a file supported by this run command"), Sev::Weak); }
+            }
         }
     }
 
@@ -203,8 +210,14 @@ impl App {
         self.mods.installed.iter().filter(|m| m.enabled).flat_map(|m| m.manifest.run.iter()).find(|r| r.language == lang).cloned()
     }
 
+    pub fn available_module_runs(&self) -> Vec<(String, ide_core::modules::RunDef)> {
+        let Some(language) = self.active_language_id() else { return vec![] };
+        self.mods.installed.iter().filter(|m| m.enabled).flat_map(|m| m.manifest.run.iter().filter(|r| r.language == language).map(|r| (m.manifest.id.clone(), r.clone()))).collect()
+    }
+
     /// Run `file` with the run command of its language: in the project's Linux, or on Windows.
     pub fn run_language_command(&mut self, def: &ide_core::modules::RunDef, file: &Path) {
+        self.save_all();
         let root = self.project_root().map(Path::to_path_buf).or_else(|| file.parent().map(Path::to_path_buf)).unwrap_or_default();
         let t = self.wsl_target();
         let dir = file.parent().unwrap_or(Path::new("."));
@@ -323,7 +336,7 @@ impl App {
         let Some(root) = self.project_root().map(|p| p.to_path_buf()) else { return };
         let sys = match &self.run_config {
             RunConfig::Load(s) | RunConfig::Test(s) => Some(s.clone()),
-            RunConfig::CurrentFile | RunConfig::Make(_) | RunConfig::Scenario(_) => self.asd_systems().into_iter().next(),
+            RunConfig::CurrentFile | RunConfig::Make(_) | RunConfig::Scenario(_) | RunConfig::Module(_, _) => self.asd_systems().into_iter().next(),
         };
         let Some(sys) = sys else {
             self.toast(tr("No .asd system found in this project"), Sev::Weak);

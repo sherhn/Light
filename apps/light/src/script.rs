@@ -215,6 +215,17 @@ impl App {
                     _ => crate::app_run::RunConfig::CurrentFile,
                 };
             }
+            "select_module_run" => {
+                if let Some((module, def)) = self.available_module_runs().into_iter().find(|(_, def)| def.name == sval) {
+                    self.run_config = crate::app_run::RunConfig::Module(module, def.name);
+                } else { self.fail(format!("no module run named {sval}")); }
+            }
+            "assert_run_options" => {
+                let options = self.available_module_runs();
+                for name in step["names"].as_array().into_iter().flatten().filter_map(|v| v.as_str()) {
+                    if !options.iter().any(|(_, def)| def.name == name) { self.fail(format!("missing module run {name}")); }
+                }
+            }
             "new_file_set" => {
                 if let Popup::NewFile { input, extension, .. } = &mut self.popup {
                     *input = sval.clone();

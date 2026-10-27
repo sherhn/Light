@@ -480,7 +480,7 @@ impl App {
             "run.test_system" => {
                 let sys = match &self.run_config {
                     RunConfig::Load(s) | RunConfig::Test(s) => Some(s.clone()),
-                    RunConfig::CurrentFile | RunConfig::Make(_) | RunConfig::Scenario(_) => self.asd_systems().into_iter().next(),
+                    RunConfig::CurrentFile | RunConfig::Make(_) | RunConfig::Scenario(_) | RunConfig::Module(_, _) => self.asd_systems().into_iter().next(),
                 };
                 match sys {
                     Some(s) => self.run_asdf_system(&s, true),

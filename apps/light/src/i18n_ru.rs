@@ -32,6 +32,7 @@ pub const RU: &[(&str, &str)] = &[
     ("Set up Linux", "Настроить Linux"),
     ("Full filename / no extension", "Полное имя / без расширения"),
     ("The project folder starts empty. Add files with + in Project.", "Папка проекта будет пустой. Добавляйте файлы кнопкой + в Project."),
+    ("Choose a file supported by this run command", "Выберите файл, подходящий для этой команды запуска"),
     ("Search files by name", "Поиск файлов по имени"),
     // ---- menus and command titles (ide-core command registry)
     ("File", "Файл"),
