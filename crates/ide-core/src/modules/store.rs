@@ -131,6 +131,7 @@ impl ModuleStore {
     /// Install (or update) the module of `entry` from `source`. The module is switched on unless it was switched off
     /// before.
     pub fn install(&self, entry: &IndexEntry, source: &Source, progress: Progress) -> Result<Manifest, String> {
+        let source = entry.source.as_ref().unwrap_or(source);
         if !is_plain_name(&entry.id) {
             return Err(format!("{}: not a module id", entry.id));
         }
@@ -246,6 +247,16 @@ mod tests {
 
     fn store(d: &TempDir) -> ModuleStore {
         ModuleStore::at(d.path().join("store"))
+    }
+
+    #[test]
+    fn bundled_entries_are_installed_from_their_own_origin() {
+        let d = TempDir::new("bundled-origin");
+        let (source, mut entry) = registry(&d, "1.0.0");
+        entry.source = Some(source);
+        let unavailable = Source::Dir(d.path().join("missing-online-registry"));
+        let module = store(&d).install(&entry, &unavailable, &mut |_, _, _| {}).unwrap();
+        assert_eq!(module.id, "demo");
     }
 
     #[test]

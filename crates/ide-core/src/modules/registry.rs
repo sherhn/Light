@@ -26,6 +26,9 @@ pub struct FileEntry {
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct IndexEntry {
+    /// Runtime-only origin for a bundled module newer than the online catalog.
+    #[serde(skip)]
+    pub source: Option<Source>,
     pub id: String,
     pub name: String,
     pub version: String,
@@ -132,13 +135,30 @@ impl Source {
 /// The first of `sources` that has an index: the index and where it came from.
 pub fn fetch_index(sources: &[Source]) -> Result<(Index, Source), String> {
     let mut errors = Vec::new();
-    for s in sources {
+    for (position, s) in sources.iter().enumerate() {
         match s.fetch_index() {
-            Ok(i) => return Ok((i, s.clone())),
+            Ok(mut i) => {
+                if matches!(s, Source::Url(url) if url == DEFAULT_URL) {
+                    for bundled in &sources[position + 1..] {
+                        if matches!(bundled, Source::Dir(_)) && let Ok(local) = bundled.fetch_index() { merge_bundled(&mut i, local, bundled); }
+                    }
+                }
+                return Ok((i, s.clone()));
+            }
             Err(e) => errors.push(format!("{}: {e}", s.label())),
         }
     }
     Err(if errors.is_empty() { "no registry is set".into() } else { errors.join("; ") })
+}
+
+fn merge_bundled(index: &mut Index, bundled: Index, source: &Source) {
+    for mut entry in bundled.modules {
+        let old = index.modules.iter().position(|m| m.id == entry.id);
+        if old.is_none_or(|i| super::manifest::is_newer(&entry.version, &index.modules[i].version)) {
+            entry.source = Some(source.clone());
+            if let Some(i) = old { index.modules[i] = entry; } else { index.modules.push(entry); }
+        }
+    }
 }
 
 /// A file from the web with the system's `curl`.
@@ -182,6 +202,20 @@ pub fn default_sources(custom: &str, bundled: Option<&Path>) -> Vec<Source> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bundled_modules_extend_an_older_online_catalog_without_losing_their_origin() {
+        let mut online = Index { version: 1, modules: vec![IndexEntry { id: "python".into(), version: "2.0.0".into(), ..Default::default() }] };
+        let bundled = Index { version: 1, modules: vec![IndexEntry { id: "python".into(), version: "1.0.0".into(), ..Default::default() }, IndexEntry { id: "javascript".into(), version: "1.0.0".into(), ..Default::default() }, IndexEntry { id: "docker".into(), version: "1.0.0".into(), ..Default::default() }] };
+        let origin = Source::Dir("bundled/registry".into());
+        merge_bundled(&mut online, bundled, &origin);
+        assert_eq!(online.entry("python").unwrap().version, "2.0.0");
+        assert!(online.entry("python").unwrap().source.is_none());
+        assert_eq!(online.entry("javascript").unwrap().source.as_ref(), Some(&origin));
+        assert_eq!(online.entry("docker").unwrap().source.as_ref(), Some(&origin));
+        let encoded = serde_json::to_string(&online).unwrap();
+        assert!(!encoded.contains("bundled/registry"));
+    }
 
     #[test]
     fn sources_are_told_apart() {

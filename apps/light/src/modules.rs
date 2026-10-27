@@ -512,7 +512,7 @@ fn fetch_covers(index: &Index, source: &Source, cache: Option<&Path>, tx: &Sende
         if file.is_file() {
             continue;
         }
-        if let Ok(bytes) = source.fetch(&format!("{}/{}", e.path, f.name))
+        if let Ok(bytes) = e.source.as_ref().unwrap_or(source).fetch(&format!("{}/{}", e.path, f.name))
             && bytes.len() as u64 == f.size
             && ide_core::modules::sha256::sha256_hex(&bytes).eq_ignore_ascii_case(&f.sha256)
             && std::fs::write(&file, bytes).is_ok()
