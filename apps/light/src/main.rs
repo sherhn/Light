@@ -130,6 +130,8 @@ fn main() -> eframe::Result {
                     }
                 }
             } else if !args.no_restore {
+                    // Opening the project persists a fresh session. Snapshot the
+                    // previous tabs before that save replaces open_files.
                     let files = app.settings.open_files.clone();
                     let active = app.settings.active_file.clone();
                     if let Some(last) = app.settings.last_project.clone().filter(|p| std::path::Path::new(p).is_dir()) {

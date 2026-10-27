@@ -1,0 +1,14 @@
+[
+  {"op":"log","value":"@restore_without_project: standalone scratch tabs survive restarting without a project"},
+  {"op":"assert_tabs","value":1},
+  {"op":"assert_active_file","value":"scratch-1.txt"},
+  {"op":"assert_text_contains","value":"retained scratch without a project"},
+  {"op":"command","value":"file.new"},
+  {"op":"assert_popup","value":"none"},
+  {"op":"assert_tabs","value":2},
+  {"op":"assert_active_file","value":"scratch-2.txt"},
+  {"op":"command","value":"file.close_tab"},
+  {"op":"assert_tabs","value":1},
+  {"op":"screenshot","path":"${SHOTS}/${NAME}.png"},
+  {"op":"quit"}
+]

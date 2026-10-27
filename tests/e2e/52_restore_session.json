@@ -1,0 +1,11 @@
+[
+  {"op":"log","value":"@restore_session: project and tabs survive starting a new executable version"},
+  {"op":"wait","what":"index"},
+  {"op":"assert_tabs","value":2},
+  {"op":"assert_active_file","value":"nav.lisp"},
+  {"op":"assert_text_contains","value":"(defun alpha"},
+  {"op":"assert_project_file","value":"src/main.lisp"},
+  {"op":"frames","value":4},
+  {"op":"screenshot","path":"${SHOTS}/${NAME}.png"},
+  {"op":"quit"}
+]

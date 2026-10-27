@@ -226,8 +226,22 @@ def run_one(script_path):
             sep = os.pathsep
             env["PATH"] = sep.join(p for p in env.get("PATH", "").split(sep) if "sbcl" not in p.lower() and "steel bank" not in p.lower())
         t0 = time.time()
+        launch = [str(EXE), "--script", str(script), "--size", "1280x800"]
+        if "@restore_session" in text or "@restore_without_project" in text:
+            config = tmp / "cfg"
+            config.mkdir(exist_ok=True)
+            if "@restore_without_project" in text:
+                scratch = config / "scratches/scratch-1.txt"
+                scratch.parent.mkdir()
+                scratch.write_text("retained scratch without a project\n", encoding="utf-8")
+                settings = {"open_files": [fwd(scratch)], "active_file": fwd(scratch), "modules_welcome_done": True}
+            else:
+                settings = {"last_project": fwd(proj), "recent_projects": [fwd(proj)], "open_files": [fwd(proj / "src/main.lisp"), fwd(proj / "src/nav.lisp")], "active_file": fwd(proj / "src/nav.lisp"), "modules_welcome_done": True}
+            (config / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+        else:
+            launch.append("--no-restore")
         try:
-            p = subprocess.run([str(EXE), "--script", str(script), "--size", "1280x800", "--no-restore"], capture_output=True, text=True, timeout=180, env=env)
+            p = subprocess.run(launch, capture_output=True, text=True, timeout=180, env=env)
         except subprocess.TimeoutExpired as e:
             return name, False, f"TIMEOUT after 180s\n{(e.stdout or b'').decode(errors='replace') if isinstance(e.stdout, bytes) else e.stdout}", time.time() - t0
         out = (p.stdout or "") + (p.stderr or "")
