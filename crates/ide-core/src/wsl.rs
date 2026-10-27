@@ -48,9 +48,9 @@ pub fn command(distro: &str, cwd: Option<&str>, program: &str) -> Command {
 }
 
 pub fn command_as_user(distro: &str, user: Option<&str>, cwd: Option<&str>, program: &str) -> Command {
-    let mut c = match std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")) {
+    let mut c = match std::env::var_os("LIGHT_FAKE_WSL") {
         Some(script) => {
-            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_WSL_PYTHON").or_else(|| std::env::var_os("AIR_FAKE_WSL_PYTHON")).unwrap_or_else(|| "python".into()));
+            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_WSL_PYTHON").unwrap_or_else(|| "python".into()));
             c.arg(script);
             c
         }
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn commands_go_through_wsl_exe() {
-        if std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")).is_some() {
+        if std::env::var_os("LIGHT_FAKE_WSL").is_some() {
             return;
         }
         let mut c = command("Ubuntu", Some("/home/me/p"), "git");
@@ -117,6 +117,7 @@ mod tests {
         // the secret itself is an environment variable, never an argument
         assert!(!args(&c).iter().any(|a| a.contains("GIT_CONFIG")));
     }
+
     #[test]
     fn cloning_can_pin_the_regular_wsl_user() {
         let mut command = command_as_user("Ubuntu", Some("vladi"), None, "git");

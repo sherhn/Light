@@ -129,7 +129,7 @@ pub fn candidates(configured: &str) -> Vec<PathBuf> {
     if !configured.trim().is_empty() {
         v.push(PathBuf::from(configured.trim()));
     }
-    if let Ok(p) = std::env::var("LIGHT_SBCL").or_else(|_| std::env::var("AIR_SBCL")) {
+    if let Ok(p) = std::env::var("LIGHT_SBCL") {
         v.push(PathBuf::from(p));
     }
     if let Some(paths) = std::env::var_os("PATH") {
@@ -159,7 +159,7 @@ pub fn candidates(configured: &str) -> Vec<PathBuf> {
 
 /// Directory of the SBCL that ships with Light: `LIGHT_BUNDLE_DIR`, else the installed bundle.
 pub fn bundle_dir() -> Option<PathBuf> {
-    if let Ok(d) = std::env::var("LIGHT_BUNDLE_DIR").or_else(|_| std::env::var("AIR_BUNDLE_DIR")) {
+    if let Ok(d) = std::env::var("LIGHT_BUNDLE_DIR") {
         return Some(PathBuf::from(d));
     }
     runtime_dir_for(&std::env::current_exe().ok()?)
@@ -182,7 +182,7 @@ pub fn find_sbcl(configured: &str) -> Option<Implementation> {
     if !configured.trim().is_empty() {
         explicit.push(PathBuf::from(configured.trim()));
     }
-    if let Ok(p) = std::env::var("LIGHT_SBCL").or_else(|_| std::env::var("AIR_SBCL")) {
+    if let Ok(p) = std::env::var("LIGHT_SBCL") {
         explicit.push(PathBuf::from(p));
     }
     if let Some(p) = explicit.into_iter().find(|p| is_file(p)) {

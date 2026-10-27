@@ -223,7 +223,7 @@ pub fn walk_project(root: &Path, hidden: &crate::workspace::Hidden) -> impl Iter
         .require_git(false)
         .filter_entry(move |e| {
             let name = e.file_name().to_string_lossy();
-            !matches!(name.as_ref(), ".git" | ".idea" | "node_modules" | "target" | "fasl-cache" | ".light" | ".air" | ".DS_Store")
+            !matches!(name.as_ref(), ".git" | ".idea" | "node_modules" | "target" | "fasl-cache" | ".light" | ".DS_Store")
                 && !hidden.is_hidden(e.path(), e.file_type().is_some_and(|t| t.is_dir()))
         })
         .build()

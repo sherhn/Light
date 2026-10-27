@@ -135,7 +135,7 @@ impl LocalVcs {
         let info = repo.root.join(".git").join("info");
         let exclude = info.join("exclude");
         let existing = fs::read_to_string(&exclude).unwrap_or_default();
-        let missing: Vec<_> = [".light", ".air"].into_iter().filter(|name| !existing.lines().any(|line| line.trim().trim_matches('/') == *name)).collect();
+        let missing: Vec<_> = [".light"].into_iter().filter(|name| !existing.lines().any(|line| line.trim().trim_matches('/') == *name)).collect();
         if missing.is_empty() { return; }
         let _ = fs::create_dir_all(&info);
         let mut s = existing;
@@ -415,23 +415,6 @@ mod tests {
 
     fn kinds(v: &[Change]) -> Vec<(String, ChangeKind)> {
         v.iter().map(|c| (c.path.clone(), c.kind)).collect()
-    }
-
-    #[test]
-    fn legacy_checkpoints_are_read_and_restored_after_the_rebrand() {
-        let d = TempDir::new("legacy-checkpoints");
-        write(d.path(), "main.py", "original\n");
-        let mut vcs = LocalVcs::open(d.path());
-        let id = vcs.create("before rebrand", None).unwrap();
-        fs::rename(d.path().join(".light"), d.path().join(".air")).unwrap();
-        write(d.path(), "main.py", "edited\n");
-        let mut reopened = LocalVcs::open(d.path());
-        assert_eq!(reopened.commit(id).unwrap().message, "before rebrand");
-        reopened.restore_file(id, "main.py", None).unwrap();
-        assert_eq!(fs::read_to_string(d.path().join("main.py")).unwrap(), "original\n");
-        reopened.rename(id, "retained").unwrap();
-        assert_eq!(LocalVcs::open(d.path()).commit(id).unwrap().message, "retained");
-        assert!(!d.path().join(".light").exists());
     }
 
     #[test]

@@ -204,7 +204,7 @@ impl App {
             let _ = store.save_state(&state);
         }
         // tests and scripts: modules named here are installed before anything else (from the registry, no window)
-        if let Ok(list) = std::env::var("LIGHT_PRELOAD_MODULES").or_else(|_| std::env::var("AIR_PRELOAD_MODULES")) {
+        if let Ok(list) = std::env::var("LIGHT_PRELOAD_MODULES") {
             self.modules_preload(&list);
         }
         self.modules_reload();

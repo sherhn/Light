@@ -86,15 +86,15 @@ pub fn sh_quote(s: &str) -> String {
 
 /// Is `wsl.exe` replaced by the fake of the UI tests?
 pub fn is_faked() -> bool {
-    std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")).is_some()
+    std::env::var_os("LIGHT_FAKE_WSL").is_some()
 }
 
 /// `wsl.exe` with its own messages in UTF-8 (`WSL_UTF8`). `LIGHT_FAKE_WSL` (a Python script, run by
 /// `LIGHT_FAKE_WSL_PYTHON`) stands in for it in the UI tests, so they never touch the real WSL.
 pub fn wsl_command() -> Command {
-    let mut c = match std::env::var_os("LIGHT_FAKE_WSL").or_else(|| std::env::var_os("AIR_FAKE_WSL")) {
+    let mut c = match std::env::var_os("LIGHT_FAKE_WSL") {
         Some(script) => {
-            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_WSL_PYTHON").or_else(|| std::env::var_os("AIR_FAKE_WSL_PYTHON")).unwrap_or_else(|| "python".into()));
+            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_WSL_PYTHON").unwrap_or_else(|| "python".into()));
             c.arg(script);
             c
         }
@@ -1225,7 +1225,7 @@ mod tests {
     #[test]
     #[ignore = "needs a real WSL distribution"]
     fn real_wsl_kill_marked_ends_grandchildren() {
-        let distro = std::env::var("LIGHT_TEST_DISTRO").or_else(|_| std::env::var("AIR_TEST_DISTRO")).unwrap_or_else(|_| "Ubuntu-24.04".into());
+        let distro = std::env::var("LIGHT_TEST_DISTRO").unwrap_or_else(|_| "Ubuntu-24.04".into());
         let t = Target::new(&distro, "");
         let marker = new_marker();
         // a number no other process of the machine runs `sleep` with
@@ -1261,7 +1261,7 @@ mod tests {
     #[ignore = "needs a real WSL distribution"]
     fn real_wsl_install_script_runs_in_simulation() {
         use crate::setup_progress::{Kind, Stage, Tracker};
-        let distro = std::env::var("LIGHT_TEST_DISTRO").or_else(|_| std::env::var("AIR_TEST_DISTRO")).unwrap_or_else(|_| "Ubuntu-24.04".into());
+        let distro = std::env::var("LIGHT_TEST_DISTRO").unwrap_or_else(|_| "Ubuntu-24.04".into());
         // a wrapper first on PATH: `apt-get install ...` becomes `apt-get -s install ...` (a simulation)
         let shim = r#"d=$(mktemp -d)
 cat > $d/apt-get <<'EOS'

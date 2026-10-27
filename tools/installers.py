@@ -63,7 +63,7 @@ def bundle_windows_git(dist, architecture, explicit=None):
     source_kit = dist.parent / f"Git-{spec['version']}-sources.zip"
     source_record = bundle_git_sources(source, source_kit)
     (dist / "licenses/Git-SOURCE-MANIFEST.json").write_text(json.dumps(source_record, indent=2) + "\n", encoding="utf-8")
-    shutil.copytree(source, dist / "git", ignore=shutil.ignore_patterns(".light-vendor-sha256"))
+    shutil.copytree(source, dist / "git", ignore=shutil.ignore_patterns(".*-vendor-sha256"))
     return (f"\n## Git for Windows {spec['version']}\n\nBundled in `git/`; original licences and copyright notices are retained there.\n"
             f"The matching source kit is **{source_kit.name}**, supplied alongside this installer/archive in the same download location.\n"
             "Published downloads: https://github.com/sherhn/Light/releases\n"

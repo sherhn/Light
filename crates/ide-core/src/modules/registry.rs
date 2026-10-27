@@ -163,7 +163,7 @@ fn curl_get(url: &str) -> Result<Vec<u8>, String> {
 /// copy that is shipped next to the program (so modules can be added without a network).
 pub fn default_sources(custom: &str, bundled: Option<&Path>) -> Vec<Source> {
     let mut v = Vec::new();
-    if let Ok(s) = std::env::var("LIGHT_REGISTRY").or_else(|_| std::env::var("AIR_REGISTRY"))
+    if let Ok(s) = std::env::var("LIGHT_REGISTRY")
         && !s.trim().is_empty()
     {
         v.push(Source::parse(&s));

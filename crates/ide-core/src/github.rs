@@ -314,7 +314,7 @@ impl Api {
 
     /// `LIGHT_GITHUB_API` (a test server) or api.github.com.
     pub fn from_env() -> Api {
-        Api::new(&std::env::var("LIGHT_GITHUB_API").or_else(|_| std::env::var("AIR_GITHUB_API")).unwrap_or_else(|_| DEFAULT_API.to_string()))
+        Api::new(&std::env::var("LIGHT_GITHUB_API").unwrap_or_else(|_| DEFAULT_API.to_string()))
     }
 
     /// GET `path` (starting with `/`); returns the HTTP status and body.
@@ -403,10 +403,10 @@ pub fn parse_credential_output(text: &str) -> Option<(String, String)> {
 /// A token that is already on this computer: the GitHub CLI's, else the one Git has saved for github.com. Asks
 /// nothing and never opens a window; a stale token is caught by the check against `/user` that follows.
 pub fn find_saved_token() -> Option<(TokenSource, String)> {
-    if let Ok(t) = std::env::var("LIGHT_GITHUB_FAKE_TOKEN").or_else(|_| std::env::var("AIR_GITHUB_FAKE_TOKEN")) {
+    if let Ok(t) = std::env::var("LIGHT_GITHUB_FAKE_TOKEN") {
         return (!t.is_empty()).then_some((TokenSource::Test, t));
     }
-    if std::env::var("LIGHT_GITHUB_AUTODETECT").or_else(|_| std::env::var("AIR_GITHUB_AUTODETECT")).is_ok_and(|v| v == "0") {
+    if std::env::var("LIGHT_GITHUB_AUTODETECT").is_ok_and(|v| v == "0") {
         return None;
     }
     let mut gh = Command::new("gh");
@@ -435,9 +435,9 @@ const BROWSER_LOGIN_TIMEOUT: Duration = Duration::from_secs(600);
 /// `git credential-manager ARGS` (Git Credential Manager ships with Git for Windows and is installed on macOS and
 /// Linux by many setups). `LIGHT_FAKE_GCM`, a Python script, replaces it in the UI tests.
 fn gcm_command(args: &[&str]) -> Command {
-    let mut c = match std::env::var_os("LIGHT_FAKE_GCM").or_else(|| std::env::var_os("AIR_FAKE_GCM")) {
+    let mut c = match std::env::var_os("LIGHT_FAKE_GCM") {
         Some(script) => {
-            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_GCM_PYTHON").or_else(|| std::env::var_os("AIR_FAKE_GCM_PYTHON")).unwrap_or_else(|| "python".into()));
+            let mut c = Command::new(std::env::var_os("LIGHT_FAKE_GCM_PYTHON").unwrap_or_else(|| "python".into()));
             c.arg(script);
             c
         }
@@ -525,8 +525,8 @@ pub fn browser_login(cancel: &AtomicBool) -> Result<String, LoginError> {
 
 /// The token Git has saved for `username` at github.com (no prompts, no windows).
 pub fn credential_for(username: &str) -> Option<String> {
-    if std::env::var_os("LIGHT_FAKE_GCM").or_else(|| std::env::var_os("AIR_FAKE_GCM")).is_some() {
-        return std::env::var("LIGHT_FAKE_GCM_TOKEN").or_else(|_| std::env::var("AIR_FAKE_GCM_TOKEN")).ok().filter(|t| !t.is_empty());
+    if std::env::var_os("LIGHT_FAKE_GCM").is_some() {
+        return std::env::var("LIGHT_FAKE_GCM_TOKEN").ok().filter(|t| !t.is_empty());
     }
     if username.contains(['\n', '\r']) {
         return None;

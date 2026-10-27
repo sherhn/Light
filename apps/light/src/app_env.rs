@@ -431,12 +431,12 @@ mod tests {
     fn existing_project_scenarios_keep_their_configuration() {
         let root = std::env::temp_dir().join(format!("light-legacy-env-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(root.join(".air")).unwrap();
+        std::fs::create_dir_all(root.join(".light")).unwrap();
         let cfg = ProjectConfig { decided: true, modules: vec!["python".into()], scenarios: vec![Scenario { name: "test".into(), commands: vec!["python -m unittest".into()], stop_on_error: true }], ..Default::default() };
-        std::fs::write(root.join(".air/project.json"), serde_json::to_string(&cfg).unwrap()).unwrap();
+        std::fs::write(root.join(".light/project.json"), serde_json::to_string(&cfg).unwrap()).unwrap();
         assert_eq!(load_config(&root), cfg);
         save_config(&root, &cfg).unwrap();
-        assert!(!root.join(".light").exists());
+        assert!(root.join(".light/project.json").is_file());
         assert_eq!(load_config(&root).scenarios, cfg.scenarios);
         std::fs::remove_dir_all(root).unwrap();
     }
