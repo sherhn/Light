@@ -430,7 +430,7 @@ impl Palette {
     pub fn apply(&self, ctx: &egui::Context) {
         let mut v = if self.dark { egui::Visuals::dark() } else { egui::Visuals::light() };
         v.panel_fill = self.panel_bg;
-        v.window_fill = self.popup_bg;
+        v.window_fill = self.popup_bg.to_opaque();
         v.extreme_bg_color = self.input_bg;
         v.text_edit_bg_color = Some(self.input_bg);
         v.faint_bg_color = self.hover;
@@ -466,6 +466,8 @@ impl Palette {
         ctx.set_theme(if self.dark { egui::ThemePreference::Dark } else { egui::ThemePreference::Light });
         ctx.set_visuals_of(if self.dark { egui::Theme::Dark } else { egui::Theme::Light }, v);
         ctx.all_styles_mut(|style| {
+            // Menus and dialogs must never fade through the code underneath.
+            style.animation_time = 0.0;
             style.spacing.item_spacing = egui::vec2(8.0, 6.0);
             style.spacing.button_padding = egui::vec2(10.0, 5.0);
             style.spacing.interact_size = egui::vec2(36.0, 30.0);
@@ -480,6 +482,18 @@ impl Palette {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dialog_and_popup_surfaces_remain_opaque_with_transparent_custom_colors() {
+        let mut palette = Palette::dark();
+        palette.popup_bg = Color32::from_rgba_unmultiplied(30, 40, 50, 20);
+        palette.glass = Color32::from_rgba_unmultiplied(50, 60, 70, 1);
+        assert_eq!(crate::widgets::glass_frame(&palette).fill.a(), 255);
+        let ctx = egui::Context::default();
+        palette.apply(&ctx);
+        assert_eq!(ctx.style_of(egui::Theme::Dark).visuals.window_fill.a(), 255);
+        assert_eq!(ctx.global_style().animation_time, 0.0);
+    }
 
     #[test]
     fn palettes_are_distinct_and_readable() {

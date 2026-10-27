@@ -813,7 +813,7 @@ impl App {
         let pos = pos2((self.hover.pos.x + 10.0).min(screen.max.x - width - 12.0).max(screen.min.x + 8.0), self.hover.pos.y + 22.0);
         let resp = egui::Area::new(egui::Id::unique("hover_doc")).order(egui::Order::Tooltip).fixed_pos(pos).constrain(true).fade_in(false).show(ctx, |ui| {
             // opaque: it lies over code
-            egui::Frame::new().fill(pal.popup_bg).corner_radius(egui::CornerRadius::same(12)).stroke(egui::Stroke::new(1.0, pal.border)).inner_margin(Margin::symmetric(14, 11)).show(ui, |ui| {
+            egui::Frame::new().fill(pal.popup_bg.to_opaque()).corner_radius(egui::CornerRadius::same(12)).stroke(egui::Stroke::new(1.0, pal.border)).inner_margin(Margin::symmetric(14, 11)).show(ui, |ui| {
                 ui.set_max_width(width - 30.0);
                 ui.spacing_mut().item_spacing = vec2(0.0, 6.0);
                 // what it is

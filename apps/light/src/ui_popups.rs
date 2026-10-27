@@ -781,7 +781,7 @@ impl App {
         pos.x = pos.x.min(screen.max.x - 420.0);
         egui::Area::new(egui::Id::unique("completion")).order(egui::Order::Foreground).fixed_pos(pos).show(ctx, |ui| {
             egui::Frame::new()
-                .fill(pal.popup_bg)
+                .fill(pal.popup_bg.to_opaque())
                 .corner_radius(CornerRadius::same(12))
                 .inner_margin(Margin::same(6))
                 .show(ui, |ui| {
@@ -837,7 +837,7 @@ impl App {
         p.x = p.x.min(screen.max.x - 460.0).max(8.0);
         p.y = p.y.max(8.0);
         egui::Area::new(egui::Id::unique("hint")).order(egui::Order::Tooltip).fixed_pos(p).interactable(false).show(ctx, |ui| {
-            egui::Frame::new().fill(pal.popup_bg).corner_radius(CornerRadius::same(9)).inner_margin(Margin::symmetric(12, 8)).show(ui, |ui| {
+            egui::Frame::new().fill(pal.popup_bg.to_opaque()).corner_radius(CornerRadius::same(9)).inner_margin(Margin::symmetric(12, 8)).show(ui, |ui| {
                 ui.label(RichText::new(text).monospace().size(12.5));
             });
         });

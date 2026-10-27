@@ -362,7 +362,7 @@ impl App {
         let (mut close, mut revert, mut full_diff, mut copy) = (false, false, false, false);
         let mut rect = Rect::NOTHING;
         egui::Area::new(egui::Id::unique("hunk_popup")).order(egui::Order::Foreground).fixed_pos(pos).show(ctx, |ui| {
-            let fr = egui::Frame::new().fill(pal.popup_bg).corner_radius(CornerRadius::same(14)).inner_margin(Margin::symmetric(14, 12)).show(ui, |ui| {
+            let fr = egui::Frame::new().fill(pal.popup_bg.to_opaque()).corner_radius(CornerRadius::same(14)).inner_margin(Margin::symmetric(14, 12)).show(ui, |ui| {
                 ui.set_width(width - 28.0);
                 ui.horizontal(|ui| {
                     ui.set_min_height(28.0);

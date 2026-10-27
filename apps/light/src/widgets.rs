@@ -68,7 +68,7 @@ pub fn card_frame(pal: &Palette, fill: Color32) -> egui::Frame {
 
 /// "Glass" surface for popups and dialogs (no border, no shadow; a soft sheen on the top edge instead).
 pub fn glass_frame(pal: &Palette) -> egui::Frame {
-    egui::Frame::new().fill(pal.glass).corner_radius(CornerRadius::same(CARD_RADIUS + 2)).inner_margin(Margin::same(18)).stroke(Stroke::new(1.0, pal.border))
+    egui::Frame::new().fill(pal.popup_bg.to_opaque()).corner_radius(CornerRadius::same(CARD_RADIUS + 2)).inner_margin(Margin::same(18)).stroke(Stroke::new(1.0, pal.border))
 }
 
 /// Thin highlight along the top edge of a glass surface (a light reflection, not a border).
