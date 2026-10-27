@@ -131,7 +131,7 @@ def main():
         "Light - a modular IDE for any language, written in Rust\n\n"
         f"Run {'light.exe' if os.name == 'nt' else './light'}. Nothing else has to be installed:\n"
         "the languages come as modules - open the Modules tab (Ctrl+Alt+P) and install what you work with\n"
-        "(Lisp, Python, C/C++, Assembler, Markdown, reStructuredText, Shell and make). The folder 'registry'\n"
+        "(JavaScript, Docker/Compose, Lisp, Python, C/C++, HTML, CSS, Markdown, reStructuredText, Shell and make). The folder 'registry'\n"
         "holds them, so this works offline too; the list is also read from the published registry.\n"
         "The Lisp module's REPL, compiler and ASDF come from the bundled SBCL in the 'lisp' folder.\n"
         + ("Git is included. An existing Git on your PATH takes priority.\n\n" if (dist / "git").is_dir()

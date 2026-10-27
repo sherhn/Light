@@ -405,6 +405,51 @@
       }
     },
     {
+      "id": "javascript",
+      "name": "JavaScript",
+      "version": "1.0.1",
+      "category": "Languages",
+      "summary": "JavaScript/JSX, Node.js, JSON and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
+      "cover": "cover.png",
+      "path": "modules/javascript",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 14247,
+          "sha256": "ea8bdce650fe085b10ce3d038d9b67a0dcd6937300ae6d4f95c2662d53d612f4"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 22493,
+          "sha256": "386f9b8be7398e2a599df8b03180299272c7387d723d6b585231139ff356803e"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "js",
+          "mjs",
+          "cjs",
+          "jsx"
+        ],
+        "files": [
+          "package.json",
+          "package-lock.json",
+          "yarn.lock",
+          "pnpm-lock.yaml"
+        ]
+      }
+    },
+    {
       "id": "shell-make",
       "name": "Shell and Make",
       "version": "1.1.1",

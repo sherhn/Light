@@ -76,6 +76,11 @@ def run_one(script_path):
         script = tmp / "script.json"
         script.write_text(text, encoding="utf-8")
         json.loads(text)  # validate
+        if "@javascript" in text:
+            web = proj / "web"
+            web.mkdir(exist_ok=True)
+            (web / "main.mjs").write_text('export const double = (x) => x * 2;\nconsole.log("javascript module ready", double(3));\n', encoding="utf-8")
+            (web / "package.json").write_text(json.dumps({"name": "light-test", "private": True, "type": "module", "scripts": {"test": "node main.mjs", "build": "node main.mjs"}}), encoding="utf-8")
         if "@docker_module" in text:
             (proj / "Dockerfile").write_text("FROM busybox AS base\nWORKDIR /app\nCMD [\"echo\", \"fixture\"]\n", encoding="utf-8")
             (proj / "compose.yaml").write_text("services:\n  web:\n    image: busybox\n    command: [echo, fixture]\n", encoding="utf-8")

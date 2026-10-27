@@ -4,6 +4,7 @@ import {createRequire} from 'node:module';
 const sharp=createRequire(import.meta.url)('sharp');
 const scenes={python:[null,'#b3c9a4','py'],'c-cpp':[null,'#9ab9cf','C++'],lisp:[null,'#b7a6ca','λ'],html:['html5','#cba890'],css:['css','#9cb9d5'],markdown:['markdown','#b4c8bb'],restructuredtext:[null,'#c9c0a3','.rst'],'shell-make':[null,'#a4c6b8','sh'],assembler:[null,'#b9bdad','0x']};
 const [id,destination]=process.argv.slice(2);
+scenes.javascript=[null,'#e4cf83','JS'];
 scenes.docker=[null,'#9abed5','▤'];
 if(!Object.hasOwn(scenes,id)||!destination)throw new Error('Usage: node module-covers.mjs <module id> <output PNG>');
 const [source,color,glyph]=scenes[id];

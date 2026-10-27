@@ -23,6 +23,27 @@ fn language(id: &str) -> Language {
 }
 
 #[test]
+fn javascript_handles_modern_syntax_outline_and_node_commands() {
+    let source = "// note\nexport async function greet(name) {\n  const re = /hello+/gi;\n  return `Hello ${name}`;\n}\nexport class Client {}\nconst double = (x) => x * 2;\n";
+    let spans = hl("javascript", source);
+    assert!(has(&spans, Class::Comment, "// note"));
+    assert!(has(&spans, Class::String, "`Hello ${name}`"), "{spans:?}");
+    assert!(has(&spans, Class::String, "/hello+/gi"), "{spans:?}");
+    let language = language("javascript");
+    assert_eq!(language.outline(source).iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), ["greet", "Client", "double"]);
+    assert_eq!(language.indent_for("function main() {", ""), "  ");
+    assert!(!language.fold_regions(source, &language.highlight(source)).is_empty());
+    assert!(language.words().iter().any(|(w, _)| w == "Promise"));
+    let module = manifests().into_iter().find(|m| m.id == "javascript").unwrap();
+    assert!(module.run.iter().any(|r| r.command.contains("node --watch")));
+    assert!(module.run.iter().any(|r| r.command.contains("npm --prefix") && r.command.ends_with("run build")));
+    let check = module.check.first().unwrap();
+    let problems = ide_core::modules::check::problems(&ide_core::modules::check::compile(&check.pattern).unwrap(), "/project/bad.js:3\nconst = ;\n      ^\n\nSyntaxError: Unexpected token '='\n", 10);
+    assert_eq!(problems[0].line, 3);
+    assert!(problems[0].message.contains("Unexpected token"));
+}
+
+#[test]
 fn docker_highlights_stages_and_compose_services_and_exposes_lifecycle_actions() {
     let text = "FROM node:22 AS builder\nWORKDIR /app\nCOPY --from=builder /app/dist /app\nENV PORT=${PORT}\n";
     let spans = hl("dockerfile", text);
@@ -58,7 +79,7 @@ fn the_index_is_current_and_every_module_is_valid() {
     let src = Source::Dir(registry_dir());
     let index: Index = src.fetch_index().expect("index.json");
     let ids: Vec<&str> = index.modules.iter().map(|m| m.id.as_str()).collect();
-    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "shell-make"]);
+    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "javascript", "shell-make"]);
     for e in &index.modules {
         assert!(e.files.iter().any(|f| f.name == "module.json"), "{}", e.id);
         for f in &e.files {
@@ -99,6 +120,9 @@ fn every_language_is_claimed_by_the_files_it_should() {
     assert_eq!(id("Dockerfile.dockerignore", None), "dockerignore");
     assert_eq!(id("compose.yaml", None), "docker-compose");
     assert_eq!(id("compose.production.yaml", None), "docker-compose");
+    assert_eq!(id("package.json", None), "javascript-package");
+    assert_eq!(id("index.mjs", None), "javascript");
+    assert_eq!(id("Component.jsx", None), "jsx");
     assert_eq!(id("link.ld", None), "c");
     assert_eq!(id("notes.xyz", None), "plain");
     assert_eq!(id("web/INDEX.HTML", None), "html");
