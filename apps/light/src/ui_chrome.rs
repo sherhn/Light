@@ -1,5 +1,6 @@
 //! Window chrome: menu bar, toolbar, tool strip, editor tabs, breadcrumbs, status bar, toasts.
 
+use crate::scrollbars::FadingScroll as _;
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, Layout, Pos2, Rect, RichText, Sense, Stroke, Vec2};
 use ide_core::commands;
 use ide_core::editor::LineEnding;
@@ -123,6 +124,7 @@ impl App {
             let initials: String = name.chars().filter(|c| c.is_alphanumeric()).take(2).collect::<String>().to_uppercase();
             let g = ui.painter().layout_no_wrap(name.clone(), fonts::semibold(13.5), pal.text);
             let (rect, resp) = ui.allocate_exact_size(Vec2::new(g.size().x + 76.0, 38.0), Sense::click());
+            ui.data_mut(|data| data.insert_temp(egui::Id::unique("recent_project_button"), rect));
             if resp.hovered() {
                 ui.painter().rect_filled(rect, widgets::radius(), pal.hover);
             }
@@ -136,14 +138,22 @@ impl App {
             let mut cmd: Option<&str> = None;
             egui::Popup::menu(&resp).width(260.0).show(|ui| {
                 ui.label(RichText::new(tr("Recent projects")).color(pal.text_dim).size(11.5));
-                for p in recents.iter().take(8) {
+                egui::ScrollArea::vertical().id_salt("recent_projects_list").max_height((ctx.content_rect().height() * 0.4).max(100.0)).show_fading(ui, |ui| {
+                for p in &recents {
                     let n = std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| p.clone());
                     if ui.button(n).on_hover_text(p).clicked() {
                         open_other = Some(p.clone());
                         ui.close();
                     }
                 }
+                });
                 ui.separator();
+                let clone_button = ui.button(tr("Get from Version Control..."));
+                ui.data_mut(|data| data.insert_temp(egui::Id::unique("recent_clone_button"), clone_button.rect));
+                if clone_button.clicked() {
+                    cmd = Some("file.clone");
+                    ui.close();
+                }
                 if ui.button(tr("Open Project...")).clicked() {
                     cmd = Some("file.open_project");
                     ui.close();

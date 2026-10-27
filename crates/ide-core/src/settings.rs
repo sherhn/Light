@@ -287,7 +287,7 @@ impl Settings {
     pub fn push_recent_project(&mut self, path: &str) {
         self.recent_projects.retain(|p| p != path);
         self.recent_projects.insert(0, path.to_string());
-        self.recent_projects.truncate(10);
+        self.recent_projects.truncate(30);
         self.last_project = Some(path.to_string());
     }
 
@@ -363,11 +363,11 @@ mod tests {
     #[test]
     fn recent_projects_dedupe_and_cap() {
         let mut s = Settings::default();
-        for i in 0..15 {
+        for i in 0..45 {
             s.push_recent_project(&format!("p{i}"));
         }
         s.push_recent_project("p5");
-        assert_eq!(s.recent_projects.len(), 10);
+        assert_eq!(s.recent_projects.len(), 30);
         assert_eq!(s.recent_projects[0], "p5");
         assert_eq!(s.recent_projects.iter().filter(|p| *p == "p5").count(), 1);
     }
