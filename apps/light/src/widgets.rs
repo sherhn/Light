@@ -216,6 +216,7 @@ pub fn compact_button(ui: &mut egui::Ui, pal: &Palette, label: &str, primary: bo
 pub struct TextField<'a> {
     text: &'a mut String,
     hint: &'a str,
+    suffix: &'a str,
     icon: Option<Icon>,
     width: Option<f32>,
     height: f32,
@@ -227,7 +228,7 @@ pub struct TextField<'a> {
 
 impl<'a> TextField<'a> {
     pub fn new(text: &'a mut String) -> Self {
-        TextField { text, hint: "", icon: None, width: None, height: FIELD_H, font: fonts::ui(13.5), id: None, enabled: true, password: false }
+        TextField { text, hint: "", suffix: "", icon: None, width: None, height: FIELD_H, font: fonts::ui(13.5), id: None, enabled: true, password: false }
     }
     /// Show bullets instead of the characters (a token or password).
     pub fn password(mut self, on: bool) -> Self {
@@ -236,6 +237,11 @@ impl<'a> TextField<'a> {
     }
     pub fn hint(mut self, h: &'a str) -> Self {
         self.hint = h;
+        self
+    }
+    /// Dim, non-editable text following the input, clipped and scrolled with it.
+    pub fn suffix(mut self, suffix: &'a str) -> Self {
+        self.suffix = suffix;
         self
     }
     pub fn icon(mut self, i: Icon) -> Self {
@@ -280,7 +286,7 @@ impl<'a> TextField<'a> {
         let te = egui::TextEdit::singleline(self.text)
             .id(id)
             .hint_text(egui::RichText::new(self.hint).font(self.font.clone()).color(pal.text_dim))
-            .font(self.font)
+            .font(self.font.clone())
             .text_color(pal.text)
             .password(self.password)
             .frame(egui::Frame::NONE)
@@ -288,11 +294,18 @@ impl<'a> TextField<'a> {
             .align(Align2::LEFT_CENTER)
             .desired_width(inner.width())
             .min_size(Vec2::new(inner.width(), self.height));
-        let resp = child.add_enabled(self.enabled, te);
+        if !self.enabled {
+            child.disable();
+        }
+        let output = te.show(&mut child);
+        if !self.suffix.is_empty() && !self.text.is_empty() && !self.password {
+            let pos = output.galley_pos + Vec2::new(output.galley.size().x, 0.0);
+            child.painter().with_clip_rect(inner.intersect(child.clip_rect())).text(pos, Align2::LEFT_TOP, self.suffix, self.font, pal.text_dim.gamma_multiply(0.65));
+        }
         if self.enabled && bg.clicked() {
             ui.memory_mut(|m| m.request_focus(id));
         }
-        resp
+        output.response.response
     }
 }
 

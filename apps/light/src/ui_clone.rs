@@ -197,6 +197,11 @@ impl App {
                     }
                     ui.add_space(12.0);
                 }
+                let repo_name = if st.tab == CloneTab::Url || st.gh_selected.is_some() {
+                    clone::normalize_url(&st.url).ok().map(|url| clone::default_dir_name(&url)).unwrap_or_default()
+                } else {
+                    String::new()
+                };
                 if st.linux {
                     widgets::caption(ui, &pal, &tr("Folder in Linux").to_uppercase());
                     ui.add_space(6.0);
@@ -212,7 +217,8 @@ impl App {
                                 }
                             });
                         }
-                        TextField::new(&mut st.linux_dir).hint("~/projects").icon(Icon::Linux).enabled(!running).show(ui, &pal);
+                        let suffix = clone_dir_suffix(&st.linux_dir, &repo_name, true);
+                        TextField::new(&mut st.linux_dir).hint("~/projects").suffix(&suffix).icon(Icon::Linux).enabled(!running).show(ui, &pal);
                     });
                     ui.label(RichText::new(tr("Projects belong to your regular WSL user. ~ is their home folder.")).color(pal.text_dim).size(12.0));
                 } else {
@@ -225,7 +231,8 @@ impl App {
                             st.parent = d.to_string_lossy().into_owned();
                             st.dir_touched = true;
                         }
-                        TextField::new(&mut st.parent).icon(Icon::Folder).enabled(!running).show(ui, &pal);
+                        let suffix = clone_dir_suffix(&st.parent, &repo_name, false);
+                        TextField::new(&mut st.parent).suffix(&suffix).icon(Icon::Folder).enabled(!running).show(ui, &pal);
                     });
                     if !distros.is_empty() {
                         ui.add_space(8.0);
@@ -364,4 +371,17 @@ impl App {
         }
         self.popup = Popup::Clone(st);
     }
+}
+
+/// Preview the repository folder using the parent path's separator style.
+fn clone_dir_suffix(parent: &str, name: &str, linux: bool) -> String {
+    let parent = parent.trim();
+    if parent.is_empty() || name.is_empty() {
+        return String::new();
+    }
+    if parent.ends_with('/') || (!linux && parent.ends_with('\\')) {
+        return name.to_string();
+    }
+    let separator = if linux || parent.contains('/') { '/' } else { std::path::MAIN_SEPARATOR };
+    format!("{separator}{name}")
 }
