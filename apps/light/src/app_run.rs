@@ -129,9 +129,6 @@ impl App {
             return;
         };
         self.save_all();
-        if let Some(h) = self.run.handle.take() {
-            h.kill();
-        }
         let t = self.wsl_target();
         let launch = match &t {
             Some(t) => {
@@ -146,27 +143,32 @@ impl App {
                 Launch { cmd, cleanup: None }
             }
         };
-        self.start_run(format!("make {target}"), launch, "make", root, t, Some(tr("make is not installed on Windows - build this project in Linux (WSL): click Windows in the status bar")));
+        if self.start_run(format!("make:{target}"), format!("make {target}"), launch, "make", root, t) {
+            self.run_request = Some(RunRequest::Make(target.to_string()));
+        }
     }
 
     /// Show `launch` in the Run window as the current run; its compiler messages become problems when it ends.
-    fn start_run(&mut self, title: String, launch: Launch, label: &str, root: PathBuf, t: Option<Target>, not_found: Option<&str>) {
+    fn start_run(&mut self, key: String, title: String, launch: Launch, label: &str, root: PathBuf, t: Option<Target>) -> bool {
         match runner::spawn_launch(launch) {
             Ok(h) => {
                 let place = match &t {
                     Some(t) => i18n::fmt("in Linux ({0}): {1}", &[&t.distro, &wsl::to_linux(&root, t)]),
                     None => root.display().to_string(),
                 };
+                self.prepare_run(key);
                 self.run = RunState { handle: Some(h), title: title.clone(), log: vec![], running: true, exit_code: None };
                 self.run.log.push(LogLine { kind: LogKind::Info, text: format!("{title}   {place}") });
                 self.make_run = Some(MakeRun { root, target: t, label: label.to_string() });
                 self.compiler_problems.retain(|p| p.source != "make");
                 self.bottom_tool = Some(BottomTool::Run);
+                true
             }
-            Err(e) if t.is_none() && e.kind() == std::io::ErrorKind::NotFound && not_found.is_some() => {
-                self.toast(not_found.unwrap_or_default(), Sev::Error);
+            Err(e) if t.is_none() && e.kind() == std::io::ErrorKind::NotFound && label == "make" => {
+                self.toast(tr("make is not installed on Windows - build this project in Linux (WSL): click Windows in the status bar"), Sev::Error);
+                false
             }
-            Err(e) => self.toast(i18n::fmt("Cannot run: {}", &[&e]), Sev::Error),
+            Err(e) => { self.toast(i18n::fmt("Cannot run: {}", &[&e]), Sev::Error); false }
         }
     }
 
@@ -186,9 +188,6 @@ impl App {
         };
         let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let line = def.command_line(&file_s, &dir_s, t.is_none());
-        if let Some(h) = self.run.handle.take() {
-            h.kill();
-        }
         let launch = match &t {
             Some(t) => {
                 let marker = wsl::new_marker();
@@ -197,7 +196,9 @@ impl App {
             }
             None => Launch { cmd: ide_core::cmdscript::shell_command(&line, &root, &[]), cleanup: None },
         };
-        self.start_run(format!("{} '{}'", def.name, name), launch, &def.name, root, t, None);
+        if self.start_run(format!("file:{}", file.display()), format!("{} '{}'", def.name, name), launch, &def.name, root, t) {
+            self.run_request = Some(RunRequest::Language(def.clone(), file.to_path_buf()));
+        }
     }
 
     /// A make run ended: its compiler messages become problems (and markers in open files).
@@ -278,12 +279,11 @@ impl App {
             self.toast(tr("SBCL not found - set the path in Settings"), Sev::Error);
             return;
         };
-        if let Some(h) = self.run.handle.take() {
-            h.kill();
-        }
         match runner::run_asdf(&imp, &root, system, test) {
             Ok(h) => {
                 let verb = if test { tr("Test") } else { tr("Load") };
+                self.prepare_run(format!("asdf:{test}:{system}"));
+                self.run_request = Some(RunRequest::Asdf(system.to_string(), test));
                 self.run = RunState { handle: Some(h), title: format!("{verb} '{system}'"), log: vec![], running: true, exit_code: None };
                 self.run.log.push(LogLine { kind: LogKind::Info, text: i18n::fmt("{0} ASDF system '{1}' from {2}", &[&verb, &system, &root.display()]) });
                 self.bottom_tool = Some(BottomTool::Run);
@@ -312,5 +312,122 @@ impl App {
         );
         self.bottom_tool = Some(BottomTool::Repl);
         self.repl_eval(&code, true);
+    }
+}
+
+/// Each tab owns its process, output, compiler context, and scenario progress.
+#[derive(Clone)]
+pub enum RunRequest {
+    File(PathBuf),
+    Language(ide_core::modules::RunDef, PathBuf),
+    Make(String),
+    Asdf(String, bool),
+    Scenario(String),
+}
+
+pub struct RunTab {
+    pub key: String,
+    pub request: Option<RunRequest>,
+    pub run: RunState,
+    pub make_run: Option<MakeRun>,
+    pub scenario: Option<crate::app_scenario::ScenarioRun>,
+}
+
+impl App {
+    pub fn select_run_tab(&mut self, index: usize) {
+        let tab = &mut self.other_runs[index];
+        std::mem::swap(&mut self.run_key, &mut tab.key);
+        std::mem::swap(&mut self.run_request, &mut tab.request);
+        std::mem::swap(&mut self.run, &mut tab.run);
+        std::mem::swap(&mut self.make_run, &mut tab.make_run);
+        std::mem::swap(&mut self.scenario, &mut tab.scenario);
+    }
+
+    pub fn prepare_run(&mut self, key: String) {
+        if self.run_key != key {
+            if let Some(index) = self.other_runs.iter().position(|tab| tab.key == key) {
+                self.select_run_tab(index);
+            } else {
+                if !self.run_key.is_empty() {
+                    self.other_runs.push(RunTab {
+                        key: std::mem::take(&mut self.run_key), request: self.run_request.take(), run: std::mem::take(&mut self.run),
+                        make_run: self.make_run.take(), scenario: self.scenario.take(),
+                    });
+                }
+                self.run_key = key;
+            }
+        }
+        if let Some(handle) = self.run.handle.take() { handle.kill(); }
+        self.make_run = None;
+        self.scenario = None;
+        self.run_request = None;
+    }
+
+    pub fn rerun_tab(&mut self) {
+        match self.run_request.clone() {
+            Some(RunRequest::File(path)) => { self.open_file(&path); self.run_current_file(); }
+            Some(RunRequest::Language(def, path)) => self.run_language_command(&def, &path),
+            Some(RunRequest::Make(target)) => self.run_make(&target),
+            Some(RunRequest::Asdf(system, test)) => self.run_asdf_system(&system, test),
+            Some(RunRequest::Scenario(name)) => self.run_scenario(&name),
+            None => self.run_selected(),
+        }
+    }
+
+    pub fn stop_other_runs(&mut self) {
+        for tab in self.other_runs.drain(..) {
+            if let Some(handle) = tab.run.handle { handle.kill(); }
+        }
+    }
+}
+
+#[cfg(all(test, windows))]
+mod concurrent_run_tests {
+    use super::*;
+
+    fn launch(label: &str) -> Launch {
+        let mut cmd = Command::new("cmd");
+        cmd.args(["/D", "/C", &format!("ping -n 3 127.0.0.1 >nul & echo {label}")]);
+        Launch { cmd, cleanup: None }
+    }
+
+    #[test]
+    fn separate_files_keep_running_and_collect_their_own_output() {
+        let mut app = App::new(ide_core::settings::Settings::default());
+        let root = std::env::current_dir().unwrap();
+        assert!(app.start_run("file:first".into(), "first".into(), launch("first-output"), "make", root.clone(), None));
+        assert!(app.start_run("file:second".into(), "second".into(), launch("second-output"), "make", root, None));
+        assert_eq!(app.other_runs.len(), 1);
+        assert!(app.run.running && app.other_runs[0].run.running);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(12);
+        while (app.run.running || app.other_runs[0].run.running) && std::time::Instant::now() < deadline {
+            app.poll_run();
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert_eq!(app.run.exit_code, Some(0));
+        assert_eq!(app.other_runs[0].run.exit_code, Some(0));
+        let output = |run: &RunState| run.log.iter().map(|line| line.text.as_str()).collect::<String>();
+        assert!(output(&app.run).contains("second-output"));
+        assert!(!output(&app.run).contains("first-output"));
+        assert!(output(&app.other_runs[0].run).contains("first-output"));
+        app.select_run_tab(0);
+        assert_eq!(app.run.title, "first");
+    }
+
+    #[test]
+    fn rerunning_or_stopping_a_file_does_not_stop_another_file() {
+        let mut app = App::new(ide_core::settings::Settings::default());
+        for key in ["file:first", "file:second"] {
+            app.prepare_run(key.into());
+            app.run.handle = Some(runner::spawn_launch(launch(key)).unwrap());
+            app.run.running = true;
+        }
+        app.prepare_run("file:first".into());
+        assert_eq!(app.other_runs.len(), 1);
+        assert_eq!(app.other_runs[0].key, "file:second");
+        assert!(app.other_runs[0].run.handle.is_some());
+        app.stop_run();
+        assert!(app.other_runs[0].run.running);
+        app.stop_other_runs();
     }
 }

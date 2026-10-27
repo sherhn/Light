@@ -9,7 +9,7 @@ cut tr diff patch gzip gunzip zip unzip which whoami uname date sleep touch base
 MAKE_DIRECTIVES = r"^[ \t]*(?:-?include|sinclude|ifeq|ifneq|ifdef|ifndef|else|endif|define|endef|export|unexport|override|private|vpath|undefine)\b"
 
 MODULE = module(
-    version="1.1.0",
+    version="1.1.1",
     id="shell-make",
     name="Shell and Make",
     category="Languages",

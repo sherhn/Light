@@ -127,17 +127,19 @@ fn main() -> eframe::Result {
                         app.open_file(p);
                     }
                 }
-            } else if !args.no_restore && args.script.is_none()
-                && let Some(last) = app.settings.last_project.clone().filter(|p| std::path::Path::new(p).is_dir()) {
-                    app.open_project(std::path::Path::new(&last));
+            } else if !args.no_restore {
                     let files = app.settings.open_files.clone();
+                    let active = app.settings.active_file.clone();
+                    if let Some(last) = app.settings.last_project.clone().filter(|p| std::path::Path::new(p).is_dir()) {
+                        app.open_project(std::path::Path::new(&last));
+                    }
                     for f in files {
                         let p = PathBuf::from(&f);
                         if p.is_file() {
                             app.open_file(&p);
                         }
                     }
-                    if let Some(active) = app.settings.active_file.clone() {
+                    if let Some(active) = active {
                         let p = PathBuf::from(active);
                         if p.is_file() {
                             app.open_file(&p);

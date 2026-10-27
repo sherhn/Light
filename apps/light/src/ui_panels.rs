@@ -444,7 +444,7 @@ impl App {
                 }
                 slot += 1;
                 if self.header_action(ui, hr, slot, Icon::Play, "Rerun (Shift+F10)") {
-                    self.run_selected();
+                    self.rerun_tab();
                 }
             }
             BottomTool::Terminal => {
@@ -994,6 +994,17 @@ impl App {
     fn draw_run(&mut self, ui: &mut egui::Ui) {
         let pal = self.pal;
         ui.add_space(6.0);
+        let mut selected = None;
+        egui::ScrollArea::horizontal().id_salt("run_tabs").show(ui, |ui| {
+            ui.horizontal(|ui| {
+                if !self.run_key.is_empty() { let _ = ui.selectable_label(true, &self.run.title); }
+                for (index, tab) in self.other_runs.iter().enumerate() {
+                    let label = if tab.run.running { format!("{} *", tab.run.title) } else { tab.run.title.clone() };
+                    if ui.selectable_label(false, label).clicked() { selected = Some(index); }
+                }
+            });
+        });
+        if let Some(index) = selected { self.select_run_tab(index); }
         ui.horizontal(|ui| {
             ui.add_space(14.0);
             let (txt, color) = if self.run.running { (tr("running...").to_string(), pal.warning) } else if self.run.exit_code.is_some() { (self.run.title.clone(), pal.text_dim) } else { (tr("Nothing has been run yet. Press Shift+F10 to run the selected configuration.").to_string(), pal.text_dim) };

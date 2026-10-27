@@ -15,6 +15,10 @@ jobs:
         with: { python-version: "3.12" }
       - name: Installer safety tests
         run: python -m unittest discover -s tools -p test_installers.py
+      - name: License and source-package regression tests
+        run: python -m unittest discover -s tools -p test_licenses.py
+      - name: Reviewed notices cover the locked dependencies
+        run: python tools/license_bundle.py check
       - name: Linux system libraries
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libgl1-mesa-dev libwayland-dev libx11-dev
@@ -26,6 +30,6 @@ jobs:
             macOS) brew install sbcl ;;
             Windows) choco install sbcl -y ;;
           esac
-      - run: cargo clippy --workspace --all-targets
-      - run: cargo test --workspace --no-fail-fast
-      - run: cargo build --release --workspace
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --no-fail-fast --locked
+      - run: cargo build --release --workspace --locked

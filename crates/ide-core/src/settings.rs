@@ -130,6 +130,14 @@ pub enum RunEnv {
     Wsl,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ProjectSession {
+    pub files: Vec<String>,
+    pub active: Option<String>,
+    pub expanded: Vec<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -170,6 +178,7 @@ pub struct Settings {
     pub github_user: String,
     /// Sign in again on its own when the GitHub tab opens (only after a login the CLI or Git keeps for us).
     pub github_autologin: bool,
+    pub project_sessions: BTreeMap<String, ProjectSession>,
     pub open_files: Vec<String>,
     pub active_file: Option<String>,
     pub show_project_panel: bool,
@@ -202,6 +211,7 @@ impl Default for Settings {
             clone_dir: String::new(),
             github_user: String::new(),
             github_autologin: false,
+            project_sessions: BTreeMap::new(),
             open_files: vec![],
             active_file: None,
             show_project_panel: true,

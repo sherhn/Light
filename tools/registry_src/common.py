@@ -46,6 +46,6 @@ def outline(pattern, kind="function", name=1, level=0, level_mode="length"):
 
 def module(**kw):
     """Fill in what every module has."""
-    m = {"version": "1.0.0", "cover": "cover.png"}
+    m = {"version": "1.0.1", "cover": "cover.png", "license": "MIT", "author": "Light contributors"}
     m.update(kw)
     return m

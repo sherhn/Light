@@ -1,6 +1,8 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
   "id": "restructuredtext",
   "name": "reStructuredText",
   "category": "Documents",

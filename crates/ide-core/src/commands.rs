@@ -176,7 +176,8 @@ cmds! {
     // ---- Refactor
     "refactor.rename", "Rename...", Refactor, ["Shift+F6"];
     // ---- Run / REPL
-    "run.run_file", "Run Current File", Run, ["Ctrl+Shift+F10", "Shift+F10"];
+    "run.run_file", "Run Current File", Run, ["Shift+F10"];
+    "run.current_file", "Run Current File", Run, ["Ctrl+Shift+F10"];
     "run.compile_file", "Compile Current File", Run, ["Ctrl+F9"];
     "run.stop", "Stop", Run, ["Ctrl+F2"];
     "repl.eval", "Send Form to REPL", Run, ["Ctrl+Enter"];

@@ -189,10 +189,10 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     let gutter_rect = Rect::from_min_size(full.min, Vec2::new(gutter_w, full.height()));
     let map_w = if cfg.minimap && full.width() > 520.0 { MAP_W } else { 0.0 };
     // left to right: gutter, code, code overview, scrollbar
-    let text_rect = Rect::from_min_max(Pos2::new(full.min.x + gutter_w, full.min.y), Pos2::new(full.max.x - BAR_W - map_w, full.max.y));
+    let text_rect = Rect::from_min_max(Pos2::new(full.min.x + gutter_w, full.min.y), Pos2::new(full.max.x - BAR_W - map_w, (full.max.y - BAR_W).max(full.min.y)));
     let map_rect = Rect::from_min_max(Pos2::new(text_rect.max.x, full.min.y), Pos2::new(text_rect.max.x + map_w, full.max.y));
     let vbar = Rect::from_min_max(Pos2::new(full.max.x - BAR_W, full.min.y), full.max);
-    let hbar = Rect::from_min_max(Pos2::new(text_rect.min.x, text_rect.max.y - BAR_W), text_rect.max);
+    let hbar = Rect::from_min_max(Pos2::new(text_rect.min.x, text_rect.max.y), Pos2::new(text_rect.max.x, full.max.y));
     state.last_text_rect = Some(text_rect);
     let mut out = ViewOut { text_rect: Some(text_rect), gutter_rect: Some(gutter_rect), ..Default::default() };
 
@@ -272,7 +272,8 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     }
 
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(text_rect).layout(egui::Layout::top_down(egui::Align::Min)));
-    let scroll = egui::ScrollArea::both().auto_shrink([false, false]).scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).scroll_offset(state.scroll).id_salt("editor_scroll");
+    child.set_clip_rect(text_rect.intersect(ui.clip_rect()));
+    let scroll = egui::ScrollArea::both().min_scrolled_height(0.0).min_scrolled_width(0.0).max_height(text_rect.height()).max_width(text_rect.width()).auto_shrink([false, false]).scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).scroll_offset(state.scroll).id_salt("editor_scroll");
     let mut hover_marker: Option<String> = None;
     let area = scroll.show_viewport(&mut child, |ui, viewport| {
         let (rect, resp) = ui.allocate_exact_size(Vec2::new(content_w.max(viewport.width()), content_h.max(viewport.height())), Sense::click_and_drag());
@@ -578,7 +579,7 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                 gp.add(Shape::convex_polygon(vec![Pos2::new(mark_x - 1.0, y - 3.5), Pos2::new(mark_x + 6.0, y), Pos2::new(mark_x - 1.0, y + 3.5)], mark_color(m.kind), Stroke::NONE));
             }
             k => {
-                gp.rect_filled(Rect::from_min_size(Pos2::new(mark_x, y), Vec2::new(3.0, lh)), CornerRadius::ZERO, mark_color(k));
+                gp.rect_filled(Rect::from_min_size(Pos2::new(mark_x, y), Vec2::new(3.5, lh)), CornerRadius::ZERO, mark_color(k));
             }
         }
     }
@@ -704,4 +705,69 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     state.regions = Some((regions_rev, regions));
     ui.advance_cursor_after_rect(full);
     out
+}
+
+#[cfg(test)]
+mod scrollbar_tests {
+    use super::*;
+
+    #[test]
+    fn horizontal_scrollbar_drags_without_covering_or_selecting_the_only_line() {
+        let ctx = egui::Context::default();
+        crate::fonts::install(&ctx);
+        let pal = Palette::for_settings(&ide_core::settings::Settings::default());
+        let mut editor = Editor::new(&"x".repeat(500), lisp_syntax::Dialect::CommonLisp);
+        let mut state = ViewState::default();
+        let mut folds = HashSet::new();
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false };
+        let mut track = Pos2::ZERO;
+        for frame in 0..6 {
+            let position = track + Vec2::new(if frame >= 3 { 80.0 } else { 0.0 }, 0.0);
+            let events = match frame {
+                2 => vec![egui::Event::PointerMoved(position), egui::Event::PointerButton { pos: position, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE }],
+                3 => vec![egui::Event::PointerMoved(position)],
+                4 => vec![egui::Event::PointerButton { pos: position, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE }],
+                _ => vec![],
+            };
+            let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(500.0, 64.0))), events, ..Default::default() }, |ui| {
+                let full = ui.available_rect_before_wrap();
+                let out = show(ui, &mut editor, &mut state, &mut folds, &cfg);
+                let text = out.text_rect.unwrap();
+                assert!(text.height() >= line_height_for(cfg.font_size));
+                assert!(full.bottom() - text.bottom() >= BAR_W - 0.01);
+                track = Pos2::new(text.left() + 20.0, text.bottom() + BAR_W / 2.0);
+            });
+            output.textures_delta.clear();
+        }
+        assert!(state.scroll.x > 0.0, "scrollbar did not scroll: {:?}", state.scroll);
+        assert_eq!(editor.caret(), 0);
+        assert!(!editor.has_selection());
+    }
+}
+
+pub fn link_at(text: &str, offset: usize) -> Option<String> {
+    if offset > text.len() || !text.is_char_boundary(offset) { return None; }
+    let delimiter = |c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '<' | '>' | '`');
+    let start = text[..offset].rfind(delimiter).map_or(0, |i| i + text[i..].chars().next().unwrap().len_utf8());
+    let end = text[offset..].find(delimiter).map_or(text.len(), |i| offset + i);
+    let token = &text[start..end];
+    let scheme = token.find("https://").or_else(|| token.find("http://"))?;
+    let url = token[scheme..].trim_end_matches([')', ']', '}', ',', '.', ';']);
+    (offset >= start + scheme && offset < start + scheme + url.len()).then(|| url.to_string())
+}
+
+#[cfg(test)]
+mod link_tests {
+    use super::*;
+
+    #[test]
+    fn links_in_code_and_markdown() {
+        for text in ["; https://example.org/path?q=1#part", "[site](https://example.org/path?q=1#part).", "\"https://example.org/path?q=1#part\""] {
+            let offset = text.find("example").unwrap();
+            assert_eq!(link_at(text, offset).as_deref(), Some("https://example.org/path?q=1#part"));
+        }
+        assert_eq!(link_at("(print value)", 3), None);
+        assert_eq!(link_at("λ https://example.org", 1), None);
+    }
+
 }

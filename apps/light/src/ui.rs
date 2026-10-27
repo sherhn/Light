@@ -93,7 +93,7 @@ impl eframe::App for App {
         self.draw_resize_handles(&ctx);
 
         // keep animating only when needed
-        let busy = self.repl.starting || !self.repl.busy.is_empty() || self.run.running || self.compile.is_some() || self.repl.session.is_some();
+        let busy = self.repl.starting || !self.repl.busy.is_empty() || self.run.running || self.other_runs.iter().any(|tab| tab.run.running) || self.compile.is_some() || self.repl.session.is_some();
         if busy {
             ctx.request_repaint_after(std::time::Duration::from_millis(60));
         } else if self.doc().is_some() && self.editor_focus {
@@ -110,6 +110,7 @@ impl eframe::App for App {
         if let Some(h) = self.run.handle.take() {
             h.kill();
         }
+        self.stop_other_runs();
     }
 }
 
@@ -247,10 +248,15 @@ impl App {
             self.completion.active = false;
         }
         self.update_hover(ctx, idx, &out);
-        if focused && let Some(off) = out.ctrl_click {
+        if let Some(off) = out.ctrl_click {
+            self.show_doc(idx);
             let doc = &mut self.docs[idx];
             doc.ed.set_caret(off, false);
-            self.goto_declaration(None);
+            if let Some(url) = crate::editor_view::link_at(doc.ed.text(), off) {
+                crate::input::open_url(&url);
+            } else {
+                self.goto_declaration(None);
+            }
         }
         out.clicked
     }

@@ -13,7 +13,7 @@ PREFIX = r"(?:[rRbBuUfF]{1,2})?"
 PY_CHECK = "import sys;compile(open(sys.argv[1],encoding='utf-8').read(),sys.argv[1],'exec')"
 
 MODULE = module(
-    version="1.1.0",
+    version="1.1.1",
     id="python",
     name="Python",
     category="Languages",

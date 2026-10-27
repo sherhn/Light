@@ -105,7 +105,7 @@ impl App {
             }
         });
         let mut outside_rect = Rect::NOTHING;
-        egui::Area::new(egui::Id::unique("palette")).order(egui::Order::Foreground).anchor(Align2::CENTER_TOP, Vec2::new(0.0, 80.0)).show(ctx, |ui| {
+        egui::Area::new(egui::Id::unique("palette")).order(egui::Order::Foreground).anchor(Align2::CENTER_CENTER, Vec2::ZERO).show(ctx, |ui| {
             popup_frame(&pal).show(ui, |ui| {
                 ui.set_width(width);
                 ui.horizontal(|ui| {
@@ -236,7 +236,7 @@ impl App {
     pub(crate) fn dialog_card(&self, ctx: &egui::Context, id: &str, title: &str, width: f32, build: impl FnOnce(&mut egui::Ui)) -> Rect {
         let pal = self.pal;
         let mut rect = Rect::NOTHING;
-        egui::Area::new(egui::Id::unique(id)).order(egui::Order::Foreground).anchor(Align2::CENTER_TOP, Vec2::new(0.0, 130.0)).show(ctx, |ui| {
+        egui::Area::new(egui::Id::unique(id)).order(egui::Order::Foreground).anchor(Align2::CENTER_CENTER, Vec2::ZERO).show(ctx, |ui| {
             popup_frame(&pal).show(ui, |ui| {
                 ui.set_width(width);
                 ui.label(RichText::new(title).font(fonts::semibold(16.0)));

@@ -66,8 +66,8 @@ mod tests {
         assert_eq!((w, h), (128, 128));
         // The supplied ribbon has a transparent surround and opaque white planes.
         assert_eq!(px[3], 0);
-        assert!(px.chunks_exact(4).any(|pixel| pixel[3] == 255));
-        assert!(px.chunks_exact(4).any(|pixel| pixel[3] == 0));
+        assert!(px.as_chunks::<4>().0.iter().any(|pixel| pixel[3] == 255));
+        assert!(px.as_chunks::<4>().0.iter().any(|pixel| pixel[3] == 0));
     }
 
     #[test]
