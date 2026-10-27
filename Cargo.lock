@@ -1129,7 +1129,7 @@ dependencies = [
 
 [[package]]
 name = "ide-core"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "dirs",
  "ignore",
@@ -1349,7 +1349,7 @@ dependencies = [
 
 [[package]]
 name = "light"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "eframe",
  "embed-resource",
@@ -1367,7 +1367,7 @@ dependencies = [
 
 [[package]]
 name = "light-cli"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "ide-core",
  "lisp-runtime",
@@ -1376,7 +1376,7 @@ dependencies = [
 
 [[package]]
 name = "light-lang"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "lisp-syntax",
  "regex",
@@ -1386,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "light-markup"
-version = "0.2.0"
+version = "1.0.0"
 
 [[package]]
 name = "linebender_resource_handle"
@@ -1408,14 +1408,14 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "lisp-runtime"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "lisp-syntax",
 ]
 
 [[package]]
 name = "lisp-syntax"
-version = "0.2.0"
+version = "1.0.0"
 
 [[package]]
 name = "litemap"
