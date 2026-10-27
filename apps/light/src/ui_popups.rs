@@ -696,27 +696,30 @@ impl App {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let main_label = match &kind {
                                 ConfirmKind::CloseDoc(_) => tr("Save"),
+                                ConfirmKind::CloseAll | ConfirmKind::Exit | ConfirmKind::OpenProject(_) | ConfirmKind::CloseProject => tr("Save All"),
                                 ConfirmKind::Delete(_) => tr("Delete"),
                                 ConfirmKind::Rollback(_) => tr("Rollback"),
                                 ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) => tr("Restore"),
                                 ConfirmKind::DeleteLocal(_) => tr("Delete"),
-                                _ => tr("Yes"),
                             };
                             let danger = matches!(kind, ConfirmKind::Delete(_) | ConfirmKind::Rollback(_) | ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) | ConfirmKind::DeleteLocal(_));
                             let galley = ui.painter().layout_no_wrap(main_label.to_string(), fonts::semibold(13.5), pal.text_on_accent);
                             let (r, resp) = ui.allocate_exact_size(Vec2::new(galley.size().x + 32.0, 34.0), Sense::click());
+                            ui.data_mut(|data| data.insert_temp(egui::Id::unique("confirm_accept_button"), r));
                             let fill = if danger { pal.error } else { pal.accent };
                             ui.painter().rect_filled(r, widgets::radius(), if resp.hovered() { fill.gamma_multiply(1.15) } else { fill });
                             ui.painter().text(r.center(), Align2::CENTER_CENTER, main_label, fonts::semibold(13.5), pal.text_on_accent);
                             if resp.clicked() {
                                 result = Some(true);
-                                save_first = matches!(kind, ConfirmKind::CloseDoc(_));
+                                save_first = matches!(kind, ConfirmKind::CloseDoc(_) | ConfirmKind::CloseAll | ConfirmKind::Exit | ConfirmKind::OpenProject(_) | ConfirmKind::CloseProject);
                             }
                             if widgets::secondary_button(ui, &pal, tr("Cancel")).clicked() {
                                 result = Some(false);
                             }
-                            if matches!(kind, ConfirmKind::CloseDoc(_)) && widgets::secondary_button(ui, &pal, tr("Don't Save")).clicked() {
-                                result = Some(true);
+                            if matches!(kind, ConfirmKind::CloseDoc(_) | ConfirmKind::CloseAll | ConfirmKind::Exit | ConfirmKind::OpenProject(_) | ConfirmKind::CloseProject) {
+                                let discard = widgets::secondary_button(ui, &pal, tr("Don't Save"));
+                                ui.data_mut(|data| data.insert_temp(egui::Id::unique("confirm_discard_button"), discard.rect));
+                                if discard.clicked() { result = Some(true); }
                             }
                         });
                     });
@@ -726,14 +729,15 @@ impl App {
                     Some(false) => self.editor_focus = true,
                     Some(true) => {
                         self.editor_focus = true;
+                        if save_first {
+                            let saved = match &kind { ConfirmKind::CloseDoc(i) => self.save_doc(*i), _ => self.save_unsaved_docs() };
+                            if !saved {
+                                self.popup = Popup::Confirm { kind, message };
+                                return;
+                            }
+                        }
                         match kind {
                             ConfirmKind::CloseDoc(i) => {
-                                if save_first {
-                                    self.save_doc(i);
-                                    if self.docs.get(i).is_some_and(|d| d.ed.is_modified()) {
-                                        return;
-                                    }
-                                }
                                 self.close_doc(i);
                             }
                             ConfirmKind::CloseAll => {
@@ -741,6 +745,8 @@ impl App {
                                 self.active = 0;
                             }
                             ConfirmKind::Exit => self.exit_clean(),
+                            ConfirmKind::OpenProject(path) => self.finish_open_project(&path),
+                            ConfirmKind::CloseProject => self.finish_close_project(),
                             ConfirmKind::Delete(p) => match ide_core::workspace::delete(&p) {
                                 Ok(()) => {
                                     self.docs.retain(|d| d.path.as_ref().is_none_or(|dp| !dp.starts_with(&p)));

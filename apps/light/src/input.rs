@@ -336,7 +336,7 @@ impl App {
             "file.close_all" => {
                 self.flush_saves();
                 if self.has_unsaved() {
-                    self.popup = Popup::Confirm { kind: ConfirmKind::CloseAll, message: tr("Some files have unsaved changes. Close all without saving?").into() };
+                    self.popup = Popup::Confirm { kind: ConfirmKind::CloseAll, message: tr("Save changes before closing all files?").into() };
                 } else {
                     self.docs.clear();
                     self.active = 0;
@@ -388,7 +388,7 @@ impl App {
             "app.exit" => {
                 self.flush_saves();
                 if self.has_unsaved() {
-                    self.popup = Popup::Confirm { kind: ConfirmKind::Exit, message: tr("You have unsaved changes. Exit without saving?").into() };
+                    self.popup = Popup::Confirm { kind: ConfirmKind::Exit, message: tr("Save changes before exiting?").into() };
                 } else {
                     self.exit_clean();
                 }

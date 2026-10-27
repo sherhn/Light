@@ -15,6 +15,10 @@ impl eframe::App for App {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if self.exit_now {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return;
+        }
         self.tick(&ctx);
         self.handle_input(&ctx);
         self.script_step(&ctx);
@@ -35,15 +39,12 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.last_title = title;
         }
-        if self.exit_now {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        }
-        if ctx.input(|i| i.viewport().close_requested()) {
+        if !self.exit_now && ctx.input(|i| i.viewport().close_requested()) {
             self.flush_saves();
         }
         if ctx.input(|i| i.viewport().close_requested()) && self.has_unsaved() && !self.exit_now {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            self.popup = Popup::Confirm { kind: ConfirmKind::Exit, message: "You have unsaved changes. Exit without saving?".into() };
+            self.popup = Popup::Confirm { kind: ConfirmKind::Exit, message: crate::i18n::tr("Save changes before exiting?").into() };
         }
 
         // soft gradient window background; tool windows float above it as rounded cards
@@ -102,7 +103,7 @@ impl eframe::App for App {
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        self.flush_saves();
+        if !self.exit_now { self.flush_saves(); }
         self.save_settings();
         if let Some(s) = self.repl.session.take() {
             s.kill();

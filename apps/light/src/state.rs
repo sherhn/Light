@@ -323,6 +323,8 @@ pub struct Completion {
 pub enum ConfirmKind {
     CloseDoc(usize),
     CloseAll,
+    OpenProject(PathBuf),
+    CloseProject,
     Exit,
     Delete(PathBuf),
     Rollback(String),

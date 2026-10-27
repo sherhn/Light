@@ -109,6 +109,7 @@ impl App {
             "github_idle" => !self.github.busy(),
             "popup" => !matches!(self.popup, Popup::None),
             "all_saved" => self.docs.iter().all(|d| !d.ed.is_modified() || d.path.is_none()),
+            "document_conflict" => self.doc().is_some_and(|doc| doc.conflict),
             "find_done" => self.find_rx.is_none(),
             "ask_open" => matches!(self.popup, Popup::OpenProject { .. }),
             "no_popup" => matches!(self.popup, Popup::None),
@@ -221,6 +222,14 @@ impl App {
                     if !text.contains(&sval) { self.fail(format!("project profile lacks {sval}: {text}")); }
                 } else { self.fail("no project for profile assertion".into()); }
             }
+            "recent_project_menu" | "recent_clone" | "confirm_accept" | "confirm_discard" => {
+                let id = if op == "confirm_discard" { "confirm_discard_button" } else if op == "confirm_accept" { "confirm_accept_button" } else if op == "recent_clone" { "recent_clone_button" } else { "recent_project_button" };
+                if let Some(rect) = ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique(id))) {
+                    let pos = rect.center(); let s = self.script.as_mut().unwrap();
+                    s.pending.push(Event::PointerMoved(pos));
+                    for pressed in [true, false] { s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE }); }
+                } else { self.fail(format!("missing button {id}")); }
+            }
             "assert_run_lacks" => {
                 if self.run.log.iter().any(|l| l.text.contains(&sval)) {
                     self.fail(format!("assert_run_lacks: {sval:?} is in the run log"));
@@ -299,6 +308,16 @@ impl App {
             "wait" => {
                 let timeout = step["timeout"].as_f64().unwrap_or(60.0);
                 self.script.as_mut().unwrap().wait_cond = Some((step.clone(), now + timeout));
+            }
+            "disk_write" | "block_save" | "unblock_save" => {
+                if let Some(path) = path {
+                    let result = match op.as_str() {
+                        "block_save" => std::fs::remove_file(&path).and_then(|()| std::fs::create_dir(&path)),
+                        "unblock_save" => std::fs::remove_dir(&path).and_then(|()| std::fs::write(&path, &sval)),
+                        _ => std::fs::write(&path, &sval),
+                    };
+                    if let Err(error) = result { self.fail(format!("{op}: {}: {error}", path.display())); }
+                } else { self.fail(format!("{op}: missing path")); }
             }
             "set_text" => {
                 if let Some(d) = self.doc_mut() {

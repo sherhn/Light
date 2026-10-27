@@ -290,6 +290,17 @@ impl App {
     }
 
     pub fn open_project(&mut self, path: &Path) {
+        if self.project.as_ref().is_some_and(|p| p.root != path) {
+            self.flush_saves();
+            if self.has_unsaved() {
+                self.popup = Popup::Confirm { kind: ConfirmKind::OpenProject(path.to_path_buf()), message: tr("Save changes before opening another project?").into() };
+                return;
+            }
+        }
+        self.finish_open_project(path);
+    }
+
+    pub(crate) fn finish_open_project(&mut self, path: &Path) {
         if !path.is_dir() {
             self.toast(i18n::fmt("{} is not a folder", &[&path.display()]), Sev::Error);
             return;
@@ -332,7 +343,6 @@ impl App {
     /// Leave the open project for another: its files are saved and everything that belongs to it goes - the tabs, the
     /// search results, the back/forward history, problems, what ran and the terminal.
     fn leave_project(&mut self) {
-        self.flush_saves();
         self.cancel_scenario();
         if let Some(h) = self.run.handle.take() {
             h.kill();
@@ -376,6 +386,15 @@ impl App {
     }
 
     pub fn close_project(&mut self) {
+        self.flush_saves();
+        if self.has_unsaved() {
+            self.popup = Popup::Confirm { kind: ConfirmKind::CloseProject, message: tr("Save changes before closing the project?").into() };
+            return;
+        }
+        self.finish_close_project();
+    }
+
+    pub(crate) fn finish_close_project(&mut self) {
         self.save_settings();
         self.leave_project();
         self.project = None;
@@ -660,16 +679,28 @@ impl App {
         self.active = idx;
     }
 
-    /// Edits that automatic saving cannot take care of: a document without a file, or a file that changed on disk
-    /// in the meantime (the user has to choose which version wins).
+    /// Changes still in memory, including files whose automatic save failed.
     pub fn has_unsaved(&self) -> bool {
-        self.docs.iter().any(|d| d.diff.is_none() && d.ed.is_modified() && (d.path.is_none() || d.conflict))
+        self.docs.iter().any(|d| d.diff.is_none() && d.ed.is_modified())
+    }
+
+    /// An explicit Save All also saves conflicts and asks where to put untitled documents.
+    pub fn save_unsaved_docs(&mut self) -> bool {
+        for i in 0..self.docs.len() {
+            if self.docs[i].diff.is_none() && self.docs[i].ed.is_modified() && !self.save_doc(i) {
+                return false;
+            }
+        }
+        !self.has_unsaved()
     }
 
     /// Save every modified file right now, silently. Returns how many were written.
     pub fn flush_saves(&mut self) -> usize {
         let mut saved = 0;
         for i in 0..self.docs.len() {
+            if self.docs[i].diff.is_none() && self.docs[i].ed.is_modified() {
+                self.docs[i].sync_with_disk();
+            }
             let d = &self.docs[i];
             if d.diff.is_none() && d.path.is_some() && !d.conflict && d.ed.is_modified() && self.save_doc(i) {
                 saved += 1;
@@ -692,7 +723,8 @@ impl App {
             }
         }
         for i in due {
-            self.save_doc(i);
+            self.docs[i].sync_with_disk();
+            if !self.docs[i].conflict && self.docs[i].ed.is_modified() { self.save_doc(i); }
         }
     }
 
@@ -729,6 +761,7 @@ impl App {
         if let (Some(p), Some(dir)) = (doc.path.as_ref(), Settings::config_dir().map(|d| d.join("scratches")))
             && p.starts_with(&dir)
             && doc.ed.text().trim().is_empty()
+            && !doc.ed.is_modified()
         {
             let _ = std::fs::remove_file(p);
         }
@@ -742,6 +775,9 @@ impl App {
     }
 
     pub fn request_close_doc(&mut self, idx: usize) {
+        if let Some(doc) = self.docs.get_mut(idx) && doc.diff.is_none() && doc.ed.is_modified() {
+            doc.sync_with_disk();
+        }
         match self.docs.get(idx) {
             Some(d) if d.diff.is_none() && d.ed.is_modified() && (d.path.is_none() || d.conflict) => {
                 self.popup = Popup::Confirm { kind: ConfirmKind::CloseDoc(idx), message: i18n::fmt("Save changes to {} before closing?", &[&d.name()]) };
@@ -1790,7 +1826,6 @@ impl App {
     }
 
     pub fn exit_clean(&mut self) {
-        self.flush_saves();
         self.save_settings();
         if let Some(s) = self.repl.session.take() {
             s.kill();
@@ -1804,6 +1839,10 @@ impl App {
 fn live_len_gt1() -> bool {
     true
 }
+
+#[cfg(test)]
+#[path = "app_saving_tests.rs"]
+mod saving_tests;
 
 /// A definition of the project, taken apart (see `App::local_definition_parts`).
 pub struct DefinitionParts {

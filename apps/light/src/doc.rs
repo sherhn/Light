@@ -186,9 +186,13 @@ impl Doc {
     }
 
     pub fn save_as(&mut self, path: &Path) -> io::Result<()> {
+        std::fs::write(path, self.ed.text_for_disk())?;
         self.path = Some(path.to_path_buf());
         self.ed.set_dialect(Dialect::from_path(path).unwrap_or_default());
-        self.save()
+        self.ed.mark_saved();
+        self.disk_mtime = mtime(path);
+        self.conflict = false;
+        Ok(())
     }
 
     /// Read the text in `lang` (`None`: Lisp).
