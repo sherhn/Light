@@ -1,6 +1,7 @@
 //! The design system: a flat "glass" look built from tonal layers of grey (no borders, no shadows), floating
 //! rounded cards over a soft gradient, translucent hover/selection states and generous spacing.
 
+use crate::scrollbars::FadingScroll as _;
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, FontId, Margin, Mesh, Painter, Pos2, Rect, Sense, Shape, Stroke, StrokeKind, Vec2};
 
 use crate::fonts;
@@ -317,7 +318,7 @@ pub fn text_area(ui: &mut egui::Ui, pal: &Palette, text: &mut String, hint: &str
     if let Some(id) = id {
         te = te.id(id);
     }
-    egui::ScrollArea::vertical().id_salt(("text_area", rect.min.x as i32, rect.min.y as i32)).auto_shrink([false, false]).show(&mut child, |ui| ui.add(te)).inner
+    egui::ScrollArea::vertical().id_salt(("text_area", rect.min.x as i32, rect.min.y as i32)).auto_shrink([false, false]).show_fading(&mut child, |ui| ui.add(te)).inner
 }
 
 /// The rounded checkbox square used by [`checkbox`] and by checkable lists.

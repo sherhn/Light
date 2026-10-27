@@ -1,6 +1,7 @@
 //! Local commits in the UI: the list in the Git tool window, the commit browser dialog (files, diff / code,
 //! switching between commits, restore) and the small "old code" popup of a clicked gutter marker.
 
+use crate::scrollbars::FadingScroll as _;
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, FontId, Key, Margin, Pos2, Rect, RichText, Sense, Vec2, pos2, vec2};
 use ide_core::diff::LineKind;
 use ide_core::git::ChangeKind;
@@ -53,8 +54,8 @@ impl App {
         let mut delete: Option<u64> = None;
         let mut show_changes = false;
         ui.spacing_mut().item_spacing.y = 0.0;
-        ui.spacing_mut().scroll.floating = false;
-        egui::ScrollArea::vertical().id_salt("local_commits").auto_shrink([false, false]).show_rows(ui, ROW_H + 16.0, commits.len(), |ui, range| {
+        crate::scrollbars::reserve_gutter(ui);
+        egui::ScrollArea::vertical().id_salt("local_commits").auto_shrink([false, false]).show_rows_fading(ui, ROW_H + 16.0, commits.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for i in range {
                 let c = &commits[i];
@@ -217,7 +218,7 @@ impl App {
                     lui.vertical_centered(|ui| ui.label(RichText::new(tr("This commit changed no files")).color(pal.text_dim)));
                 }
                 let mut pick: Option<usize> = None;
-                egui::ScrollArea::vertical().id_salt("lv_files").auto_shrink([false, false]).show_rows(&mut lui, ROW_H, st.files.len(), |ui, range| {
+                egui::ScrollArea::vertical().id_salt("lv_files").auto_shrink([false, false]).show_rows_fading(&mut lui, ROW_H, st.files.len(), |ui, range| {
                     ui.spacing_mut().item_spacing.y = 0.0;
                     for i in range {
                         let c = &st.files[i];
@@ -265,7 +266,7 @@ impl App {
                 let row_h = 21.0;
                 let first_change = st.scroll_to.take();
                 vui.spacing_mut().item_spacing.y = 0.0;
-                vui.spacing_mut().scroll.floating = false;
+                crate::scrollbars::reserve_gutter(&mut vui);
                 let longest = st.diff.iter().map(|l| l.text.as_str()).chain(st.code.iter().map(String::as_str)).map(|text| vui.painter().layout_no_wrap(text.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
                 let row_w = longest + 150.0;
                 match st.mode {
@@ -303,7 +304,7 @@ impl App {
                             vui.add_space(20.0);
                             vui.vertical_centered(|ui| ui.label(RichText::new(if st.files.get(st.sel).is_some_and(|c| c.kind == ChangeKind::Deleted) { tr("The file does not exist in this commit") } else { tr("The file is empty") }).color(pal.text_dim)));
                         }
-                        egui::ScrollArea::both().id_salt(("lv_code", st.id, st.sel)).auto_shrink([false, false]).show_rows(&mut vui, row_h, st.code.len(), |ui, range| {
+                        egui::ScrollArea::both().id_salt(("lv_code", st.id, st.sel)).auto_shrink([false, false]).show_rows_fading(&mut vui, row_h, st.code.len(), |ui, range| {
                             ui.spacing_mut().item_spacing.y = 0.0;
                             for i in range {
                                 let (r, _) = ui.allocate_exact_size(vec2(ui.available_width().max(row_w), row_h), Sense::hover());
@@ -382,9 +383,9 @@ impl App {
                     ui.label(RichText::new(msg).color(pal.text_dim).size(12.5));
                 } else {
                     egui::Frame::new().fill(pal.editor_bg).corner_radius(CornerRadius::same(10)).inner_margin(Margin::symmetric(0, 6)).show(ui, |ui| {
-                        ui.spacing_mut().scroll.floating = false;
+                        crate::scrollbars::reserve_gutter(ui);
                         let longest = h.hunk.old_lines.iter().map(|l| ui.painter().layout_no_wrap(l.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
-                        egui::ScrollArea::both().id_salt("hunk_old").max_height(14.0 * row_h).auto_shrink([false, true]).show(ui, |ui| {
+                        egui::ScrollArea::both().id_salt("hunk_old").max_height(14.0 * row_h).auto_shrink([false, true]).show_fading(ui, |ui| {
                             ui.spacing_mut().item_spacing.y = 0.0;
                             for (i, l) in h.hunk.old_lines.iter().enumerate() {
                                 let (r, _) = ui.allocate_exact_size(vec2(ui.available_width().max(longest + 70.0), row_h), Sense::hover());

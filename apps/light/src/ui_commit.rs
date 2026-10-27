@@ -1,6 +1,7 @@
 //! The Commit tool window (docked on the left, like in PyCharm): the changed files as a checkable tree, the
 //! commit message and the Commit buttons. Clicking a file shows its diff in the editor area.
 
+use crate::scrollbars::FadingScroll as _;
 use eframe::egui::{self, Align2, CornerRadius, Key, Pos2, Rect, RichText, Sense, Vec2, pos2, vec2};
 use ide_core::changes::{self, Check, Group, Row};
 use ide_core::git::ChangeKind;
@@ -138,8 +139,8 @@ impl App {
         let current = self.diff_current_rel().map(str::to_string);
         let root_name = self.project.as_ref().map(|p| p.name.clone()).unwrap_or_default();
         ui.spacing_mut().item_spacing.y = 0.0;
-        ui.spacing_mut().scroll.floating = false;
-        egui::ScrollArea::vertical().id_salt("commit_changes").auto_shrink([false, false]).show_rows(ui, ROW_H, rows.len(), |ui, range| {
+        crate::scrollbars::reserve_gutter(ui);
+        egui::ScrollArea::vertical().id_salt("commit_changes").auto_shrink([false, false]).show_rows_fading(ui, ROW_H, rows.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for row in &rows[range] {
                 let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());

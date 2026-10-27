@@ -2,6 +2,7 @@
 //! egui (headings, paragraphs with links, lists, tables, code with the editor's colours, quotes, admonitions,
 //! images), and the bookkeeping that keeps it scrolled together with the code next to it.
 
+use crate::scrollbars::FadingScroll as _;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -182,7 +183,7 @@ pub fn show(ui: &mut egui::Ui, env: &Env, doc: &Document, st: &mut PreviewState)
     let id = ui.scope_id().value();
     let mut cx = Cx { env, st, out: Out::default(), anchors: HashMap::new(), origin_y: 0.0, id };
     let mut ys: Vec<(usize, f32)> = vec![];
-    let res = area.show(ui, |ui| {
+    let res = area.show_fading(ui, |ui| {
         cx.origin_y = ui.cursor().min.y;
         let pad = ((ui.available_width() - MAX_W) / 2.0).max(28.0);
         ui.add_space(24.0);
@@ -442,7 +443,7 @@ fn code_block(ui: &mut egui::Ui, cx: &mut Cx, lang: &str, code: &str, line: usiz
             let (r, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 0.0), Sense::hover());
             ui.painter().text(egui::pos2(r.max.x - 2.0, r.min.y - 2.0), egui::Align2::RIGHT_TOP, lang, fonts::ui(11.0), pal.text_dim);
         }
-        egui::ScrollArea::horizontal().id_salt(("md_code", cx.id, line)).auto_shrink([false, true]).show(ui, |ui| {
+        egui::ScrollArea::horizontal().id_salt(("md_code", cx.id, line)).auto_shrink([false, true]).show_fading(ui, |ui| {
             ui.add(egui::Label::new(job).wrap_mode(egui::TextWrapMode::Extend));
         });
     });

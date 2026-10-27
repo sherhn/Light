@@ -33,6 +33,7 @@ mod log_select;
 mod lucide;
 mod input;
 mod script;
+mod scrollbars;
 mod state;
 mod theme;
 mod ui;

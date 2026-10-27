@@ -1,6 +1,7 @@
 //! Drawing of the diff tab: a header with navigation, then the old and the new text in two aligned, tinted columns
 //! (or as one unified list).
 
+use crate::scrollbars::FadingScroll as _;
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, FontId, Layout, Painter, Rect, RichText, Sense, UiBuilder, pos2, vec2};
 use ide_core::diff::{LineKind, RowKind, SideRow};
 
@@ -188,7 +189,7 @@ impl App {
         let pal = self.pal;
         let Some(tab) = self.docs.get_mut(idx).and_then(|d| d.diff.as_mut()) else { return };
         ui.spacing_mut().item_spacing.y = 0.0;
-        ui.spacing_mut().scroll.floating = false;
+        crate::scrollbars::reserve_gutter(ui);
         let longest = tab.sbs.rows.iter().flat_map(|r| [&r.left, &r.right]).filter_map(|c| c.as_ref()).map(|c| ui.painter().layout_no_wrap(c.text.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
         let half = ((ui.available_width() - 1.0) / 2.0).max(NUM_W + 24.0 + longest).ceil();
         let total_w = half * 2.0 + 1.0;
@@ -199,7 +200,7 @@ impl App {
         let hunks = tab.sbs.hunks.clone();
         let cur = tab.cur;
         let mut clicked: Option<usize> = None;
-        area.show_rows(ui, ROW_H, tab.sbs.rows.len(), |ui, range| {
+        area.show_rows_fading(ui, ROW_H, tab.sbs.rows.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for i in range {
                 let (r, resp) = ui.allocate_exact_size(vec2(total_w, ROW_H), Sense::click());
@@ -220,7 +221,7 @@ impl App {
         let pal = self.pal;
         let Some(tab) = self.docs.get_mut(idx).and_then(|d| d.diff.as_mut()) else { return };
         ui.spacing_mut().item_spacing.y = 0.0;
-        ui.spacing_mut().scroll.floating = false;
+        crate::scrollbars::reserve_gutter(ui);
         let mut area = egui::ScrollArea::both().id_salt(("diff_unified", idx)).auto_shrink([false, false]);
         if let Some(r) = tab.scroll_to.take() {
             // `r` is a side-by-side row; the unified list has one row per removed line, so find the same change
@@ -230,7 +231,7 @@ impl App {
         }
         let longest = tab.lines.iter().map(|l| ui.painter().layout_no_wrap(l.text.replace('\t', "    "), mono.clone(), pal.plain).size().x).fold(0.0, f32::max);
         let total_w = ui.available_width().max(150.0 + longest);
-        area.show_rows(ui, ROW_H, tab.lines.len(), |ui, range| {
+        area.show_rows_fading(ui, ROW_H, tab.lines.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for l in &tab.lines[range] {
                 let (r, _) = ui.allocate_exact_size(vec2(total_w, ROW_H), Sense::hover());

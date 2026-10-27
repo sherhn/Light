@@ -1,5 +1,6 @@
 //! The Settings dialog: a sidebar of pages and grouped rows (title + description on the left, control on the right).
 
+use crate::scrollbars::FadingScroll as _;
 use eframe::egui::{self, Align, Align2, CornerRadius, Key, Margin, Rect, RichText, Sense, Stroke, Vec2, pos2, vec2};
 use ide_core::commands;
 use ide_core::settings::{Language, Theme};
@@ -159,7 +160,7 @@ impl App {
                 }
                 let body = Rect::from_min_max(pos2(content.min.x, full.min.y + 76.0), pos2(content.max.x, full.max.y - 14.0));
                 let mut bui = ui.new_child(egui::UiBuilder::new().max_rect(body).layout(egui::Layout::top_down(Align::Min)));
-                egui::ScrollArea::vertical().auto_shrink([false, false]).show(&mut bui, |ui| {
+                egui::ScrollArea::vertical().auto_shrink([false, false]).show_fading(&mut bui, |ui| {
                     ui.set_width(body.width() - 14.0);
                     match page {
                         0 => {

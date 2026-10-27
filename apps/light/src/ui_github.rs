@@ -2,6 +2,7 @@
 //! repositories of the account - or the public ones of any user - as a searchable list; one click picks a
 //! repository to clone, a double click clones it.
 
+use crate::scrollbars::FadingScroll as _;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, Margin, Rect, RichText, Sense, Vec2, pos2, vec2};
@@ -290,7 +291,7 @@ impl App {
             });
         }
         let selected = st.gh_selected.clone();
-        egui::ScrollArea::vertical().id_salt("github_repos").auto_shrink([false, false]).show_rows(&mut inner, ROW_H, visible.len(), |ui, range| {
+        egui::ScrollArea::vertical().id_salt("github_repos").auto_shrink([false, false]).show_rows_fading(&mut inner, ROW_H, visible.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for k in range {
                 let i = visible[k];

@@ -471,9 +471,7 @@ impl Palette {
             style.spacing.interact_size = egui::vec2(36.0, 30.0);
             style.spacing.menu_margin = egui::Margin::same(6);
             style.spacing.window_margin = egui::Margin::same(12);
-            style.spacing.scroll = egui::style::ScrollStyle::floating();
-            style.spacing.scroll.floating_width = 6.0;
-            style.spacing.scroll.bar_width = 10.0;
+            style.spacing.scroll = crate::scrollbars::style();
             style.interaction.selectable_labels = false;
         });
     }

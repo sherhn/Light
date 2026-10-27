@@ -687,8 +687,11 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
         };
         vp.rect_filled(Rect::from_min_size(Pos2::new(vbar.max.x - 6.0, ruler_y(ed.line_of(m.start.min(text_len)))), Vec2::new(4.0, 3.0)), CornerRadius::ZERO, color);
     }
+    // like every other scrollbar, the handles fade out while the editor is not being used
+    let shown = crate::scrollbars::touch(ui.ctx(), ui.scope_id().with("bar_fade"), full, state.scroll, vresp.dragged() || hresp.dragged());
     let thumb = |resp: &egui::Response| {
-        let a = if resp.dragged() { 70 } else if resp.hovered() { 50 } else { 30 };
+        let (a, strength) = if resp.dragged() { (70.0, 1.0) } else if resp.hovered() { (50.0, 1.0) } else { (30.0, shown) };
+        let a = (a * strength).round() as u8;
         if pal.dark { Color32::from_white_alpha(a) } else { Color32::from_black_alpha(a) }
     };
     if max_scroll_y > 0.0 {

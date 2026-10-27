@@ -1,6 +1,7 @@
 //! Popups and dialogs: Search Everywhere & co, input dialogs, commit, diff, settings, completion,
 //! find bar and the welcome screen.
 
+use crate::scrollbars::FadingScroll as _;
 use std::path::PathBuf;
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Key, Margin, Pos2, Rect, RichText, Sense, Vec2};
@@ -148,7 +149,7 @@ impl App {
                     ui.label(RichText::new(if st.query.is_empty() { tr("Start typing...") } else { tr("Nothing found") }).color(pal.text_dim));
                     ui.add_space(10.0);
                 }
-                egui::ScrollArea::vertical().max_height(list_h).auto_shrink([false, true]).show(ui, |ui| {
+                egui::ScrollArea::vertical().max_height(list_h).auto_shrink([false, true]).show_fading(ui, |ui| {
                     let mut last_section = "";
                     for (i, it) in st.items.iter().enumerate() {
                         if !it.section.is_empty() && it.section != last_section {
@@ -599,7 +600,7 @@ impl App {
                         });
                         ui.add_space(10.0);
                         egui::Frame::new().fill(pal.editor_bg).corner_radius(widgets::radius()).inner_margin(Margin::same(14)).show(ui, |ui| {
-                            egui::ScrollArea::both().max_height(380.0).auto_shrink([false, true]).show(ui, |ui| {
+                            egui::ScrollArea::both().max_height(380.0).auto_shrink([false, true]).show_fading(ui, |ui| {
                                 ui.add(egui::Label::new(RichText::new(&text).monospace().size(13.0)).wrap_mode(egui::TextWrapMode::Extend));
                             });
                         });
@@ -788,7 +789,7 @@ impl App {
                     // the height is the rows' own (ten at most): a scroll area left to size itself keeps the height of the
                     // list before it, so a longer list showed only the first rows
                     let list_h = items.len().min(10) as f32 * 28.0;
-                    egui::ScrollArea::vertical().max_height(list_h).min_scrolled_height(list_h).auto_shrink([false, false]).show(ui, |ui| {
+                    egui::ScrollArea::vertical().max_height(list_h).min_scrolled_height(list_h).auto_shrink([false, false]).show_fading(ui, |ui| {
                         ui.spacing_mut().item_spacing.y = 0.0;
                         for (i, it) in items.iter().enumerate() {
                             let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 28.0), Sense::click());
@@ -946,7 +947,7 @@ impl App {
         let col_w = 460.0f32.min(rect.width() - 48.0);
         let top = (rect.height() * 0.14).max(28.0);
         // the scroll area is the whole page, so its bar is at the window's edge; the column sits in the middle of it
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show_fading(ui, |ui| {
             let pad = ((ui.available_width() - col_w) / 2.0).max(0.0);
             ui.horizontal_top(|ui| {
             ui.add_space(pad);

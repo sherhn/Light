@@ -2,6 +2,7 @@
 //! switch on or off, update, remove. Also the banner that offers the modules a project needs, and the small list of
 //! modules that the dialogs for a new or imported project show.
 
+use crate::scrollbars::FadingScroll as _;
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, Layout, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, TextureHandle, UiBuilder, Vec2};
 
 use crate::app::App;
@@ -188,7 +189,7 @@ impl App {
         let mut category = self.mods.category.clone();
         let mut actions: Vec<Action> = Vec::new();
 
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show_fading(ui, |ui| {
             let width = ui.available_width();
             ui.add_space(22.0);
             // ---- title

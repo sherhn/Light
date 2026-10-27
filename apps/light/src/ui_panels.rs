@@ -1,5 +1,6 @@
 //! Tool windows: Project tree, Structure, REPL, Run, Problems, Find results, Git, Terminal.
 
+use crate::scrollbars::FadingScroll as _;
 use std::path::PathBuf;
 
 use eframe::egui::{self, Color32, CornerRadius, Key, Margin, Pos2, Rect, RichText, Sense, Stroke, Vec2};
@@ -187,8 +188,8 @@ impl App {
         let font = fonts::ui(13.5);
         // show_rows must see the same spacing as the rows it virtualizes.
         ui.spacing_mut().item_spacing.y = 0.0;
-        ui.spacing_mut().scroll.floating = false;
-        egui::ScrollArea::both().auto_shrink([false, false]).max_height(ui.available_height()).show_rows(ui, ROW_H, rows.len(), |ui, range| {
+        crate::scrollbars::reserve_gutter(ui);
+        egui::ScrollArea::both().auto_shrink([false, false]).max_height(ui.available_height()).show_rows_fading(ui, ROW_H, rows.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for row in &rows[range] {
                 let text_w = ui.painter().layout_no_wrap(row.name.clone(), font.clone(), pal.text).size().x;
@@ -349,7 +350,7 @@ impl App {
             ui.add_space(8.0);
             ui.label(RichText::new(format!("   {}", tr("Nothing to show"))).color(pal.text_dim));
         }
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, ROW_H, defs.len(), |ui, range| {
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows_fading(ui, ROW_H, defs.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for def in &defs[range] {
                 let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), ROW_H), Sense::click());
@@ -552,8 +553,8 @@ impl App {
         // what the menu asked for
         let mut menu: Option<LogMenu> = None;
         ui.spacing_mut().item_spacing.y = 0.0;
-        ui.spacing_mut().scroll.floating = false;
-        let area = egui::ScrollArea::both().id_salt(id).min_scrolled_height(0.0).max_height(ui.available_height()).auto_shrink([false, false]).stick_to_bottom(stick).show_rows(ui, row_h, lines.len(), |ui, range| {
+        crate::scrollbars::reserve_gutter(ui);
+        let area = egui::ScrollArea::both().id_salt(id).min_scrolled_height(0.0).max_height(ui.available_height()).auto_shrink([false, false]).stick_to_bottom(stick).show_rows_fading(ui, row_h, lines.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             // the rows on screen: where they are and how their text is laid out, for finding the character under the mouse
             let mut rows: Vec<(usize, Rect, Pos2, std::sync::Arc<egui::Galley>, usize, egui::Response)> = Vec::new();
@@ -798,7 +799,7 @@ impl App {
                     .margin(Margin::ZERO)
                     .lock_focus(true);
                 let h = (height - 16.0 - 2.0 * vpad as f32).max(row_h);
-                egui::ScrollArea::vertical().id_salt(id.with("scroll")).max_height(h).min_scrolled_height(h).auto_shrink([false, false]).show(ui, |ui| {
+                egui::ScrollArea::vertical().id_salt(id.with("scroll")).max_height(h).min_scrolled_height(h).auto_shrink([false, false]).show_fading(ui, |ui| {
                     resp = Some(ui.add(te));
                 });
             });
@@ -995,7 +996,7 @@ impl App {
         let pal = self.pal;
         ui.add_space(6.0);
         let mut selected = None;
-        egui::ScrollArea::horizontal().id_salt("run_tabs").show(ui, |ui| {
+        egui::ScrollArea::horizontal().id_salt("run_tabs").show_fading(ui, |ui| {
             ui.horizontal(|ui| {
                 if !self.run_key.is_empty() { let _ = ui.selectable_label(true, &self.run.title); }
                 for (index, tab) in self.other_runs.iter().enumerate() {
@@ -1042,7 +1043,7 @@ impl App {
         }
         let mut goto: Option<(Option<PathBuf>, usize, usize)> = None;
         let root = self.project_root().map(PathBuf::from);
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show_fading(ui, |ui| {
             for p in problems {
                 let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), ROW_H + 4.0), Sense::click());
                 widgets::row_background(ui, &pal, r, false, resp.hovered());
@@ -1096,7 +1097,7 @@ impl App {
             ui.label(RichText::new(i18n::fmt("{0}   {1} match(es)", &[&title, &hits.len()])).color(pal.text_dim).font(fonts::ui(12.0)));
         });
         let mono = egui::FontId::monospace((self.settings.font_size - 1.0).max(9.0));
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show_fading(ui, |ui| {
             let mut last: Option<&PathBuf> = None;
             for h in &hits {
                 if last != Some(&h.path) {
@@ -1210,7 +1211,7 @@ impl App {
         let head = self.git.head.clone();
         let mut show: Option<usize> = None;
         let row_h = ROW_H + 2.0;
-        egui::ScrollArea::vertical().id_salt("git_log").auto_shrink([false, false]).show_rows(ui, row_h, log.len(), |ui, range| {
+        egui::ScrollArea::vertical().id_salt("git_log").auto_shrink([false, false]).show_rows_fading(ui, row_h, log.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
             for i in range {
                 let c = &log[i];

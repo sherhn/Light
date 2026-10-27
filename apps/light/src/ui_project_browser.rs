@@ -1,6 +1,7 @@
 //! Project folders in WSL, without asking users to type a Windows UNC path.
 //! Directory I/O stays on a cancellable worker; replacing a request drops its old results.
 
+use crate::scrollbars::FadingScroll as _;
 use std::path::{Path, PathBuf};
 use std::sync::{
     Arc,
@@ -361,7 +362,7 @@ impl App {
                 egui::ScrollArea::vertical().id_salt("project_browser_dialog")
                     .max_height((ctx.content_rect().height() - 180.0).max(140.0))
                     .min_scrolled_height((ctx.content_rect().height() - 200.0).clamp(120.0, 460.0))
-                    .show(ui, |ui| {
+                    .show_fading(ui, |ui| {
                 ui.set_width((ctx.content_rect().width() - 64.0).clamp(280.0, 760.0));
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(tr("Open Project")).font(fonts::semibold(17.0)));
@@ -413,7 +414,7 @@ impl App {
                     }
                     let busy = st.request.is_some() || st.changed_at.is_some();
                     ui.add_space(6.0);
-                    egui::ScrollArea::vertical().id_salt("linux_project_folders").max_height((ctx.content_rect().height() - 500.0).clamp(60.0, 220.0)).min_scrolled_height(60.0).auto_shrink([false, false]).show(ui, |ui| {
+                    egui::ScrollArea::vertical().id_salt("linux_project_folders").max_height((ctx.content_rect().height() - 500.0).clamp(60.0, 220.0)).min_scrolled_height(60.0).auto_shrink([false, false]).show_fading(ui, |ui| {
                         if busy { ui.horizontal(|ui| { ui.spinner(); ui.label(tr("Looking for folders...")); }); }
                         else if let Some(error) = &st.error { ui.colored_label(pal.error, error); }
                         else if st.folders.is_empty() { ui.label(tr("No folders found")); }

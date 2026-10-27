@@ -1,6 +1,7 @@
 //! The Linux (WSL) settings page: the development environment, distributions and optional language tools,
 //! with the progress and output of whatever is being installed.
 
+use crate::scrollbars::FadingScroll as _;
 use std::time::Duration;
 
 use eframe::egui::{self, CornerRadius, Margin, RichText, Sense, Vec2};
@@ -207,7 +208,7 @@ impl App {
                 if !log.is_empty() {
                     ui.add_space(8.0);
                     egui::Frame::new().fill(pal.editor_bg).corner_radius(CornerRadius::same(10)).inner_margin(Margin::symmetric(10, 8)).show(ui, |ui| {
-                        egui::ScrollArea::vertical().id_salt("wsl_log").max_height(170.0).auto_shrink([false, true]).stick_to_bottom(true).show(ui, |ui| {
+                        egui::ScrollArea::vertical().id_salt("wsl_log").max_height(170.0).auto_shrink([false, true]).stick_to_bottom(true).show_fading(ui, |ui| {
                             for l in &log {
                                 ui.label(RichText::new(l).font(egui::FontId::monospace(11.5)).color(pal.plain));
                             }
