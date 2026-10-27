@@ -128,7 +128,7 @@ fn char_col_from_display(line: &str, disp: usize) -> usize {
     line.chars().count()
 }
 
-fn wavy(painter: &egui::Painter, x0: f32, x1: f32, y: f32, color: Color32) {
+fn wavy(painter: &egui::Painter, x0: f32, x1: f32, y: f32, color: Color32, width: f32) {
     let mut pts = Vec::new();
     let mut x = x0;
     let mut up = false;
@@ -139,7 +139,7 @@ fn wavy(painter: &egui::Painter, x0: f32, x1: f32, y: f32, color: Color32) {
     }
     pts.push(Pos2::new(x1, y));
     if pts.len() >= 2 {
-        painter.add(Shape::line(pts, Stroke::new(1.0, color)));
+        painter.add(Shape::line(pts, Stroke::new(width, color)));
     }
 }
 
@@ -402,7 +402,11 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                 }
             }
 
-            // problems
+            // problems: a red line under a line with an error, the symbols that break the syntax tinted and a squiggle under them
+            let line_end_x = x0 + display_col(line, line.chars().count()) as f32 * cw;
+            if cfg.markers.iter().any(|m| m.sev == Sev::Error && m.end >= ls && m.start <= le) {
+                painter.hline(x0..=line_end_x.max(x0 + cw), y + lh - 1.0, Stroke::new(1.0, pal.error.gamma_multiply(0.5)));
+            }
             for m in cfg.markers {
                 if m.end < ls || m.start > le {
                     continue;
@@ -418,7 +422,11 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                     Sev::Warning => pal.warning,
                     Sev::Weak => pal.weak_warning,
                 };
-                wavy(&painter, xa, xb.max(xa + cw * 0.6), y + lh - 4.0, color);
+                let xb = xb.max(xa + cw * 0.6);
+                if m.sev == Sev::Error {
+                    painter.rect_filled(Rect::from_min_max(Pos2::new(xa, y + 2.0), Pos2::new(xb, y + lh - 2.0)), CornerRadius::same(2), color.gamma_multiply(0.25));
+                }
+                wavy(&painter, xa, xb, y + lh - 4.0, color, if m.sev == Sev::Error { 1.6 } else { 1.0 });
             }
 
             if line_no == caret_line {
@@ -773,4 +781,54 @@ mod link_tests {
         assert_eq!(link_at("λ https://example.org", 1), None);
     }
 
+}
+
+#[cfg(test)]
+mod problem_tests {
+    use super::*;
+
+    /// Paint two frames of `text` with `markers` and report (a tint behind a symbol, a line under the line).
+    fn paint(text: &str, markers: &[Marker]) -> (bool, bool) {
+        let ctx = egui::Context::default();
+        crate::fonts::install(&ctx);
+        let pal = Palette::for_settings(&ide_core::settings::Settings::default());
+        let mut editor = Editor::new(text, lisp_syntax::Dialect::CommonLisp);
+        let mut state = ViewState::default();
+        let mut folds = HashSet::new();
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false };
+        let (mut tint, mut underline) = (false, false);
+        for _ in 0..2 {
+            let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(500.0, 200.0))), ..Default::default() }, |ui| {
+                show(ui, &mut editor, &mut state, &mut folds, &cfg);
+            });
+            output.textures_delta.clear();
+            tint = false;
+            underline = false;
+            let mut stack: Vec<&Shape> = output.shapes.iter().map(|c| &c.shape).collect();
+            while let Some(shape) = stack.pop() {
+                match shape {
+                    Shape::Vec(inner) => stack.extend(inner),
+                    Shape::Rect(r) if r.fill == pal.error.gamma_multiply(0.25) => tint = true,
+                    Shape::LineSegment { stroke, points } if stroke.color == pal.error.gamma_multiply(0.5) && points[0].y == points[1].y => underline = true,
+                    _ => {}
+                }
+            }
+        }
+        (tint, underline)
+    }
+
+    fn marker(sev: Sev) -> [Marker; 1] {
+        [Marker { start: 0, end: 1, sev, msg: "Unclosed '('".into() }]
+    }
+
+    #[test]
+    fn an_error_gets_a_red_line_under_its_line_and_tinted_symbols() {
+        assert_eq!(paint("(a b\nok\n", &marker(Sev::Error)), (true, true));
+    }
+
+    #[test]
+    fn warnings_and_clean_text_get_neither() {
+        assert_eq!(paint("(a b\n", &marker(Sev::Warning)), (false, false));
+        assert_eq!(paint("(a b)\n", &[]), (false, false));
+    }
 }
