@@ -10,7 +10,7 @@ mod tags;
 pub use def::{IndentDef, LangDef, OutlineDef, RuleDef};
 pub use engine::{Continuation, FoldKind, IndentMode, Language, class_named, line_starts};
 pub use problems::{Problem, ProblemKind};
-pub use set::LanguageSet;
+pub use set::{LanguageSet, matches_file_name};
 
 #[cfg(test)]
 mod tests;

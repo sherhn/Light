@@ -79,7 +79,7 @@ pub struct LangDef {
     pub name: String,
     /// File name extensions without the dot, any case.
     pub extensions: Vec<String>,
-    /// Whole file names (`Makefile`), any case.
+    /// File names (`Makefile`), any case; `*` patterns such as `Dockerfile.*` are supported.
     pub filenames: Vec<String>,
     /// A regular expression for the first line of a file without a known name or extension (`^#!.*python`).
     pub first_line: String,

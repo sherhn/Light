@@ -6,6 +6,20 @@ use std::sync::Arc;
 use crate::def::LangDef;
 use crate::engine::Language;
 
+/// Case-insensitive filename patterns; `*` matches any sequence of characters.
+pub fn matches_file_name(pattern: &str, name: &str) -> bool {
+    let pattern = pattern.to_ascii_lowercase();
+    let name = name.to_ascii_lowercase();
+    let parts: Vec<_> = pattern.split('*').collect();
+    if parts.len() == 1 { return pattern == name }
+    let Some(mut remaining) = name.strip_prefix(parts[0]) else { return false };
+    for part in &parts[1..parts.len() - 1] {
+        let Some(offset) = remaining.find(part) else { return false };
+        remaining = &remaining[offset + part.len()..];
+    }
+    remaining.ends_with(parts[parts.len() - 1])
+}
+
 #[derive(Clone)]
 pub struct LanguageSet {
     langs: Vec<Arc<Language>>,
@@ -62,7 +76,8 @@ impl LanguageSet {
         let ext = path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
         self.langs
             .iter()
-            .find(|l| l.def.filenames.iter().any(|f| f.eq_ignore_ascii_case(&name)))
+            .find(|l| l.def.filenames.iter().any(|f| !f.contains('*') && f.eq_ignore_ascii_case(&name)))
+            .or_else(|| self.langs.iter().flat_map(|language| language.def.filenames.iter().filter(|pattern| pattern.contains('*') && matches_file_name(pattern, &name)).map(move |pattern| (pattern.chars().filter(|c| *c != '*').count(), language))).max_by_key(|(specificity, _)| *specificity).map(|(_, language)| language))
             .or_else(|| if ext.is_empty() { None } else { self.langs.iter().find(|l| l.def.extensions.iter().any(|e| e.eq_ignore_ascii_case(&ext))) })
             .or_else(|| first_line.and_then(|f| self.langs.iter().find(|l| l.matches_first_line(f))))
             .cloned()

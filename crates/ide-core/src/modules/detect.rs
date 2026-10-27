@@ -53,7 +53,7 @@ pub fn needed(root: &Path, modules: &[(String, Detect)]) -> Vec<String> {
 pub fn needed_in(exts: &HashSet<String>, names: &HashSet<String>, modules: &[(String, Detect)]) -> Vec<String> {
     modules
         .iter()
-        .filter(|(_, d)| d.extensions.iter().any(|e| exts.contains(&e.to_ascii_lowercase())) || d.files.iter().any(|f| names.contains(&f.to_ascii_lowercase())))
+        .filter(|(_, d)| d.extensions.iter().any(|e| exts.contains(&e.to_ascii_lowercase())) || d.files.iter().any(|f| if f.contains('*') { names.iter().any(|name| light_lang::matches_file_name(f, name)) } else { names.contains(&f.to_ascii_lowercase()) }))
         .map(|(id, _)| id.clone())
         .collect()
 }
