@@ -16,7 +16,8 @@ pub struct RunDef {
     pub language: String,
     pub name: String,
     /// A shell command line with `{file}` (the path as the shell sees it), `{dir}` (its folder), `{name}` (file name)
-    /// and `{stem}` (name without the extension).
+    /// and `{stem}` (name without the extension). `{image}` is a Docker-safe,
+    /// stable image/container name derived from the file's directory.
     pub command: String,
     /// A different command line for a project that runs on Windows (empty: the same one).
     pub windows: String,
@@ -29,7 +30,9 @@ impl RunDef {
         let template = if windows && !self.windows.is_empty() { &self.windows } else { &self.command };
         let name = file.rsplit('/').next().unwrap_or(file);
         let stem = name.rsplit_once('.').filter(|(s, _)| !s.is_empty()).map_or(name, |(s, _)| s);
-        template.replace("{file}", file).replace("{dir}", dir).replace("{name}", name).replace("{stem}", stem)
+        let folder: String = dir.rsplit('/').find(|s| !s.is_empty()).unwrap_or("project").to_ascii_lowercase().chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')).collect();
+        let image = format!("light-{}-{}", if folder.is_empty() { "project" } else { &folder }, &super::sha256::sha256_hex(dir.as_bytes())[..8]);
+        template.replace("{file}", file).replace("{dir}", dir).replace("{name}", name).replace("{stem}", stem).replace("{image}", &image)
     }
 }
 

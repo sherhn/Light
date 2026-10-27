@@ -353,6 +353,58 @@
       }
     },
     {
+      "id": "docker",
+      "name": "Docker",
+      "version": "1.0.1",
+      "category": "Tools",
+      "summary": "Dockerfile and Compose: syntax, completion, stages/services outline, build checks, images, containers and Compose lifecycle commands.",
+      "cover": "cover.png",
+      "path": "modules/docker",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 8957,
+          "sha256": "d31412c7fb8fc9384ef183a75c4196e0a56d52e6f368a995ada630fa34f37de4"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 17515,
+          "sha256": "5991f97248b9f8e89d0a13472cf5cc7ac05d8ba6fad962255006427090054803"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "dockerfile"
+        ],
+        "files": [
+          "Dockerfile",
+          "Containerfile",
+          "Dockerfile.*",
+          "Containerfile.*",
+          ".dockerignore",
+          "*.dockerignore",
+          "compose.yaml",
+          "compose.yml",
+          "docker-compose.yml",
+          "docker-compose.yaml",
+          "compose.*.yaml",
+          "compose.*.yml",
+          "docker-compose.*.yml",
+          "docker-compose.*.yaml"
+        ]
+      }
+    },
+    {
       "id": "shell-make",
       "name": "Shell and Make",
       "version": "1.1.1",

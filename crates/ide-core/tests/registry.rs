@@ -22,6 +22,28 @@ fn language(id: &str) -> Language {
     Language::new(def).unwrap()
 }
 
+#[test]
+fn docker_highlights_stages_and_compose_services_and_exposes_lifecycle_actions() {
+    let text = "FROM node:22 AS builder\nWORKDIR /app\nCOPY --from=builder /app/dist /app\nENV PORT=${PORT}\n";
+    let spans = hl("dockerfile", text);
+    assert!(has(&spans, Class::SpecialForm, "FROM"), "{spans:?}");
+    assert!(has(&spans, Class::Keyword, "--from=builder"), "{spans:?}");
+    assert_eq!(language("dockerfile").outline(text)[0].name, "builder");
+    let compose = "services:\n  web:\n    image: node:22\n    environment:\n      PORT: ${PORT}\n";
+    let lang = language("docker-compose");
+    assert_eq!(lang.outline(compose)[0].name, "web");
+    assert_eq!(lang.indent_for("services:", ""), "  ");
+    assert!(has(&hl("docker-compose", compose), Class::SpecialForm, "services"));
+    let module = manifests().into_iter().find(|m| m.id == "docker").unwrap();
+    for action in ["up -d", "stop", "restart", "ps --all", "logs --no-color --tail 200", "down"] { assert!(module.run.iter().any(|r| r.command.ends_with(action)), "missing {action}"); }
+    assert!(!module.run.iter().any(|r| r.command.contains("down -v") || r.command.contains("prune")));
+    let check = module.check.first().unwrap();
+    let re = ide_core::modules::check::compile(&check.pattern).unwrap();
+    let errors = ide_core::modules::check::problems(&re, "yaml: line 7: mapping values are not allowed\n", 10);
+    assert_eq!(errors[0].line, 7);
+    assert!(!ide_core::modules::check::problems(&re, "services.web: invalid type\n", 10).is_empty());
+}
+
 /// (class, text) of every span of `text` in the language `id`.
 fn hl(id: &str, text: &str) -> Vec<(Class, String)> {
     language(id).highlight(text).iter().map(|s| (s.class, text[s.start..s.end].to_string())).collect()
@@ -36,7 +58,7 @@ fn the_index_is_current_and_every_module_is_valid() {
     let src = Source::Dir(registry_dir());
     let index: Index = src.fetch_index().expect("index.json");
     let ids: Vec<&str> = index.modules.iter().map(|m| m.id.as_str()).collect();
-    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "shell-make"]);
+    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "shell-make"]);
     for e in &index.modules {
         assert!(e.files.iter().any(|f| f.name == "module.json"), "{}", e.id);
         for f in &e.files {
@@ -72,7 +94,11 @@ fn every_language_is_claimed_by_the_files_it_should() {
     assert_eq!(id("Makefile", None), "make");
     assert_eq!(id("build.sh", None), "shell");
     assert_eq!(id("run", Some("#!/bin/bash")), "shell");
-    assert_eq!(id("docker/Dockerfile", None), "config");
+    assert_eq!(id("docker/Dockerfile", None), "dockerfile");
+    assert_eq!(id("docker/Dockerfile.dev", None), "dockerfile");
+    assert_eq!(id("Dockerfile.dockerignore", None), "dockerignore");
+    assert_eq!(id("compose.yaml", None), "docker-compose");
+    assert_eq!(id("compose.production.yaml", None), "docker-compose");
     assert_eq!(id("link.ld", None), "c");
     assert_eq!(id("notes.xyz", None), "plain");
     assert_eq!(id("web/INDEX.HTML", None), "html");
@@ -294,7 +320,7 @@ fn every_run_command_names_a_language_and_a_known_placeholder() {
     for m in manifests() {
         for r in &m.run {
             for cmd in [&r.command, &r.windows] {
-                let stripped = cmd.replace("{file}", "").replace("{dir}", "").replace("{name}", "").replace("{stem}", "");
+                let stripped = cmd.replace("{file}", "").replace("{dir}", "").replace("{name}", "").replace("{stem}", "").replace("{image}", "");
                 assert!(!stripped.contains('{') && !stripped.contains('}'), "{}: {cmd}", m.id);
             }
             assert!(!r.command.is_empty() && !r.name.is_empty());

@@ -36,7 +36,9 @@ pub fn problems(re: &Regex, output: &str, limit: usize) -> Vec<CheckProblem> {
     // Windows tools end their lines with CR LF
     let output = output.replace("\r\n", "\n").replace('\r', "\n");
     for c in re.captures_iter(&output) {
-        let Some(line) = c.name("line").and_then(|m| m.as_str().trim().parse::<usize>().ok()).filter(|l| *l > 0) else { continue };
+        // An optional, unmatched location is a file-wide diagnostic (Compose
+        // validation and similar tools); anchor it to the first line.
+        let Some(line) = c.name("line").map_or(Some(1), |m| m.as_str().trim().parse::<usize>().ok().filter(|l| *l > 0)) else { continue };
         let message = c.name("msg").map(|m| m.as_str().trim().to_string()).unwrap_or_default();
         if message.is_empty() {
             continue;

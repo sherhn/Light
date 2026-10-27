@@ -76,6 +76,9 @@ def run_one(script_path):
         script = tmp / "script.json"
         script.write_text(text, encoding="utf-8")
         json.loads(text)  # validate
+        if "@docker_module" in text:
+            (proj / "Dockerfile").write_text("FROM busybox AS base\nWORKDIR /app\nCMD [\"echo\", \"fixture\"]\n", encoding="utf-8")
+            (proj / "compose.yaml").write_text("services:\n  web:\n    image: busybox\n    command: [echo, fixture]\n", encoding="utf-8")
         if "@os_project" in text:
             # a small kernel-like project: a makefile, C and assembly, built in Linux
             files = {
@@ -178,6 +181,17 @@ def run_one(script_path):
 
             shutil.rmtree(proj / ".git", onexc=_unlock)
         env = dict(os.environ, LIGHT_CONFIG_DIR=str(tmp / "cfg"))
+        if "@docker_module" in text:
+            import shlex
+            commands = tmp / "fake-cli"
+            commands.mkdir()
+            if os.name == "nt":
+                (commands / "docker.cmd").write_text(f'@echo off\r\n"{sys.executable}" "{ROOT / "tests/fake_docker.py"}" %*\r\n', encoding="utf-8")
+            else:
+                wrapper = commands / "docker"
+                wrapper.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(ROOT / "tests/fake_docker.py"))} "$@"\n', encoding="utf-8")
+                wrapper.chmod(0o755)
+            env["PATH"] = str(commands) + os.pathsep + env.get("PATH", "")
         # modules come from the registry of this repository; a script gets Lisp, plus what `@modules a,b` names (a kernel
         # project also C, assembler and make), and `@no_modules` starts with none
         env["LIGHT_REGISTRY"] = str(ROOT / "registry")

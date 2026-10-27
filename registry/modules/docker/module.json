@@ -1,0 +1,355 @@
+{
+  "version": "1.0.1",
+  "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
+  "id": "docker",
+  "name": "Docker",
+  "category": "Tools",
+  "summary": "Dockerfile and Compose: syntax, completion, stages/services outline, build checks, images, containers and Compose lifecycle commands.",
+  "description": "Dockerfile instructions, variables, flags and multi-stage builds; Compose YAML services, environment variables, indentation and folding; dockerignore patterns. Build and validate Dockerfiles, list containers/images, inspect daemon status; Compose validate, build, pull, up, stop, restart, logs, ps and down (without deleting volumes). Commands run through the configured local or WSL environment and stream to the Run panel. Requires an existing Docker Engine or Docker Desktop with Compose v2; Linux tools can be installed from Settings. No daemon, image, container or volume is changed until you explicitly run an action.",
+  "languages": [
+    {
+      "id": "dockerfile",
+      "name": "Dockerfile",
+      "extensions": [
+        "dockerfile"
+      ],
+      "filenames": [
+        "Dockerfile",
+        "Containerfile",
+        "Dockerfile.*",
+        "Containerfile.*"
+      ],
+      "line_comment": "#",
+      "brackets": [
+        "[]",
+        "{}"
+      ],
+      "indent": {
+        "mode": "keep",
+        "size": 4
+      },
+      "fold": "indent",
+      "grammar": [
+        {
+          "match": "^[ \\t]*#.*$",
+          "class": "comment"
+        },
+        {
+          "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?",
+          "class": "string"
+        },
+        {
+          "match": "'[^'\\n]*'?",
+          "class": "string"
+        },
+        {
+          "match": "\\$\\{[^}\\n]+\\}|\\$[A-Za-z_]\\w*",
+          "class": "variable"
+        },
+        {
+          "match": "--[a-z][\\w-]*(?:=[^ \\t\\n]+)?",
+          "class": "argument"
+        },
+        {
+          "words": [
+            "FROM",
+            "RUN",
+            "CMD",
+            "LABEL",
+            "EXPOSE",
+            "ENV",
+            "ADD",
+            "COPY",
+            "ENTRYPOINT",
+            "VOLUME",
+            "USER",
+            "WORKDIR",
+            "ARG",
+            "ONBUILD",
+            "STOPSIGNAL",
+            "HEALTHCHECK",
+            "SHELL",
+            "MAINTAINER",
+            "AS"
+          ],
+          "class": "keyword",
+          "ignore_case": true
+        },
+        {
+          "match": "\\b\\d+(?:/\\w+)?\\b",
+          "class": "number"
+        }
+      ],
+      "outline": [
+        {
+          "pattern": "(?i)^[ \\t]*FROM[ \\t]+[^\\n]+[ \\t]+AS[ \\t]+([\\w.-]+)",
+          "kind": "module",
+          "name": 1
+        }
+      ]
+    },
+    {
+      "id": "docker-compose",
+      "name": "Docker Compose",
+      "filenames": [
+        "compose.yaml",
+        "compose.yml",
+        "docker-compose.yml",
+        "docker-compose.yaml",
+        "compose.*.yaml",
+        "compose.*.yml",
+        "docker-compose.*.yml",
+        "docker-compose.*.yaml"
+      ],
+      "line_comment": "#",
+      "brackets": [
+        "[]",
+        "{}"
+      ],
+      "indent": {
+        "mode": "python",
+        "size": 2
+      },
+      "fold": "indent",
+      "grammar": [
+        {
+          "match": "(?:^|[ \\t])(#.*)$",
+          "captures": {
+            "1": "comment"
+          }
+        },
+        {
+          "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?",
+          "class": "string"
+        },
+        {
+          "match": "'[^'\\n]*'?",
+          "class": "string"
+        },
+        {
+          "match": "\\$\\{[^}\\n]+\\}",
+          "class": "variable"
+        },
+        {
+          "match": "^[ \\t]*(?:-[ \\t]*)?([\\w.-]+)[ \\t]*:",
+          "captures": {
+            "1": "keyword"
+          }
+        },
+        {
+          "words": [
+            "true",
+            "false",
+            "null",
+            "yes",
+            "no",
+            "on",
+            "off"
+          ],
+          "class": "constant",
+          "ignore_case": true
+        },
+        {
+          "match": "\\b\\d+(?:\\.\\d+)?\\b",
+          "class": "number"
+        }
+      ],
+      "outline": [
+        {
+          "pattern": "^  ([A-Za-z_][\\w.-]*)[ \\t]*:",
+          "kind": "module",
+          "name": 1
+        }
+      ]
+    },
+    {
+      "id": "dockerignore",
+      "name": "Docker ignore",
+      "filenames": [
+        ".dockerignore",
+        "*.dockerignore"
+      ],
+      "line_comment": "#",
+      "indent": {
+        "mode": "keep",
+        "size": 2
+      },
+      "grammar": [
+        {
+          "match": "^[ \\t]*#.*$",
+          "class": "comment"
+        },
+        {
+          "match": "^!.*$",
+          "class": "keyword"
+        },
+        {
+          "match": "[*?]+",
+          "class": "constant"
+        }
+      ]
+    }
+  ],
+  "run": [
+    {
+      "language": "dockerfile",
+      "name": "Docker: Build image",
+      "command": "docker build -f \"{file}\" -t \"{image}\" \"{dir}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Validate build",
+      "command": "docker build --check -f \"{file}\" \"{dir}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Run project container",
+      "command": "docker run -d --name \"{image}\" \"{image}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Start project container",
+      "command": "docker start \"{image}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Stop project container",
+      "command": "docker stop \"{image}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Restart project container",
+      "command": "docker restart \"{image}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Project container logs",
+      "command": "docker logs --tail 200 \"{image}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Inspect project container",
+      "command": "docker inspect \"{image}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Remove stopped project container",
+      "command": "docker rm \"{image}\""
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Containers",
+      "command": "docker ps -a"
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Images",
+      "command": "docker image ls"
+    },
+    {
+      "language": "dockerfile",
+      "name": "Docker: Engine status",
+      "command": "docker info"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Docker: Containers",
+      "command": "docker ps -a"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Docker: Images",
+      "command": "docker image ls"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Docker: Engine status",
+      "command": "docker info"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Validate",
+      "command": "docker compose -f \"{file}\" config --quiet"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Build",
+      "command": "docker compose -f \"{file}\" build"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Pull",
+      "command": "docker compose -f \"{file}\" pull"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Start services",
+      "command": "docker compose -f \"{file}\" up -d"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Stop services",
+      "command": "docker compose -f \"{file}\" stop"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Restart services",
+      "command": "docker compose -f \"{file}\" restart"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Service status",
+      "command": "docker compose -f \"{file}\" ps --all"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Logs",
+      "command": "docker compose -f \"{file}\" logs --no-color --tail 200"
+    },
+    {
+      "language": "docker-compose",
+      "name": "Compose: Remove containers (keep volumes)",
+      "command": "docker compose -f \"{file}\" down"
+    }
+  ],
+  "check": [
+    {
+      "language": "docker-compose",
+      "name": "Compose validation",
+      "command": "docker compose -f \"{file}\" config --quiet",
+      "pattern": "(?m)^(?:(?:yaml: )?line (?P<line>\\d+):[ \\t]*)?(?P<msg>[^\\n]+)"
+    }
+  ],
+  "tools": [
+    {
+      "name": "Docker Engine and Compose",
+      "programs": [
+        "docker"
+      ],
+      "apt": "docker.io docker-compose-v2"
+    }
+  ],
+  "detect": {
+    "extensions": [
+      "dockerfile"
+    ],
+    "files": [
+      "Dockerfile",
+      "Containerfile",
+      "Dockerfile.*",
+      "Containerfile.*",
+      ".dockerignore",
+      "*.dockerignore",
+      "compose.yaml",
+      "compose.yml",
+      "docker-compose.yml",
+      "docker-compose.yaml",
+      "compose.*.yaml",
+      "compose.*.yml",
+      "docker-compose.*.yml",
+      "docker-compose.*.yaml"
+    ]
+  }
+}
