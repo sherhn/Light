@@ -151,15 +151,17 @@ fn complete_path(word: &Word, env: &Env) -> Option<Completion> {
     }
     let split = word.text.rfind(is_separator).map_or(0, |i| i + 1);
     let (dir_part, prefix) = word.text.split_at(split);
-    let dir = if dir_part.is_empty() {
+    // the folder as the file system reads it: a shell that writes `\` means `/` (only Windows itself reads both)
+    let on_disk = if env.separator == '\\' { dir_part.replace('\\', "/") } else { dir_part.to_string() };
+    let dir = if on_disk.is_empty() {
         env.cwd.to_path_buf()
-    } else if let Some(rest) = dir_part.strip_prefix('~') {
+    } else if let Some(rest) = on_disk.strip_prefix('~') {
         let home = env.home?;
         home.join(rest.trim_start_matches(is_separator))
-    } else if Path::new(dir_part).is_absolute() || dir_part.starts_with(is_separator) {
-        PathBuf::from(dir_part)
+    } else if Path::new(&on_disk).is_absolute() || on_disk.starts_with(is_separator) {
+        PathBuf::from(&on_disk)
     } else {
-        env.cwd.join(dir_part)
+        env.cwd.join(&on_disk)
     };
     let only_directories = DIRECTORY_COMMANDS.contains(&word.command.as_str());
     let mut names = Vec::new();
