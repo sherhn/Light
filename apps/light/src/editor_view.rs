@@ -579,7 +579,7 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                 gp.add(Shape::convex_polygon(vec![Pos2::new(mark_x - 1.0, y - 3.5), Pos2::new(mark_x + 6.0, y), Pos2::new(mark_x - 1.0, y + 3.5)], mark_color(m.kind), Stroke::NONE));
             }
             k => {
-                gp.rect_filled(Rect::from_min_size(Pos2::new(mark_x, y), Vec2::new(3.0, lh)), CornerRadius::ZERO, mark_color(k));
+                gp.rect_filled(Rect::from_min_size(Pos2::new(mark_x, y), Vec2::new(3.5, lh)), CornerRadius::ZERO, mark_color(k));
             }
         }
     }
