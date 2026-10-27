@@ -79,14 +79,14 @@
   {"op": "assert_hover", "contains": "Adds two ints."},
   {"op": "hover_off"},
 
-  {"op": "log", "value": "a call with another number of arguments is another function: no popup, no declaration"},
+  {"op": "log", "value": "a call with a count no definition takes still finds the only function there is"},
   {"op": "hover_on", "value": "add(1)"},
-  {"op": "frames", "value": 40},
-  {"op": "assert_hover", "value": "none"},
+  {"op": "wait", "what": "hover", "timeout": 20},
+  {"op": "assert_hover", "title": "add", "contains": "int add(int a, int b)"},
   {"op": "hover_off"},
   {"op": "caret", "line": 5, "col": 25},
   {"op": "command", "value": "nav.declaration"},
-  {"op": "assert_toast", "value": "Cannot find declaration of 'add'"},
+  {"op": "assert_caret", "line": 2, "col": 5},
 
   {"op": "log", "value": "Go to Declaration in the language of a module: in the same file and in another one"},
   {"op": "caret", "line": 4, "col": 25},
