@@ -873,6 +873,18 @@ impl App {
                     self.fail(format!("assert_term_contains: {sval:?} not found; tail: {tail:?}"));
                 }
             }
+            // the text now in the terminal's command line
+            "assert_term_input" => {
+                if self.term.input != sval {
+                    self.fail(format!("assert_term_input: expected {sval:?}, got {:?}", self.term.input));
+                }
+            }
+            // the newest command of the terminal history
+            "assert_term_history" => {
+                if self.term.history.last() != Some(sval.as_str()) {
+                    self.fail(format!("assert_term_history: expected {sval:?}, got {:?}", self.term.history.last()));
+                }
+            }
             "assert_no_term_contains" => {
                 if self.term.log.iter().any(|l| l.text.contains(&sval)) {
                     self.fail(format!("assert_no_term_contains: {sval:?} was printed"));

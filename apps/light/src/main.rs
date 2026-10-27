@@ -115,6 +115,7 @@ fn main() -> eframe::Result {
             let logo = brand::load_logo(&cc.egui_ctx);
             let mut app = app::App::new(settings);
             app.logo = logo;
+            app.use_saved_history();
             app.pal.apply(&cc.egui_ctx);
             // what to open: explicit paths win, otherwise restore the last session
             if !args.paths.is_empty() {

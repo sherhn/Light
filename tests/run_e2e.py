@@ -69,7 +69,7 @@ def run_one(script_path):
     try:
         proj = make_fixture(tmp)
         text = script_path.read_text(encoding="utf-8")
-        text = text.replace("${GH_TOKEN}", fake_github.FAKE_TOKEN).replace("${PROJ}", fwd(proj)).replace("${SHOTS}", fwd(SHOTS)).replace("${NAME}", name)
+        text = text.replace("${GH_TOKEN}", fake_github.FAKE_TOKEN).replace("${PROJ}", fwd(proj)).replace("${SHOTS}", fwd(SHOTS)).replace("${NAME}", name).replace("${CFG}", fwd(tmp / "cfg")).replace("${SEP}", "\\\\" if os.name == "nt" else "/")
         if "@needs_python" in text and not (shutil.which("py") or shutil.which("python3")):
             # a real interpreter is what the script checks files with
             return name, True, "skipped: no Python on this machine", 0.0

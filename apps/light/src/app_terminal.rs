@@ -7,7 +7,10 @@
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
+use eframe::egui;
+use ide_core::cmdhistory::CommandHistory;
 use ide_core::cmdscript::{self, Builtin, Step};
+use ide_core::termcomplete;
 use lisp_runtime::runner::{self, RunEvent, RunHandle};
 use lisp_runtime::{Launch, wsl};
 
@@ -29,8 +32,15 @@ pub struct TerminalState {
     pub cwd: PathBuf,
     pub log: Vec<LogLine>,
     pub input: String,
-    pub history: Vec<String>,
+    /// Every command typed in any project, kept between sessions (see [`App::use_saved_history`]).
+    pub history: CommandHistory,
+    /// The history entry shown in the input while browsing it with the arrow keys.
     pub hist_pos: Option<usize>,
+    /// What was typed before the browsing started; Down past the newest command brings it back.
+    pub draft: String,
+    /// The terminal's own commands and the programs on the PATH, offered by Tab; `commands_at` is when it was read.
+    pub commands: Vec<String>,
+    pub commands_at: Option<f64>,
     pub handle: Option<RunHandle>,
     pub focus_input: bool,
     /// Variables set with `set NAME=value`, passed to every command.
@@ -40,7 +50,7 @@ pub struct TerminalState {
 
 impl Default for TerminalState {
     fn default() -> Self {
-        TerminalState { cwd: PathBuf::from("."), log: vec![], input: String::new(), history: vec![], hist_pos: None, handle: None, focus_input: false, env: vec![], script: None }
+        TerminalState { cwd: PathBuf::from("."), log: vec![], input: String::new(), history: CommandHistory::in_memory(), hist_pos: None, draft: String::new(), commands: vec![], commands_at: None, handle: None, focus_input: false, env: vec![], script: None }
     }
 }
 
@@ -88,6 +98,90 @@ impl App {
         self.term.handle.is_some() || self.term.script.is_some()
     }
 
+    // ------------------------------------------------------------------ history and completion
+
+    /// Keep the command history in the settings folder, so it is shared by every project and every session.
+    pub fn use_saved_history(&mut self) {
+        if let Some(dir) = ide_core::settings::Settings::config_dir() {
+            self.term.history = CommandHistory::load(dir.join("terminal_history.jsonl"));
+        }
+    }
+
+    /// Put `text` into the command line with the cursor after its last character.
+    fn set_terminal_input(&mut self, ctx: &egui::Context, id: egui::Id, text: String) {
+        let end = text.chars().count();
+        self.term.input = text;
+        self.place_terminal_cursor(ctx, id, end);
+    }
+
+    fn place_terminal_cursor(&self, ctx: &egui::Context, id: egui::Id, chars: usize) {
+        let mut state = egui::TextEdit::load_state(ctx, id).unwrap_or_default();
+        state.cursor.set_char_range(Some(egui::text::CCursorRange::one(egui::text::CCursor::new(chars))));
+        state.store(ctx, id);
+    }
+
+    /// Up (`-1`) and Down (`1`) in the command line: older and newer commands of the history. Down past the newest
+    /// one gives back what was being typed.
+    pub fn terminal_history_step(&mut self, ctx: &egui::Context, id: egui::Id, step: isize) {
+        let count = self.term.history.entries().len() as isize;
+        let current = self.term.hist_pos.map_or(count, |p| p as isize);
+        let next = (current + step).clamp(0, count);
+        if count == 0 || next == current {
+            return;
+        }
+        if self.term.hist_pos.is_none() {
+            self.term.draft = self.term.input.clone();
+        }
+        self.term.hist_pos = (next != count).then_some(next as usize);
+        let text = match self.term.hist_pos {
+            Some(i) => self.term.history.entries()[i].clone(),
+            None => std::mem::take(&mut self.term.draft),
+        };
+        self.set_terminal_input(ctx, id, text);
+    }
+
+    /// Is the command line still showing the history entry it was filled from?
+    pub fn terminal_browsing_history(&self) -> bool {
+        self.term.hist_pos.is_some_and(|p| self.term.history.entries().get(p).is_some_and(|e| *e == self.term.input))
+    }
+
+    /// Tab in the command line: complete the word at the cursor. When several names fit and nothing more can be
+    /// added to the word, they are listed in the output.
+    pub fn terminal_complete(&mut self, ctx: &egui::Context, id: egui::Id) {
+        let chars = self.term.input.chars().count();
+        let cursor_chars = egui::TextEdit::load_state(ctx, id).and_then(|s| s.cursor.char_range()).map_or(chars, |r| r.primary.index.0.min(chars));
+        let cursor = self.term.input.char_indices().nth(cursor_chars).map_or(self.term.input.len(), |(i, _)| i);
+        let linux = self.wsl_target().is_some();
+        const OWN: [&str; 9] = ["cd", "clear", "cls", "exit", "export", "help", "run", "scripts", "set"];
+        if linux {
+            self.term.commands = OWN.map(String::from).to_vec();
+            self.term.commands_at = None;
+        } else if self.term.commands_at.is_none_or(|at| self.now - at > 60.0) {
+            let mut commands = termcomplete::path_commands();
+            commands.extend(OWN.map(String::from));
+            commands.sort_by_key(|c| c.to_lowercase());
+            commands.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+            self.term.commands = commands;
+            self.term.commands_at = Some(self.now);
+        }
+        let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from);
+        let separator = if linux { '/' } else { std::path::MAIN_SEPARATOR };
+        let env = termcomplete::Env { cwd: &self.term.cwd, home: home.as_deref(), commands: &self.term.commands, separator, ignore_case: cfg!(windows) && !linux };
+        let Some(done) = termcomplete::complete(&self.term.input, cursor, &env) else { return };
+        let typed_chars = self.term.input[done.start..cursor].chars().count();
+        if done.matches.len() > 1 && done.text.chars().count() <= typed_chars {
+            self.term_info(done.matches.iter().take(100).map(String::as_str).collect::<Vec<_>>().join("  "));
+            if done.matches.len() > 100 {
+                self.term_info(i18n::fmt("... and {} more", &[&(done.matches.len() - 100)]));
+            }
+            return;
+        }
+        let after = self.term.input[..done.start].chars().count() + done.text.chars().count();
+        self.term.input.replace_range(done.start..cursor, &done.text);
+        self.term.hist_pos = None;
+        self.place_terminal_cursor(ctx, id, after);
+    }
+
     // ------------------------------------------------------------------ interactive input
 
     pub fn terminal_run(&mut self, line: &str) {
@@ -97,10 +191,9 @@ impl App {
         }
         self.terminal_start_dir();
         self.term_echo(line);
-        if self.term.history.last().map(String::as_str) != Some(line) {
-            self.term.history.push(line.to_string());
-        }
+        self.term.history.push(line);
         self.term.hist_pos = None;
+        self.term.draft.clear();
         if self.term_busy() && cmdscript::builtin(line).is_none() {
             self.term_error(tr("A command is still running (press Stop)."));
             return;

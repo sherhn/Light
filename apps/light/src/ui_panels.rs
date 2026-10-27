@@ -945,20 +945,21 @@ impl App {
         self.after_log(log_out, true);
         let id = egui::Id::unique("term_input");
         let mut submit = false;
-        let mut hist: Option<isize> = None;
         if ctx.memory(|m| m.has_focus(id)) {
-            let (enter, up, down) = ctx.input(|i| (i.key_pressed(Key::Enter), i.key_pressed(Key::ArrowUp), i.key_pressed(Key::ArrowDown)));
+            let (enter, up, down, tab) = ctx.input(|i| (i.key_pressed(Key::Enter), i.key_pressed(Key::ArrowUp), i.key_pressed(Key::ArrowDown), i.key_pressed(Key::Tab) && !i.modifiers.any()));
             if enter && !ctx.input(|i| i.modifiers.shift) && !self.term.input.trim().is_empty() {
                 ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Enter));
                 submit = true;
             }
-            if up && !self.term.input.contains('\n') {
-                hist = Some(-1);
-                ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::ArrowUp));
+            // the arrows walk through the history while the line is one line (or still the entry just recalled);
+            // in a longer text they move the cursor between its lines
+            if (up || down) && (!self.term.input.contains('\n') || self.terminal_browsing_history()) {
+                ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, if up { Key::ArrowUp } else { Key::ArrowDown }));
+                self.terminal_history_step(ctx, id, if up { -1 } else { 1 });
             }
-            if down && !self.term.input.contains('\n') {
-                hist = Some(1);
-                ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::ArrowDown));
+            if tab {
+                ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Tab));
+                self.terminal_complete(ctx, id);
             }
         }
         let resp = self.prompt_input(ui, id, "$", 1, tr("Type a command and press Enter"), input_h);
@@ -975,15 +976,6 @@ impl App {
         }
         if resp.clicked() || resp.gained_focus() {
             self.editor_focus = false;
-        }
-        if let Some(dir) = hist {
-            let n = self.term.history.len() as isize;
-            if n > 0 {
-                let cur = self.term.hist_pos.map_or(n, |p| p as isize);
-                let next = (cur + dir).clamp(0, n);
-                self.term.hist_pos = if next == n { None } else { Some(next as usize) };
-                self.term.input = if next == n { String::new() } else { self.term.history[next as usize].clone() };
-            }
         }
         if submit {
             let line = std::mem::take(&mut self.term.input);
