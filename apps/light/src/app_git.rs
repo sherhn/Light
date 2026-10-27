@@ -75,6 +75,9 @@ impl App {
                 (Some(id), Some(l)) => l.changes_vs(id, repo.as_ref()),
                 _ => repo.as_ref().map(|r| r.status()).unwrap_or_default(),
             };
+            if let Some(r) = &repo {
+                changes = ide_core::changes::without_ignored(changes, &r.root);
+            }
             changes.sort_by(|a, b| a.path.cmp(&b.path));
             let truncated = changes.len() > MAX_CHANGES;
             changes.truncate(MAX_CHANGES);

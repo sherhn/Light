@@ -110,6 +110,11 @@ def run_one(script_path):
                 shutil.copy2(f, site / f.name)
             subprocess.run(["git", "-c", "commit.gpgsign=false", "add", "-A"], cwd=proj, capture_output=True, check=True)
             subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "markup"], cwd=proj, capture_output=True, check=True)
+        if "@untracked_files" in text:
+            # new files after the initial commit: two that .gitignore names (`*.fasl`, `/build/`) and one it does not
+            for rel, content in {"src/generated.fasl": "compiled", "build/output.bin": "generated", "src/fresh.lisp": "(print 1)\n"}.items():
+                (proj / rel).parent.mkdir(parents=True, exist_ok=True)
+                (proj / rel).write_text(content, encoding="utf-8")
         if "@hover" in text:
             # documented functions in Lisp, Python and C, and a call of one of them from another file
             for f in (ROOT / "tests" / "fixtures" / "hover").rglob("*"):

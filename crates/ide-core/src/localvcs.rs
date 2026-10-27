@@ -626,6 +626,34 @@ mod tests {
     }
 
     #[test]
+    fn ignored_files_inside_a_new_directory_never_become_changes() {
+        if !git::git_available() {
+            return;
+        }
+        let d = TempDir::new("lv-ignored-dir");
+        let repo = git::init(d.path()).unwrap();
+        for (k, v) in [("user.email", "t@example.com"), ("user.name", "T"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")] {
+            std::process::Command::new("git").args(["config", k, v]).current_dir(d.path()).output().unwrap();
+        }
+        write(d.path(), ".gitignore", "*.fasl\n/build/\n");
+        write(d.path(), "a.lisp", "(a)\n");
+        repo.commit("base", &[".gitignore".into(), "a.lisp".into()]).unwrap();
+        // git reports the new directory as one `fresh/` entry; its files are listed here, ignore rules included
+        write(d.path(), "fresh/keep.lisp", "(keep)\n");
+        write(d.path(), "fresh/generated.fasl", "compiled");
+        write(d.path(), "fresh/sub/more.lisp", "(more)\n");
+        write(d.path(), "build/out.bin", "generated");
+        let mut v = LocalVcs::open(d.path());
+        let id = v.create("snapshot", Some(&repo)).unwrap();
+        let in_snapshot: Vec<_> = v.commit(id).unwrap().files.keys().cloned().collect();
+        assert_eq!(in_snapshot, ["fresh/keep.lisp", "fresh/sub/more.lisp"], "{in_snapshot:?}");
+        write(d.path(), "fresh/other.fasl", "x");
+        write(d.path(), "fresh/new.lisp", "(new)\n");
+        let changes: Vec<_> = v.changes_vs(id, Some(&repo)).into_iter().map(|c| c.path).collect();
+        assert_eq!(changes, ["fresh/new.lisp"], "{changes:?}");
+    }
+
+    #[test]
     fn age_units() {
         assert_eq!(age_of(5), Age::JustNow);
         assert_eq!(age_of(120), Age::Minutes(2));

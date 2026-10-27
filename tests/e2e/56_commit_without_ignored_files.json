@@ -1,0 +1,76 @@
+[
+ {
+  "op": "open_project",
+  "path": "${PROJ}"
+ },
+ {
+  "op": "wait",
+  "what": "index"
+ },
+ {
+  "op": "log",
+  "value": "@untracked_files"
+ },
+ {
+  "op": "wait",
+  "what": "git_ready",
+  "timeout": 30
+ },
+ {
+  "op": "log",
+  "value": "files named in .gitignore never reach the Commit window, files that are not named do"
+ },
+ {
+  "op": "open",
+  "path": "${PROJ}/src/nav.lisp"
+ },
+ {
+  "op": "set_text",
+  "value": "(defun alpha (x)\n  (* x 5))\n"
+ },
+ {
+  "op": "key",
+  "value": "Ctrl+S"
+ },
+ {
+  "op": "command",
+  "value": "git.refresh"
+ },
+ {
+  "op": "wait",
+  "what": "git_dirty",
+  "timeout": 30
+ },
+ {
+  "op": "wait",
+  "what": "git_settled",
+  "timeout": 30
+ },
+ {
+  "op": "assert_git_changes",
+  "value": 2
+ },
+ {
+  "op": "key",
+  "value": "Alt+0"
+ },
+ {
+  "op": "assert_left",
+  "value": "commit"
+ },
+ {
+  "op": "frames",
+  "value": 5
+ },
+ {
+  "op": "assert_commit_rows",
+  "value": 2
+ },
+ {
+  "op": "screenshot",
+  "path": "${SHOTS}/${NAME}_window.png"
+ },
+ {
+  "op": "quit"
+ }
+]

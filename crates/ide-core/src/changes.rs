@@ -2,8 +2,10 @@
 //! optionally under their directories, with collapsible groups and tri-state selection.
 
 use std::collections::HashSet;
+use std::path::Path;
 
 use crate::git::{Change, ChangeKind};
+use crate::workspace::IgnoreMatcher;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Group {
@@ -81,6 +83,20 @@ pub fn rows(changes: &[Change], by_dir: bool, collapsed: &HashSet<String>) -> Ve
 }
 
 /// Paths of every change in `group` (and, when given, directly in `dir`), regardless of what is collapsed.
+/// Drop the new files and directories that `.gitignore` or `.git/info/exclude` excludes: the project tree greys
+/// the same files out, so the Commit window must not offer them either, whatever git reports. Files git tracks or
+/// has staged are real changes and stay.
+pub fn without_ignored(changes: Vec<Change>, root: &Path) -> Vec<Change> {
+    let mut ignore = IgnoreMatcher::new(root);
+    changes
+        .into_iter()
+        .filter(|c| {
+            let is_new = c.kind == ChangeKind::Untracked || (c.kind == ChangeKind::Added && !c.staged);
+            !is_new || !ignore.is_ignored(&root.join(c.path.trim_end_matches('/')), c.path.ends_with('/'))
+        })
+        .collect()
+}
+
 pub fn paths_in<'a>(changes: &'a [Change], group: Group, dir: Option<&str>) -> Vec<&'a str> {
     changes.iter().filter(|c| group_of(c) == group && dir.is_none_or(|d| dir_of(&c.path) == d)).map(|c| c.path.as_str()).collect()
 }
@@ -125,6 +141,27 @@ mod tests {
 
     fn sample() -> Vec<Change> {
         vec![ch("README.md", ChangeKind::Modified), ch("src/a.lisp", ChangeKind::Modified), ch("src/b.lisp", ChangeKind::Added), ch("src/deep/c.lisp", ChangeKind::Deleted), ch("notes.txt", ChangeKind::Untracked), ch("tmp/", ChangeKind::Untracked)]
+    }
+
+    #[test]
+    fn ignored_new_files_are_dropped_but_tracked_and_staged_ones_stay() {
+        use crate::testutil::TempDir;
+        let d = TempDir::new("changes-ignored");
+        std::fs::write(d.path().join(".gitignore"), "*.fasl\r\n/build/\r\nnotes/\r\n!keep.fasl\r\n").unwrap();
+        let staged = Change { path: "forced.fasl".into(), kind: ChangeKind::Added, staged: true, unstaged: false };
+        let list = vec![
+            ch("src/a.lisp", ChangeKind::Untracked),
+            ch("src/b.fasl", ChangeKind::Untracked),
+            ch("keep.fasl", ChangeKind::Untracked),
+            ch("build/", ChangeKind::Untracked),
+            ch("notes/", ChangeKind::Untracked),
+            ch("tracked.fasl", ChangeKind::Modified),
+            ch("src/c.fasl", ChangeKind::Added),
+            ch("src/d.lisp", ChangeKind::Added),
+            staged.clone(),
+        ];
+        let paths: Vec<String> = without_ignored(list, d.path()).into_iter().map(|c| c.path).collect();
+        assert_eq!(paths, ["src/a.lisp", "keep.fasl", "tracked.fasl", "src/d.lisp", "forced.fasl"]);
     }
 
     #[test]
