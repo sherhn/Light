@@ -4,7 +4,8 @@
 //!
 //! - `LIGHT_TEST_NODE`: the folder of a Node.js runtime (`node` or `node.exe` in it, or in its `bin`);
 //! - `LIGHT_TEST_SERVERS`: a folder with one folder per server (`typescript-language-server`, `basedpyright`,
-//!   `dockerfile-language-server`, `compose-language-service`), each with its `node_modules` from `npm ci`.
+//!   `dockerfile-language-server`, `compose-language-service`), each with its `node_modules` from `npm ci`;
+//! - `LIGHT_TEST_ASM_LSP` (and `LIGHT_TEST_ASM_LSP_WSL`): asm-lsp, see [`start_asm`].
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -17,6 +18,8 @@ use serde_json::{Value, json};
 struct Server {
     session: Session,
     root: PathBuf,
+    /// The project's folder as the server sees it (`/mnt/e/...` for a server in WSL).
+    seen: String,
 }
 
 /// The server `bin` of the npm install `name`, or `None` (and the test is skipped) when nothing is installed.
@@ -38,16 +41,20 @@ fn start(name: &str, bin: &str, args: &[&str], root: &Path, options: Value) -> O
         c
     };
     cmd.env("PATH", path).current_dir(root);
-    let client = Client::spawn(cmd, None).expect("the server starts");
-    let session = Session::start(client, &root.to_string_lossy().replace('\\', "/"), options);
-    let mut s = Server { session, root: root.to_path_buf() };
-    s.until("readiness", |o| matches!(o, Output::Ready).then_some(()));
-    Some(s)
+    Some(Server::run(cmd, root, root.to_string_lossy().replace('\\', "/"), options))
 }
 
 impl Server {
+    fn run(cmd: Command, root: &Path, seen: String, options: Value) -> Server {
+        let client = Client::spawn(cmd, None).expect("the server starts");
+        let session = Session::start(client, &seen, options);
+        let mut s = Server { session, root: root.to_path_buf(), seen };
+        s.until("readiness", |o| matches!(o, Output::Ready).then_some(()));
+        s
+    }
+
     fn uri(&self, rel: &str) -> String {
-        uri::from_path(&self.root.join(rel).to_string_lossy().replace('\\', "/"))
+        uri::from_path(&format!("{}/{rel}", self.seen))
     }
 
     fn until<T>(&mut self, what: &str, mut f: impl FnMut(Output) -> Option<T>) -> T {
@@ -215,5 +222,44 @@ fn compose_language_service() {
     s.session.change(&u, "services:\n  web: [\n");
     let problems = s.problems(&u, |l| !l.is_empty());
     assert!(problems.iter().any(|d| d.severity == 1), "{problems:?}");
+    s.stop();
+}
+
+/// asm-lsp, a program of its own: `LIGHT_TEST_ASM_LSP` is its path; with `LIGHT_TEST_ASM_LSP_WSL` (a distribution) it
+/// is a Linux path and the server runs there, on the project under `/mnt/<drive>`.
+fn start_asm(root: &Path) -> Option<Server> {
+    let Ok(exe) = std::env::var("LIGHT_TEST_ASM_LSP") else {
+        eprintln!("LIGHT_TEST_ASM_LSP not set: skipped");
+        return None;
+    };
+    let (cmd, seen) = match std::env::var("LIGHT_TEST_ASM_LSP_WSL") {
+        Ok(distro) => {
+            let mut c = Command::new("wsl.exe");
+            c.args(["-d", &distro, "-e", &exe]).env("WSL_UTF8", "1");
+            let s = root.to_string_lossy().replace('\\', "/");
+            (c, format!("/mnt/{}{}", s[..1].to_ascii_lowercase(), &s[2..]))
+        }
+        Err(_) => (Command::new(&exe), root.to_string_lossy().into_owned()),
+    };
+    Some(Server::run(cmd, root, seen, Value::Null))
+}
+
+#[test]
+fn asm_lsp() {
+    let root = project("asm", &[
+        (".asm-lsp.toml", "[default_config]\nassembler = \"nasm\"\ninstruction_set = \"x86/x86-64\"\n\n[opts]\ndiagnostics = false\n"),
+        ("boot.asm", "section .text\nglobal start\nstart:\n    mov eax, 0x10\n    mo\n    jmp start\n"),
+    ]);
+    let Some(mut s) = start_asm(&root) else { return };
+    assert!(s.session.caps.hover && s.session.caps.completion && s.session.caps.definition, "{:?}", s.session.caps);
+    let (u, text) = s.open("boot.asm", "nasm");
+    let hover = proto::hover_text(&s.ask("textDocument/hover", s.at(&u, &text, "mov", 0))).unwrap_or_default();
+    assert!(hover.to_lowercase().contains("move"), "{hover}");
+    let mut pos = s.at(&u, &text, "    mo\n", 0);
+    pos["position"]["character"] = json!(6);
+    let (items, _) = proto::completion(&s.ask("textDocument/completion", pos));
+    assert!(items.iter().any(|i| i.insert.eq_ignore_ascii_case("mov")), "{:?}", items.iter().take(10).collect::<Vec<_>>());
+    let def = proto::locations(&s.ask("textDocument/definition", s.at(&u, &text, "start\n", 1)));
+    assert!(def.iter().any(|l| l.range.start.line == 2), "{def:?}");
     s.stop();
 }
