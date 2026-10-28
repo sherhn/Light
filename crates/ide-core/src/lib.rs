@@ -24,6 +24,7 @@ pub mod search;
 pub mod termcomplete;
 pub mod todo;
 pub mod settings;
+pub mod shellenv;
 pub mod workspace;
 pub mod wsl;
 

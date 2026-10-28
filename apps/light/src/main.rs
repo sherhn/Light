@@ -94,6 +94,15 @@ fn parse_args() -> Args {
 }
 
 fn main() -> eframe::Result {
+    // started from the desktop: the folders of the user's login shell, which the desktop's PATH lacks
+    #[cfg(unix)]
+    if !ide_core::shellenv::from_terminal()
+        && let Some(login) = ide_core::shellenv::login_path(&ide_core::shellenv::user_shell(), std::time::Duration::from_secs(5))
+    {
+        let current = std::env::var("PATH").unwrap_or_default();
+        // Startup is still single-threaded (the shell's reader thread has ended or reads nothing but its pipe).
+        unsafe { std::env::set_var("PATH", ide_core::shellenv::merge(&login, &current)) };
+    }
     if let Ok(executable) = std::env::current_exe()
         && let Some(path) = ide_core::bundle::tool_path(&executable, std::env::var_os("PATH").as_deref())
     {
