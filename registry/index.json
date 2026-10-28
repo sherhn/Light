@@ -100,16 +100,16 @@
     {
       "id": "python",
       "name": "Python",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "category": "Languages",
-      "summary": "Highlighting, indentation, folding by blocks and an outline for Python; run a file; python3 and pip in Linux.",
+      "summary": "Highlighting, indentation, folding by blocks and an outline for Python; code intelligence from basedpyright; run a file; python3 and pip in Linux.",
       "cover": "cover.png",
       "path": "modules/python",
       "files": [
         {
           "name": "module.json",
-          "size": 7994,
-          "sha256": "6e90cda455e59138fe68f9b50a005a82a0669f833088d25567689f14b3b182e6"
+          "size": 10525,
+          "sha256": "80b894ca45e3bd6260b971c01350d1d14984ca863a0d51c3f5e3fcef23ce3c81"
         },
         {
           "name": "LICENSE",
@@ -120,6 +120,16 @@
           "name": "THIRD_PARTY_NOTICES.md",
           "size": 339,
           "sha256": "b4902870c1c0396cef2934457b130f1674fc238df1b98beb6316eba41994109e"
+        },
+        {
+          "name": "basedpyright.package-lock.json",
+          "size": 1296,
+          "sha256": "ad5097fd00f938249b972e4780e59e4e8448331004761ec574848e1d3ec91b22"
+        },
+        {
+          "name": "basedpyright.package.json",
+          "size": 108,
+          "sha256": "425e06d951804f4cc5b620ebd63bc220d1ee31ff5bdea5a7a3510793627af9a8"
         },
         {
           "name": "cover.png",
@@ -143,16 +153,16 @@
     {
       "id": "assembler",
       "name": "Assembler",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "category": "Languages",
-      "summary": "NASM and GNU assembler: instructions, registers, directives, labels and an outline of labels; nasm and QEMU in Linux.",
+      "summary": "NASM and GNU assembler: instructions, registers, directives, labels and an outline of labels; documentation of instructions from asm-lsp; nasm and QEMU in Linux.",
       "cover": "cover.png",
       "path": "modules/assembler",
       "files": [
         {
           "name": "module.json",
-          "size": 18104,
-          "sha256": "1790eab990e4d4b5c3caf5cfa8f4e9a869ba2be1571aa11d429b49d6f22237a8"
+          "size": 19520,
+          "sha256": "77df76f41c9da6424022389f653106950a3f4d56390a1654119de89b9ec0464a"
         },
         {
           "name": "LICENSE",
@@ -355,16 +365,16 @@
     {
       "id": "docker",
       "name": "Docker",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "category": "Tools",
-      "summary": "Dockerfile and Compose: syntax, completion, stages/services outline, build checks, images, containers and Compose lifecycle commands.",
+      "summary": "Dockerfile and Compose: syntax, completion, stages/services outline, build checks, language servers, images, containers and Compose lifecycle commands.",
       "cover": "cover.png",
       "path": "modules/docker",
       "files": [
         {
           "name": "module.json",
-          "size": 8957,
-          "sha256": "d31412c7fb8fc9384ef183a75c4196e0a56d52e6f368a995ada630fa34f37de4"
+          "size": 13788,
+          "sha256": "e8d5e3662e7d5adfd5f7fd029fb15319b44155b15e970202871d4af9fd7d3b42"
         },
         {
           "name": "LICENSE",
@@ -377,9 +387,29 @@
           "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
         },
         {
+          "name": "compose-language-service.package-lock.json",
+          "size": 4732,
+          "sha256": "991e934ed5ff99a1611c6bd4f6df35ffd8226d244266f3692c1925db8b0e312e"
+        },
+        {
+          "name": "compose-language-service.package.json",
+          "size": 142,
+          "sha256": "e7d19510dda2432e6badb33d84abdb61710917e1dae1ee179dca66292945fbfd"
+        },
+        {
           "name": "cover.png",
           "size": 17515,
           "sha256": "5991f97248b9f8e89d0a13472cf5cc7ac05d8ba6fad962255006427090054803"
+        },
+        {
+          "name": "dockerfile-language-server.package-lock.json",
+          "size": 5477,
+          "sha256": "9466ebd6e3af7b54fce7516f68217106c37bac5afebce116a7533f6300752d4f"
+        },
+        {
+          "name": "dockerfile-language-server.package.json",
+          "size": 143,
+          "sha256": "8892bf6a6a578a1ae37ed509e29d1ecb2b68ab7cff40ba1757ff5abbdb295647"
         }
       ],
       "detect": {
@@ -407,16 +437,16 @@
     {
       "id": "javascript",
       "name": "JavaScript",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "category": "Languages",
-      "summary": "JavaScript/JSX, Node.js, JSON and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
+      "summary": "JavaScript/JSX, Node.js, JSON and npm: highlighting, completion, outline, folding, syntax checks, code intelligence from TypeScript, run, watch and tests.",
       "cover": "cover.png",
       "path": "modules/javascript",
       "files": [
         {
           "name": "module.json",
-          "size": 14247,
-          "sha256": "ea8bdce650fe085b10ce3d038d9b67a0dcd6937300ae6d4f95c2662d53d612f4"
+          "size": 16868,
+          "sha256": "e8c55dc8cbcb5cc71129888bafbec6538bf48821b3daad6f03c7ad3050a79cb2"
         },
         {
           "name": "LICENSE",
@@ -432,6 +462,16 @@
           "name": "cover.png",
           "size": 22493,
           "sha256": "386f9b8be7398e2a599df8b03180299272c7387d723d6b585231139ff356803e"
+        },
+        {
+          "name": "typescript-language-server.package-lock.json",
+          "size": 1200,
+          "sha256": "95c1347cb0e53b07dd97b05065257047aa19c1a30931a2e373eacd350f57f7e9"
+        },
+        {
+          "name": "typescript-language-server.package.json",
+          "size": 162,
+          "sha256": "7205594962891f4e84f88b502729c5f6847067c9faa25b091764f15a29db5c2e"
         }
       ],
       "detect": {

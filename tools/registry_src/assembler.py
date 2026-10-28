@@ -26,10 +26,11 @@ NASM_NUMBER = r"\b(?:0[xX][0-9a-fA-F_]+|[0-9][0-9a-fA-F_]*[hH]|0[bB][01_]+|[01_]
 GAS_REGS = r"%[a-z][a-z0-9]*"
 
 MODULE = module(
+    version="1.1.0",
     id="assembler",
     name="Assembler",
     category="Languages",
-    summary="NASM and GNU assembler: instructions, registers, directives, labels and an outline of labels; nasm and QEMU in Linux.",
+    summary="NASM and GNU assembler: instructions, registers, directives, labels and an outline of labels; documentation of instructions from asm-lsp; nasm and QEMU in Linux.",
     description="x86 assembly for Light, in Intel (NASM) and AT&T (GNU as) syntax: mnemonics, registers, directives, labels, numbers in every base, strings and comments, with an outline of the labels. The Linux side brings nasm, QEMU, xorriso and the GRUB tools for writing an operating system - installed from inside the IDE.",
     languages=[
         dict(
@@ -70,6 +71,14 @@ MODULE = module(
         dict(language="nasm", name="Assemble (ELF32)", command='nasm -f elf32 -g "{file}" -o "{dir}/{stem}.o"'),
         dict(language="gas", name="Assemble", command='as --32 -g "{file}" -o "{dir}/{stem}.o"'),
     ],
+    # asm-lsp (BSD-2-Clause): the release archives of github.com/bergercookie/asm-lsp, each checked against the SHA-256
+    # GitHub gives for it; there is none for Windows or Linux on ARM (there it is used from PATH: `cargo install asm-lsp`)
+    lsp=[dict(languages=["nasm", "gas"], name="asm-lsp", command="asm-lsp", language_ids={"nasm": "asm", "gas": "asm"},
+              install=dict(version="0.10.1", source="github.com/bergercookie/asm-lsp", size=12_200_000, archives={
+                  "linux-x64": {"url": "https://github.com/bergercookie/asm-lsp/releases/download/v0.10.1/asm-lsp-x86_64-unknown-linux-gnu.tar.gz", "sha256": "2a2f386c10348e365df484d5c66d084813e7dbf8ab4e9eb7a7cc0bb0acf2f8f8", "size": 3467525, "strip": 0, "bin": ""},
+                  "darwin-x64": {"url": "https://github.com/bergercookie/asm-lsp/releases/download/v0.10.1/asm-lsp-x86_64-apple-darwin.tar.gz", "sha256": "900c0c95bb2cf0a65102beb09031496e3ed2d31b85dbbe3ef8cae5ffbe493a07", "size": 3201681, "strip": 0, "bin": ""},
+                  "darwin-arm64": {"url": "https://github.com/bergercookie/asm-lsp/releases/download/v0.10.1/asm-lsp-aarch64-apple-darwin.tar.gz", "sha256": "affc8917d5bb6f44805c2e964ad07cf7e0799ecfaa7686f7a5cea9efa00bc575", "size": 3077825, "strip": 0, "bin": ""},
+              }))],
     tools=[dict(name="OS development", programs=["nasm", "qemu-system-i386", "qemu-system-x86_64", "qemu-img", "xorriso", "grub-mkrescue"],
                 apt="nasm qemu-system-x86 qemu-utils xorriso mtools grub-pc-bin")],
     detect=dict(extensions=["asm", "nasm", "s"], files=[]),

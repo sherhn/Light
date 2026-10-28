@@ -1,0 +1,7 @@
+{
+  "name": "light-basedpyright",
+  "private": true,
+  "dependencies": {
+    "basedpyright": "1.40.2"
+  }
+}

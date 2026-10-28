@@ -62,6 +62,12 @@ def main(argv):
         d.mkdir(parents=True, exist_ok=True)
         write_json(d / "module.json", m)
         module_notices(m, d)
+        # the lockfiles of the language servers Light installs with npm: <name>.package.json, <name>.package-lock.json
+        for server in m.get("lsp", []):
+            npm = (server.get("install") or {}).get("npm")
+            if npm:
+                for f in ("package.json", "package-lock.json"):
+                    shutil.copyfile(SRC / "lsp" / npm / f, d / f"{npm}.{f}")
         cover = d / m["cover"]
         if redraw or not cover.exists():
             sys.path.insert(0, str(ROOT / "tools"))

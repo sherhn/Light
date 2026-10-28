@@ -1,4 +1,4 @@
-from common import call, match, module, outline, region, words
+from common import call, match, module, outline, region, words, npm_server
 
 KEYWORDS = """and as assert async await break class continue def del elif else except finally for from global if import in is lambda
 nonlocal not or pass raise return try while with yield match case""".split()
@@ -13,11 +13,11 @@ PREFIX = r"(?:[rRbBuUfF]{1,2})?"
 PY_CHECK = "import sys;compile(open(sys.argv[1],encoding='utf-8').read(),sys.argv[1],'exec')"
 
 MODULE = module(
-    version="1.1.1",
+    version="1.2.0",
     id="python",
     name="Python",
     category="Languages",
-    summary="Highlighting, indentation, folding by blocks and an outline for Python; run a file; python3 and pip in Linux.",
+    summary="Highlighting, indentation, folding by blocks and an outline for Python; code intelligence from basedpyright; run a file; python3 and pip in Linux.",
     description="Python for Light: strings of every kind (triple-quoted, f-strings, raw), decorators, keywords, builtins and numbers; Enter after a colon indents and return/pass dedent; folding by indentation; the outline of classes and functions; a command to run the current file. The Linux side brings python3, pip and venv - installed from inside the IDE.",
     languages=[dict(
         id="python", name="Python", extensions=["py", "pyw", "pyi", "pyx"], filenames=["SConstruct", "SConscript", "Pipfile"], first_line=r"^#!.*\bpython",
@@ -53,6 +53,9 @@ MODULE = module(
     # on Windows `python` is often only the Microsoft Store stub: the `py` launcher is preferred when there is one
     run=[dict(language="python", name="Run file", command='python3 "{file}"',
               windows='where py >nul 2>nul & if errorlevel 1 (python "{file}") else (py "{file}")')],
+    # basedpyright (MIT) with the checks of pyright's own default: its "recommended" ones flag every parameter without a type
+    lsp=[npm_server("basedpyright", ["python"], "basedpyright-langserver --stdio", "1.40.2", 36_000_000,
+                    settings={"basedpyright": {"analysis": {"typeCheckingMode": "standard"}}})],
     tools=[dict(name="Python", programs=["python3", "pip3"], apt="python3 python3-pip python3-venv")],
     detect=dict(extensions=["py", "pyw"], files=["pyproject.toml", "requirements.txt", "setup.py", "Pipfile"]),
     templates=[

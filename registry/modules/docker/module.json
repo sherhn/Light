@@ -1,12 +1,12 @@
 {
-  "version": "1.0.1",
+  "version": "1.1.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
   "id": "docker",
   "name": "Docker",
   "category": "Tools",
-  "summary": "Dockerfile and Compose: syntax, completion, stages/services outline, build checks, images, containers and Compose lifecycle commands.",
+  "summary": "Dockerfile and Compose: syntax, completion, stages/services outline, build checks, language servers, images, containers and Compose lifecycle commands.",
   "description": "Dockerfile instructions, variables, flags and multi-stage builds; Compose YAML services, environment variables, indentation and folding; dockerignore patterns. Build and validate Dockerfiles, list containers/images, inspect daemon status; Compose validate, build, pull, up, stop, restart, logs, ps and down (without deleting volumes). Commands run through the configured local or WSL environment and stream to the Run panel. Requires an existing Docker Engine or Docker Desktop with Compose v2; Linux tools can be installed from Settings. No daemon, image, container or volume is changed until you explicitly run an action.",
   "languages": [
     {
@@ -320,6 +320,137 @@
       "name": "Compose validation",
       "command": "docker compose -f \"{file}\" config --quiet",
       "pattern": "(?m)^(?:(?:yaml: )?line (?P<line>\\d+):[ \\t]*)?(?P<msg>[^\\n]+)"
+    }
+  ],
+  "lsp": [
+    {
+      "languages": [
+        "dockerfile"
+      ],
+      "name": "dockerfile-language-server",
+      "command": "docker-langserver --stdio",
+      "program": "docker-langserver",
+      "install": {
+        "version": "0.15.0",
+        "source": "registry.npmjs.org",
+        "size": 4000000,
+        "runtime": {
+          "name": "node",
+          "version": "24.22.2",
+          "source": "nodejs.org",
+          "archives": {
+            "linux-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-x64.tar.gz",
+              "sha256": "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9",
+              "size": 58299872,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "linux-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-arm64.tar.gz",
+              "sha256": "95c264150aceb7f3437a29fd6984924f5f8d1511ea3cbd6c508b83f6c555dae2",
+              "size": 58030966,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "darwin-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-x64.tar.gz",
+              "sha256": "d5e336d588c45be0c37dbd52cc29895593009ca4997a77a1fd02815131ed0e52",
+              "size": 54383415,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "darwin-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-arm64.tar.gz",
+              "sha256": "aa9549349e47dffaa42dcf95d6e06ade8c4bdafc980979883b88767670df385a",
+              "size": 53068959,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "win-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-x64.zip",
+              "sha256": "ca1bff5d8ead13c9f2ea404a176db46bd430704d5b5113734049fa365e7799e2",
+              "size": 37754834,
+              "strip": 1,
+              "bin": ""
+            },
+            "win-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-arm64.zip",
+              "sha256": "f47968c213105077f64c6510f007632c0ca2574802a0b5067c327c49abe1c468",
+              "size": 33789289,
+              "strip": 1,
+              "bin": ""
+            }
+          }
+        },
+        "npm": "dockerfile-language-server"
+      }
+    },
+    {
+      "languages": [
+        "docker-compose"
+      ],
+      "name": "compose-language-service",
+      "command": "docker-compose-langserver --stdio",
+      "program": "docker-compose-langserver",
+      "install": {
+        "version": "1.0.0",
+        "source": "registry.npmjs.org",
+        "size": 5000000,
+        "runtime": {
+          "name": "node",
+          "version": "24.22.2",
+          "source": "nodejs.org",
+          "archives": {
+            "linux-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-x64.tar.gz",
+              "sha256": "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9",
+              "size": 58299872,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "linux-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-arm64.tar.gz",
+              "sha256": "95c264150aceb7f3437a29fd6984924f5f8d1511ea3cbd6c508b83f6c555dae2",
+              "size": 58030966,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "darwin-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-x64.tar.gz",
+              "sha256": "d5e336d588c45be0c37dbd52cc29895593009ca4997a77a1fd02815131ed0e52",
+              "size": 54383415,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "darwin-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-arm64.tar.gz",
+              "sha256": "aa9549349e47dffaa42dcf95d6e06ade8c4bdafc980979883b88767670df385a",
+              "size": 53068959,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "win-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-x64.zip",
+              "sha256": "ca1bff5d8ead13c9f2ea404a176db46bd430704d5b5113734049fa365e7799e2",
+              "size": 37754834,
+              "strip": 1,
+              "bin": ""
+            },
+            "win-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-arm64.zip",
+              "sha256": "f47968c213105077f64c6510f007632c0ca2574802a0b5067c327c49abe1c468",
+              "size": 33789289,
+              "strip": 1,
+              "bin": ""
+            }
+          }
+        },
+        "npm": "compose-language-service"
+      },
+      "language_ids": {
+        "docker-compose": "dockercompose"
+      }
     }
   ],
   "tools": [

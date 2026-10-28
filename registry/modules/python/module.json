@@ -1,12 +1,12 @@
 {
-  "version": "1.1.1",
+  "version": "1.2.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
   "id": "python",
   "name": "Python",
   "category": "Languages",
-  "summary": "Highlighting, indentation, folding by blocks and an outline for Python; run a file; python3 and pip in Linux.",
+  "summary": "Highlighting, indentation, folding by blocks and an outline for Python; code intelligence from basedpyright; run a file; python3 and pip in Linux.",
   "description": "Python for Light: strings of every kind (triple-quoted, f-strings, raw), decorators, keywords, builtins and numbers; Enter after a colon indents and return/pass dedent; folding by indentation; the outline of classes and functions; a command to run the current file. The Linux side brings python3, pip and venv - installed from inside the IDE.",
   "languages": [
     {
@@ -269,6 +269,78 @@
       "name": "Run file",
       "command": "python3 \"{file}\"",
       "windows": "where py >nul 2>nul & if errorlevel 1 (python \"{file}\") else (py \"{file}\")"
+    }
+  ],
+  "lsp": [
+    {
+      "languages": [
+        "python"
+      ],
+      "name": "basedpyright",
+      "command": "basedpyright-langserver --stdio",
+      "program": "basedpyright-langserver",
+      "install": {
+        "version": "1.40.2",
+        "source": "registry.npmjs.org",
+        "size": 36000000,
+        "runtime": {
+          "name": "node",
+          "version": "24.22.2",
+          "source": "nodejs.org",
+          "archives": {
+            "linux-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-x64.tar.gz",
+              "sha256": "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9",
+              "size": 58299872,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "linux-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-arm64.tar.gz",
+              "sha256": "95c264150aceb7f3437a29fd6984924f5f8d1511ea3cbd6c508b83f6c555dae2",
+              "size": 58030966,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "darwin-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-x64.tar.gz",
+              "sha256": "d5e336d588c45be0c37dbd52cc29895593009ca4997a77a1fd02815131ed0e52",
+              "size": 54383415,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "darwin-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-arm64.tar.gz",
+              "sha256": "aa9549349e47dffaa42dcf95d6e06ade8c4bdafc980979883b88767670df385a",
+              "size": 53068959,
+              "strip": 1,
+              "bin": "bin"
+            },
+            "win-x64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-x64.zip",
+              "sha256": "ca1bff5d8ead13c9f2ea404a176db46bd430704d5b5113734049fa365e7799e2",
+              "size": 37754834,
+              "strip": 1,
+              "bin": ""
+            },
+            "win-arm64": {
+              "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-arm64.zip",
+              "sha256": "f47968c213105077f64c6510f007632c0ca2574802a0b5067c327c49abe1c468",
+              "size": 33789289,
+              "strip": 1,
+              "bin": ""
+            }
+          }
+        },
+        "npm": "basedpyright"
+      },
+      "settings": {
+        "basedpyright": {
+          "analysis": {
+            "typeCheckingMode": "standard"
+          }
+        }
+      }
     }
   ],
   "tools": [

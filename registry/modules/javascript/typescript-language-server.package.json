@@ -1,0 +1,8 @@
+{
+  "name": "light-typescript-language-server",
+  "private": true,
+  "dependencies": {
+    "typescript-language-server": "6.0.2",
+    "typescript": "6.0.3"
+  }
+}
