@@ -283,6 +283,14 @@ pub fn hover_parts(markdown: &str) -> HoverParts {
         out.pop();
     }
     parts.doc = out.join("\n");
+    // pyright and its kin put the kind in front of the declaration: `(function) def add(...)`
+    if parts.kind.is_empty()
+        && let Some((kind, sig)) = parts.signature.strip_prefix('(').and_then(|r| r.split_once(") "))
+        && !kind.is_empty()
+        && kind.chars().all(|c| c.is_alphanumeric() || c == ' ')
+    {
+        (parts.kind, parts.signature) = (kind.to_string(), sig.to_string());
+    }
     parts
 }
 
@@ -383,6 +391,13 @@ mod tests {
         let p = hover_parts(&hover_text(&v).unwrap());
         assert_eq!(p.signature, "def f(x: int) -> str");
         assert_eq!(p.doc, "Turns *x* into a string.");
+        // basedpyright
+        let v = json!({"contents": {"kind": "markdown", "value": "```python\n(function) def add(\n    a: int,\n    b: int\n) -> int\n```\n---\nAdds two numbers."}});
+        let p = hover_parts(&hover_text(&v).unwrap());
+        assert_eq!((p.kind.as_str(), p.signature.as_str(), p.doc.as_str()), ("function", "def add(\n    a: int,\n    b: int\n) -> int", "Adds two numbers."));
+        // a tuple is no kind
+        let v = json!({"contents": {"kind": "markdown", "value": "```python\n(1, 2) and more\n```"}});
+        assert_eq!(hover_parts(&hover_text(&v).unwrap()).kind, "");
         assert!(hover_text(&json!({"contents": ""})).is_none());
         assert!(hover_text(&Value::Null).is_none());
     }
