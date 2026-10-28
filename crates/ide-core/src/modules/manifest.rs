@@ -82,6 +82,9 @@ pub struct LspDef {
     pub program: String,
     /// The server's `initializationOptions`, sent as they are.
     pub options: serde_json::Value,
+    /// Its settings, by section (`{"basedpyright": {"analysis": {...}}}`): what it asks for with
+    /// `workspace/configuration`.
+    pub settings: serde_json::Value,
 }
 
 impl LspDef {

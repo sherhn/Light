@@ -23,7 +23,7 @@ struct Server {
 }
 
 /// The server `bin` of the npm install `name`, or `None` (and the test is skipped) when nothing is installed.
-fn start(name: &str, bin: &str, args: &[&str], root: &Path, options: Value) -> Option<Server> {
+fn start(name: &str, bin: &str, args: &[&str], root: &Path, options: Value, settings: Value) -> Option<Server> {
     let (Ok(node), Ok(servers)) = (std::env::var("LIGHT_TEST_NODE"), std::env::var("LIGHT_TEST_SERVERS")) else {
         eprintln!("LIGHT_TEST_NODE / LIGHT_TEST_SERVERS not set: skipped");
         return None;
@@ -41,13 +41,13 @@ fn start(name: &str, bin: &str, args: &[&str], root: &Path, options: Value) -> O
         c
     };
     cmd.env("PATH", path).current_dir(root);
-    Some(Server::run(cmd, root, root.to_string_lossy().replace('\\', "/"), options))
+    Some(Server::run(cmd, root, root.to_string_lossy().replace('\\', "/"), options, settings))
 }
 
 impl Server {
-    fn run(cmd: Command, root: &Path, seen: String, options: Value) -> Server {
+    fn run(cmd: Command, root: &Path, seen: String, options: Value, settings: Value) -> Server {
         let client = Client::spawn(cmd, None).expect("the server starts");
-        let session = Session::start(client, &seen, options);
+        let session = Session::start(client, &seen, options).with_settings(settings);
         let mut s = Server { session, root: root.to_path_buf(), seen };
         s.until("readiness", |o| matches!(o, Output::Ready).then_some(()));
         s
@@ -138,7 +138,7 @@ fn typescript_language_server() {
         ("util.js", "/** Adds two numbers. @param {number} a @param {number} b */\nexport function add(a, b) { return a + b; }\n"),
         ("main.js", "// @ts-check\nimport { add } from \"./util.js\";\nconst s = \"привет\"; const total = add(1, 2);\nconst n = Math.ma;\nconst bad = add(\"x\", 2);\n"),
     ]);
-    let Some(mut s) = start("typescript-language-server", "typescript-language-server", &["--stdio"], &root, ts_options()) else { return };
+    let Some(mut s) = start("typescript-language-server", "typescript-language-server", &["--stdio"], &root, ts_options(), Value::Null) else { return };
     assert!(s.session.caps.definition && s.session.caps.references && s.session.caps.rename && s.session.caps.completion && s.session.caps.hover && s.session.caps.formatting);
     let (main, text) = s.open("main.js", "javascript");
     // a type error the checker finds in JavaScript with // @ts-check
@@ -169,14 +169,25 @@ fn typescript_language_server() {
     s.stop();
 }
 
+/// What the Python module gives basedpyright: the checks of pyright's own default, not its "recommended" ones that
+/// flag every parameter without a type.
+fn py_settings() -> Value {
+    json!({"basedpyright": {"analysis": {"typeCheckingMode": "standard"}}})
+}
+
 #[test]
 fn basedpyright() {
     let root = project("py", &[
+        ("plain.py", "import os\n\ndef load(path):\n    with open(path) as f:\n        return f.read()\n\nprint(load(\"x\").upper(), os.sep)\n"),
         ("util.py", "def add(a: int, b: int) -> int:\n    \"\"\"Adds two numbers.\"\"\"\n    return a + b\n"),
         ("main.py", "from util import add\n\ns = \"привет\"; total = add(1, 2)\nprint(undefined_name)\nimport math\nmath.sq\n"),
     ]);
-    let Some(mut s) = start("basedpyright", "basedpyright-langserver", &["--stdio"], &root, Value::Null) else { return };
+    let Some(mut s) = start("basedpyright", "basedpyright-langserver", &["--stdio"], &root, Value::Null, py_settings()) else { return };
     assert!(s.session.caps.definition && s.session.caps.references && s.session.caps.rename && s.session.caps.completion && s.session.caps.hover);
+    // plain code without types is no problem
+    let (plain, _) = s.open("plain.py", "python");
+    let problems = s.problems(&plain, |_| true);
+    assert!(problems.is_empty(), "{problems:?}");
     let (main, text) = s.open("main.py", "python");
     let problems = s.problems(&main, |l| l.iter().any(|d| d.message.contains("undefined_name")));
     assert!(problems.iter().any(|d| d.severity == 1 && d.message.contains("undefined_name")), "{problems:?}");
@@ -200,7 +211,7 @@ fn basedpyright() {
 #[test]
 fn dockerfile_language_server() {
     let root = project("docker", &[("Dockerfile", "FROM alpine:3.20\nRUNN echo hi\nCMD [\"echo\", \"ok\"]\n")]);
-    let Some(mut s) = start("dockerfile-language-server", "docker-langserver", &["--stdio"], &root, Value::Null) else { return };
+    let Some(mut s) = start("dockerfile-language-server", "docker-langserver", &["--stdio"], &root, Value::Null, Value::Null) else { return };
     let (u, text) = s.open("Dockerfile", "dockerfile");
     let problems = s.problems(&u, |l| !l.is_empty());
     assert!(problems.iter().any(|d| d.message.to_lowercase().contains("unknown instruction")), "{problems:?}");
@@ -214,7 +225,7 @@ fn dockerfile_language_server() {
 #[test]
 fn compose_language_service() {
     let root = project("compose", &[("compose.yaml", "services:\n  web:\n    image: alpine:3.20\n    command: [echo, ok]\n")]);
-    let Some(mut s) = start("compose-language-service", "docker-compose-langserver", &["--stdio"], &root, Value::Null) else { return };
+    let Some(mut s) = start("compose-language-service", "docker-compose-langserver", &["--stdio"], &root, Value::Null, Value::Null) else { return };
     let (u, text) = s.open("compose.yaml", "dockercompose");
     let hover = proto::hover_text(&s.ask("textDocument/hover", s.at(&u, &text, "image", 0))).unwrap_or_default();
     assert!(!hover.is_empty(), "no hover on `image`");
@@ -241,7 +252,7 @@ fn start_asm(root: &Path) -> Option<Server> {
         }
         Err(_) => (Command::new(&exe), root.to_string_lossy().into_owned()),
     };
-    Some(Server::run(cmd, root, seen, Value::Null))
+    Some(Server::run(cmd, root, seen, Value::Null, Value::Null))
 }
 
 #[test]

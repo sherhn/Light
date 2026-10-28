@@ -100,6 +100,8 @@ pub struct Session {
     pub caps: Capabilities,
     init_id: u64,
     shutdown_id: Option<u64>,
+    /// The settings of the server (see [`Session::with_settings`]).
+    settings: Value,
     /// By [`uri::key`]: a server may write the URI of a file in another way than it was told (VS Code's servers
     /// write `file:///e%3A/...` for `file:///E:/...`).
     docs: HashMap<String, Doc>,
@@ -121,7 +123,7 @@ fn client_capabilities() -> Value {
             "formatting": {},
             "publishDiagnostics": {"relatedInformation": false, "versionSupport": true},
         },
-        "workspace": {"workspaceFolders": true, "configuration": false, "applyEdit": false, "didChangeWatchedFiles": {"dynamicRegistration": false}},
+        "workspace": {"workspaceFolders": true, "configuration": true, "didChangeConfiguration": {"dynamicRegistration": false}, "applyEdit": false, "didChangeWatchedFiles": {"dynamicRegistration": false}},
         "window": {"workDoneProgress": false},
     })
 }
@@ -143,7 +145,15 @@ impl Session {
             "capabilities": client_capabilities(),
         });
         let init_id = client.request("initialize", params);
-        Session { client, state: State::Starting, caps: Capabilities::default(), init_id, shutdown_id: None, docs: HashMap::new() }
+        Session { client, state: State::Starting, caps: Capabilities::default(), init_id, shutdown_id: None, settings: Value::Null, docs: HashMap::new() }
+    }
+
+    /// Settings of the server (`{"basedpyright": {"analysis": {...}}}`): the answers to its `workspace/configuration`,
+    /// and told once it is ready (`workspace/didChangeConfiguration`) to a server that does not ask.
+    pub fn with_settings(mut self, settings: Value) -> Session {
+        self.client.set_settings(settings.clone());
+        self.settings = settings;
+        self
     }
 
     pub fn ready(&self) -> bool {
@@ -179,6 +189,9 @@ impl Session {
                             self.caps.encoding = Encoding::from_name(e);
                         }
                         self.client.notify("initialized", json!({}));
+                        if !self.settings.is_null() {
+                            self.client.notify("workspace/didChangeConfiguration", json!({"settings": self.settings}));
+                        }
                         self.state = State::Ready;
                         let waiting: Vec<String> = self.docs.iter().filter(|(_, d)| !d.sent).map(|(u, _)| u.clone()).collect();
                         for uri in waiting {

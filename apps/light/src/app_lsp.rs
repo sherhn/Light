@@ -345,7 +345,7 @@ impl App {
         let ctx = ctx.clone();
         match Client::spawn(cmd, Some(Arc::new(move || ctx.request_repaint()))) {
             Ok(client) => {
-                s.session = Some(Session::start(client, &server_path(&s.root, s.target.as_ref()), s.def.options.clone()));
+                s.session = Some(Session::start(client, &server_path(&s.root, s.target.as_ref()), s.def.options.clone()).with_settings(s.def.settings.clone()));
                 s.cleanup = cleanup;
                 s.started = now;
             }

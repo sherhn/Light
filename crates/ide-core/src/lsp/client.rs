@@ -39,20 +39,31 @@ pub struct Client {
     next_id: u64,
     child: Option<Child>,
     log: Arc<Mutex<VecDeque<String>>>,
+    /// The settings the server asks for with `workspace/configuration`.
+    settings: Arc<Mutex<Value>>,
 }
 
-/// The answer to a request the server sends its client: what a client that offers none of these features says.
-fn answer(method: &str, params: &Value) -> Result<Value, (i64, &'static str)> {
+/// The setting at a dotted `section` of `settings` (`basedpyright.analysis`); all of them for none.
+fn section(settings: &Value, section: Option<&str>) -> Value {
+    match section.filter(|s| !s.is_empty()) {
+        None => settings.clone(),
+        Some(s) => s.split('.').try_fold(settings, |v, k| v.get(k)).cloned().unwrap_or(Value::Null),
+    }
+}
+
+/// The answer to a request the server sends its client: the settings it asks for; for the rest, what a client that
+/// offers none of those features says.
+fn answer(method: &str, params: &Value, settings: &Value) -> Result<Value, (i64, &'static str)> {
     match method {
-        // one setting per item asked for, and the IDE has none
-        "workspace/configuration" => Ok(Value::Array(vec![Value::Null; params["items"].as_array().map_or(0, Vec::len)])),
+        // one answer per item asked for
+        "workspace/configuration" => Ok(Value::Array(params["items"].as_array().map_or_else(Vec::new, |items| items.iter().map(|i| section(settings, i["section"].as_str())).collect()))),
         "window/workDoneProgress/create" | "client/registerCapability" | "client/unregisterCapability" | "window/showMessageRequest" | "workspace/workspaceFolders" => Ok(Value::Null),
         "workspace/applyEdit" => Ok(json!({"applied": false, "failureReason": "not supported"})),
         _ => Err((-32601, "method not found")),
     }
 }
 
-fn reader_loop(input: impl Read, out: Sender<Value>, events: Sender<Event>, wake: Option<Wake>) {
+fn reader_loop(input: impl Read, out: Sender<Value>, events: Sender<Event>, wake: Option<Wake>, settings: Arc<Mutex<Value>>) {
     let mut r = BufReader::new(input);
     let wake = || {
         if let Some(w) = &wake {
@@ -65,7 +76,7 @@ fn reader_loop(input: impl Read, out: Sender<Value>, events: Sender<Event>, wake
         let event = match (method, id) {
             // a request of the server's
             (Some(m), Some(id)) => {
-                let reply = match answer(m, &msg["params"]) {
+                let reply = match answer(m, &msg["params"], &settings.lock().unwrap()) {
                     Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
                     Err((code, message)) => json!({"jsonrpc": "2.0", "id": id, "error": {"code": code, "message": message}}),
                 };
@@ -107,9 +118,16 @@ impl Client {
         let (out_tx, out_rx) = mpsc::channel();
         let (ev_tx, ev_rx) = mpsc::channel();
         let replies = out_tx.clone();
+        let settings: Arc<Mutex<Value>> = Arc::default();
+        let asked = settings.clone();
         std::thread::spawn(move || writer_loop(output, out_rx));
-        std::thread::spawn(move || reader_loop(input, replies, ev_tx, wake));
-        Client { out: out_tx, events: ev_rx, next_id: 1, child: None, log: Arc::default() }
+        std::thread::spawn(move || reader_loop(input, replies, ev_tx, wake, asked));
+        Client { out: out_tx, events: ev_rx, next_id: 1, child: None, log: Arc::default(), settings }
+    }
+
+    /// The settings to answer `workspace/configuration` with.
+    pub fn set_settings(&self, settings: Value) {
+        *self.settings.lock().unwrap() = settings;
     }
 
     /// Start the server `cmd` and talk to it over its stdin and stdout.
@@ -224,15 +242,16 @@ mod tests {
         let woken = Arc::new(Mutex::new(0));
         let w = woken.clone();
         let mut c = Client::over(to_client_r, to_server_w, Some(Arc::new(move || *w.lock().unwrap() += 1)));
+        c.set_settings(json!({"basedpyright": {"analysis": {"typeCheckingMode": "standard"}}}));
         let server = std::thread::spawn(move || {
             let mut r = BufReader::new(to_server_r);
             let req = rpc::read_message(&mut r).unwrap().unwrap();
             assert_eq!(req["method"], "textDocument/hover");
-            // the server asks its own question first; the client answers it by itself
-            rpc::write_message(&mut to_client_w, &json!({"jsonrpc": "2.0", "id": "cfg", "method": "workspace/configuration", "params": {"items": [{}, {}]}})).unwrap();
+            // the server asks its own question first; the client answers it by itself, from the settings
+            rpc::write_message(&mut to_client_w, &json!({"jsonrpc": "2.0", "id": "cfg", "method": "workspace/configuration", "params": {"items": [{"section": "basedpyright.analysis"}, {"section": "python"}, {}]}})).unwrap();
             let reply = rpc::read_message(&mut r).unwrap().unwrap();
             assert_eq!(reply["id"], "cfg");
-            assert_eq!(reply["result"], json!([null, null]));
+            assert_eq!(reply["result"], json!([{"typeCheckingMode": "standard"}, null, {"basedpyright": {"analysis": {"typeCheckingMode": "standard"}}}]));
             rpc::write_message(&mut to_client_w, &json!({"jsonrpc": "2.0", "id": "x", "method": "custom/unknown"})).unwrap();
             assert_eq!(rpc::read_message(&mut r).unwrap().unwrap()["error"]["code"], -32601);
             rpc::write_message(&mut to_client_w, &json!({"jsonrpc": "2.0", "method": "window/logMessage", "params": {"message": "hi"}})).unwrap();
