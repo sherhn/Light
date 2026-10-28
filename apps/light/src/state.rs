@@ -332,6 +332,8 @@ pub enum ConfirmKind {
     /// Put one file back into its state in a local commit: (commit id, relative path).
     RestoreLocalFile(u64, String),
     DeleteLocal(u64),
+    /// A language server's rename that leaves the name in files it does not see (the plan waits in the LSP state).
+    PartialRename,
 }
 
 /// Messages from the background clone thread.

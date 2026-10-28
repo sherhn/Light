@@ -167,6 +167,20 @@ impl Client {
         self.child.as_mut().is_some_and(|c| !matches!(c.try_wait(), Ok(None)))
     }
 
+    /// The exit code of the process, waiting at most `timeout` for it to end (its output may close a moment before).
+    /// The shell says 127 when the program is not installed, `cmd` 9009.
+    pub fn exit_code(&mut self, timeout: std::time::Duration) -> Option<i32> {
+        let c = self.child.as_mut()?;
+        let start = std::time::Instant::now();
+        loop {
+            match c.try_wait() {
+                Ok(Some(status)) => return status.code(),
+                Ok(None) if start.elapsed() < timeout => std::thread::sleep(std::time::Duration::from_millis(10)),
+                _ => return None,
+            }
+        }
+    }
+
     /// The last lines the server wrote to stderr.
     pub fn log(&self) -> Vec<String> {
         self.log.lock().unwrap().iter().cloned().collect()

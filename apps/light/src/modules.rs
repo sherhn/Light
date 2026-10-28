@@ -257,6 +257,8 @@ impl App {
         }
         self.apply_languages();
         self.recheck_all();
+        // language servers start again for what the modules now say
+        self.stop_lsp();
         self.refresh_needed_modules();
         self.refresh_make_targets();
     }

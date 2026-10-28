@@ -55,6 +55,9 @@ pub struct Doc {
     /// What the check command of the file's language found in the saved text (valid while `check_rev` is the revision).
     pub check_markers: Vec<Marker>,
     pub check_rev: u64,
+    /// What the language server found in the text (valid while `lsp_rev` is the revision).
+    pub lsp_markers: Vec<Marker>,
+    pub lsp_rev: u64,
     /// HEAD content of the file: None = not loaded, Some(None) = untracked / not in HEAD.
     pub git_base: Option<Option<String>>,
     pub git_marks: Vec<ide_core::diff::Mark>,
@@ -96,6 +99,8 @@ impl Doc {
             compiled_rev: 0,
             check_markers: vec![],
             check_rev: u64::MAX,
+            lsp_markers: vec![],
+            lsp_rev: u64::MAX,
             git_base: None,
             git_marks: vec![],
             git_marks_rev: u64::MAX,
@@ -124,6 +129,8 @@ impl Doc {
             compiled_rev: 0,
             check_markers: vec![],
             check_rev: u64::MAX,
+            lsp_markers: vec![],
+            lsp_rev: u64::MAX,
             git_base: None,
             git_marks: vec![],
             git_marks_rev: u64::MAX,
@@ -249,6 +256,9 @@ impl Doc {
             let mut m = self.language_markers();
             if self.check_rev == self.ed.revision() {
                 m.extend(self.check_markers.iter().cloned());
+            }
+            if self.lsp_rev == self.ed.revision() {
+                m.extend(self.lsp_markers.iter().cloned());
             }
             m
         } else {

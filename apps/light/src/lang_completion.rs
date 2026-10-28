@@ -78,7 +78,9 @@ impl App {
         let caret = d.ed.caret();
         let (s, _) = d.ed.identifier_range_at(caret);
         let prefix = d.ed.text()[s..caret].to_string();
-        if (prefix.is_empty() && !explicit) || (!explicit && prefix.chars().count() < 2) || d.ed.has_selection() {
+        // `.` or `->` was just typed: what may follow is the language server's to say
+        let triggered = !explicit && prefix.is_empty() && self.lsp_triggered(self.active);
+        if (prefix.is_empty() && !explicit && !triggered) || (!explicit && !triggered && prefix.chars().count() < 2) || d.ed.has_selection() {
             self.completion.active = false;
             return;
         }
@@ -95,6 +97,12 @@ impl App {
         }
         if prefix.chars().next().is_some_and(|c| c.is_ascii_digit()) {
             self.completion.active = false;
+            return;
+        }
+        if triggered {
+            // the members it offers once it has answered (the list is made again then)
+            let items = self.lsp_completions(self.active, s, "", false).unwrap_or_default();
+            self.completion = Completion { active: !items.is_empty(), selected: 0, items: items.into_iter().take(MAX_ITEMS).collect(), start: s, prefix };
             return;
         }
         let low = prefix.to_lowercase();
@@ -151,6 +159,16 @@ impl App {
         }
         // better sources first; among equals the ones that match the case typed, then the shorter
         items.sort_by(|a, b| a.source.cmp(&b.source).then_with(|| (!a.text.starts_with(&prefix)).cmp(&!b.text.starts_with(&prefix))).then_with(|| a.text.len().cmp(&b.text.len())).then_with(|| a.text.cmp(&b.text)));
+        // what the language server offers comes first, in its order, once it has answered (the list is made again then)
+        if let Some(server) = self.lsp_completions(self.active, s, &prefix, explicit) {
+            let mut seen: HashSet<String> = HashSet::new();
+            let mut merged: Vec<CItem> = server.into_iter().filter(|c| {
+                let l = c.text.to_lowercase();
+                l != low && seen.insert(l)
+            }).collect();
+            merged.extend(items.into_iter().filter(|c| !seen.contains(&c.text.to_lowercase())));
+            items = merged;
+        }
         items.truncate(MAX_ITEMS);
         let started = self.completion.active && self.completion.start == s && self.completion.prefix == prefix;
         let selected = if started { self.completion.selected } else { 0 };

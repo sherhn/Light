@@ -289,8 +289,9 @@ impl Session {
         self.docs.get(uri).map(|d| d.text.as_str())
     }
 
-    /// Ask the server to stop and wait for it, at most `timeout`; what has not ended by then is ended.
-    pub fn stop(&mut self, timeout: Duration) {
+    /// Ask the server to stop and wait for it, at most `timeout`. True when it ended by itself; otherwise ending it
+    /// is the caller's (what it started may need more than [`Client::kill`]).
+    pub fn stop(&mut self, timeout: Duration) -> bool {
         let start = Instant::now();
         if self.ready() {
             self.shutdown_id = Some(self.client.request("shutdown", Value::Null));
@@ -300,8 +301,9 @@ impl Session {
                 std::thread::sleep(Duration::from_millis(5));
             }
         }
+        let ended = self.state == State::Exited || self.client.exited();
         self.state = State::Exited;
-        self.client.kill();
+        ended
     }
 }
 

@@ -110,6 +110,7 @@ impl App {
         let events: Vec<Event> = ctx.input(|i| i.events.clone());
         let mut consume: Vec<(Modifiers, Key)> = Vec::new();
         let mut typed_symbol = false;
+        let mut typed_trigger = false;
         let mut moved = false;
         for ev in events {
             match ev {
@@ -193,6 +194,8 @@ impl App {
                     }
                     if !typed_symbol {
                         self.completion.active = false;
+                        // `.` or `->`: the language server has something to offer after it
+                        typed_trigger = self.lsp_triggered(self.active);
                     }
                 }
                 Event::Copy => {
@@ -225,7 +228,7 @@ impl App {
                 }
             });
         }
-        if typed_symbol && self.settings.auto_popup {
+        if (typed_symbol || typed_trigger) && self.settings.auto_popup {
             self.refresh_completion(false);
         } else if self.completion.active && moved {
             self.completion.active = false;
@@ -273,6 +276,10 @@ impl App {
             return;
         }
         let editor_on = self.doc().is_some_and(|d| d.diff.is_none()) && !self.editor_hidden();
+        // the language server of the file formats it; the editor reindents what has none
+        if id == "code.reformat" && editor_on && self.doc().is_some_and(|d| !d.ed.is_lisp()) && self.lsp_format() {
+            return;
+        }
         match id {
             // ---- file
             "file.new" => {
@@ -468,7 +475,17 @@ impl App {
             "code.param_info" => self.show_param_info(),
             "code.expand_macro" => self.macroexpand_form(),
             "refactor.rename" => {
-                if let Some(name) = self.symbol_at_caret() {
+                // a language server renames the name at the caret in its language; Lisp names are renamed by the reader
+                if self.doc().is_some_and(|d| d.diff.is_none() && !d.ed.is_lisp()) && self.lsp_can_rename() {
+                    let d = &self.docs[self.active];
+                    let (s, e) = d.ed.identifier_range_at(d.ed.caret());
+                    if s < e {
+                        let name = d.ed.text()[s..e].to_string();
+                        self.lsp.rename_at = Some((d.id, s, d.ed.revision()));
+                        self.popup = Popup::Rename { old: name.clone(), input: name, just_opened: true };
+                    }
+                } else if let Some(name) = self.symbol_at_caret() {
+                    self.lsp.rename_at = None;
                     self.popup = Popup::Rename { old: name.clone(), input: name, just_opened: true };
                 }
             }

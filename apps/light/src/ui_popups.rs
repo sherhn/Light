@@ -671,8 +671,9 @@ impl App {
                                 ConfirmKind::Rollback(_) => tr("Rollback"),
                                 ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) => tr("Restore"),
                                 ConfirmKind::DeleteLocal(_) => tr("Delete"),
+                                ConfirmKind::PartialRename => tr("Rename Anyway"),
                             };
-                            let danger = matches!(kind, ConfirmKind::Delete(_) | ConfirmKind::Rollback(_) | ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) | ConfirmKind::DeleteLocal(_));
+                            let danger = matches!(kind, ConfirmKind::Delete(_) | ConfirmKind::Rollback(_) | ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) | ConfirmKind::DeleteLocal(_) | ConfirmKind::PartialRename);
                             let galley = ui.painter().layout_no_wrap(main_label.to_string(), fonts::semibold(13.5), pal.text_on_accent);
                             let (r, resp) = ui.allocate_exact_size(Vec2::new(galley.size().x + 32.0, 34.0), Sense::click());
                             ui.data_mut(|data| data.insert_temp(egui::Id::unique("confirm_accept_button"), r));
@@ -729,6 +730,7 @@ impl App {
                             ConfirmKind::RestoreLocal(id) => self.local_restore(id),
                             ConfirmKind::RestoreLocalFile(id, rel) => self.local_restore_file(id, &rel),
                             ConfirmKind::DeleteLocal(id) => self.local_delete(id),
+                            ConfirmKind::PartialRename => self.accept_partial_rename(),
                         }
                     }
                 }

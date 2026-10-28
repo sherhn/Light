@@ -1046,4 +1046,16 @@ pub const RU: &[(&str, &str)] = &[
     ("The developer tools were not installed on this computer", "Инструменты разработчика не установлены на этот компьютер"),
     // ---- go to declaration
     ("Searching the project for the declaration of '{}'...", "Поиск объявления '{}' по всему проекту..."),
+    // ---- language servers
+    ("{0} was not found. Install it to have Go to Declaration, Find Usages, Rename and the errors in the code from it.", "{0} не найден. Установите его, чтобы переход к объявлению, поиск использований, переименование и ошибки в коде шли от него."),
+    ("{0} stopped: {1}", "{0} остановился: {1}"),
+    ("Nothing to rename here", "Здесь нечего переименовывать"),
+    ("Renamed {0} occurrences in {1} file(s)", "Переименовано вхождений: {0}, файлов: {1}"),
+    ("The language server stopped - nothing was renamed", "Языковой сервер остановился — ничего не переименовано"),
+    ("Cannot rename: {}", "Не удалось переименовать: {}"),
+    ("the text changed meanwhile - try again", "текст за это время изменился — попробуйте ещё раз"),
+    ("{} more", "ещё {}"),
+    ("{0} would rename {1} occurrences in {2} file(s), but '{3}' is also used in {4} - files {0} does not see as part of the project (a C or C++ project needs a compile_commands.json for that). Renaming only what {0} found may break the code.", "{0} переименует вхождений: {1} в файлах: {2}, но '{3}' используется ещё и в {4} — эти файлы {0} не считает частью проекта (проекту на C или C++ для этого нужен compile_commands.json). Если переименовать только найденное {0}, код может сломаться."),
+    ("Rename Anyway", "Всё равно переименовать"),
+    ("Usages of '{0}' - and {1} found by the text in {2} file(s) {3} does not see", "Использования '{0}' — и ещё {1} найдено по тексту в файлах, которые {3} не видит: {2}"),
 ];

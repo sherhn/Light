@@ -457,7 +457,15 @@ impl App {
             return;
         }
         let lisp = self.docs[idx].ed.is_lisp();
-        let found = if lisp { self.lisp_hover(name, &ck) } else { self.language_hover(idx, name, end) };
+        let found = if lisp {
+            self.lisp_hover(name, &ck)
+        } else if self.lsp_hover(idx, name, end, &ck) {
+            // the language server answers in a moment
+            self.hover.waiting = Some(ck.clone());
+            None
+        } else {
+            self.language_hover(idx, name, end)
+        };
         match found {
             Some(info) => {
                 let info = Arc::new(info);
@@ -467,7 +475,7 @@ impl App {
                 self.hover.info = Some(info);
             }
             // the project is still being read: ask again in a moment
-            None if !lisp && self.hover.index.building() => self.hover.asked = false,
+            None if !lisp && self.hover.waiting.is_none() && self.hover.index.building() => self.hover.asked = false,
             None => {}
         }
     }
@@ -663,8 +671,16 @@ impl App {
         }
     }
 
+    /// A language server answered what the popup asked about (`key`), or `None` when nobody knows.
+    pub fn hover_answer(&mut self, key: &str, info: Option<HoverInfo>) {
+        if self.hover.waiting.as_deref() == Some(key) {
+            self.hover.waiting = None;
+            self.hover.info = info.map(Arc::new);
+        }
+    }
+
     /// The hover popup for a name of a language of a module: what the first definition that fits the call says.
-    fn language_hover(&mut self, idx: usize, name: &str, end: usize) -> Option<HoverInfo> {
+    pub(crate) fn language_hover(&mut self, idx: usize, name: &str, end: usize) -> Option<HoverInfo> {
         let args = docinfo::call_arity(self.docs[idx].ed.text(), end);
         let lang = self.docs[idx].ed.language().map(|l| l.id().to_string());
         let near = self.docs[idx].path.clone();
@@ -672,8 +688,23 @@ impl App {
         Some(HoverInfo { title: name.to_string(), kind: hit.kind, signature: hit.doc.signature, doc: hit.doc.doc, source: hit.source, fallback: false })
     }
 
-    /// Go to the definition of the name at the caret of a document in a language of a module.
+    /// Go to the definition of the name at the caret of a document in a language of a module: where its language
+    /// server says (it may also know what an `#include` names), else where the project's text has it.
     pub fn goto_language_declaration(&mut self, name: Option<String>) {
+        if name.is_none()
+            && let Some(d) = self.docs.get(self.active)
+        {
+            let (s, e) = d.ed.identifier_range_at(d.ed.caret());
+            let word = d.ed.text().get(s..e).unwrap_or("").to_string();
+            if self.lsp_goto_declaration(&word) {
+                return;
+            }
+        }
+        self.goto_language_declaration_text(name);
+    }
+
+    /// Go to the definition of the name at the caret (or of `name`) as the project's text has it.
+    pub fn goto_language_declaration_text(&mut self, name: Option<String>) {
         let idx = self.active;
         let Some(d) = self.docs.get(idx) else { return };
         let (s, e) = d.ed.identifier_range_at(d.ed.caret());
@@ -794,6 +825,9 @@ impl App {
         let Some(d) = self.docs.get(self.active) else { return };
         let (s, e) = d.ed.identifier_range_at(d.ed.caret());
         let Some(name) = d.ed.text().get(s..e).filter(|w| !w.is_empty()).map(str::to_string) else { return };
+        if self.lsp_find_usages(&name) {
+            return;
+        }
         self.find_usages_everywhere(&name);
     }
 

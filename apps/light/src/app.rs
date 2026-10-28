@@ -69,6 +69,7 @@ pub struct App {
     pub hover: crate::hover::HoverState,
     /// The syntax checks of the languages of modules, running in the background.
     pub checks: crate::app_check::CheckState,
+    pub lsp: crate::app_lsp::LspState,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -172,6 +173,7 @@ impl App {
             hint: None,
             hover: Default::default(),
             checks: Default::default(),
+            lsp: Default::default(),
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -344,6 +346,7 @@ impl App {
     /// search results, the back/forward history, problems, what ran and the terminal.
     fn leave_project(&mut self) {
         self.cancel_scenario();
+        self.stop_lsp();
         if let Some(h) = self.run.handle.take() {
             h.kill();
         }
@@ -640,6 +643,7 @@ impl App {
         self.git.last_refresh = -100.0;
         // the language's own check looks at what was just written
         self.schedule_check(idx);
+        self.lsp_saved(idx);
         if path.as_ref().and_then(|p| p.file_name()).is_some_and(|n| { let n = n.to_string_lossy().to_ascii_lowercase(); n == "makefile" || n == "gnumakefile" || n.ends_with(".mk") }) {
             self.refresh_make_targets();
         }
@@ -820,6 +824,7 @@ impl App {
         self.poll_wsl();
         self.poll_modules(ctx);
         self.poll_checks();
+        self.poll_lsp(ctx);
         self.poll_github();
         self.git_update_bases();
 
@@ -1273,6 +1278,12 @@ impl App {
             for (k, m) in markers.into_iter().enumerate() {
                 v.push(ProblemRow { path: d.path.clone(), start: m.start, end: m.end, sev: m.sev, message: m.msg, source: if k < n_language { "syntax" } else { "check" } });
             }
+            // what the language server found in the text as it is now
+            if d.lsp_rev == d.ed.revision() {
+                for m in &d.lsp_markers {
+                    v.push(ProblemRow { path: d.path.clone(), start: m.start, end: m.end, sev: m.sev, message: m.msg.clone(), source: "server" });
+                }
+            }
         }
         v.extend(self.compiler_problems.iter().cloned());
         v
@@ -1474,6 +1485,10 @@ impl App {
     pub fn rename_symbol(&mut self, old: &str, new: &str) {
         if new.is_empty() || new.chars().any(|c| c.is_whitespace() || "()\"';".contains(c)) {
             self.toast(tr("Invalid symbol name"), Sev::Error);
+            return;
+        }
+        // asked for in a language whose server renames (its answer comes later)
+        if self.lsp_rename(old, new) {
             return;
         }
         let mut count = 0;

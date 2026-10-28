@@ -105,6 +105,7 @@ impl eframe::App for App {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         if !self.exit_now { self.flush_saves(); }
         self.save_settings();
+        self.stop_lsp();
         if let Some(s) = self.repl.session.take() {
             s.kill();
         }
