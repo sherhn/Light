@@ -917,8 +917,8 @@ impl App {
 
     pub fn draw_welcome(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let pal = self.pal;
+        // the card around the page already carries the editor colour; a square fill here would cut off its rounded corners
         let rect = ui.available_rect_before_wrap();
-        ui.painter().rect_filled(rect, CornerRadius::ZERO, pal.editor_bg);
         let mut open: Option<PathBuf> = None;
         let col_w = 460.0f32.min(rect.width() - 48.0);
         let top = (rect.height() * 0.14).max(28.0);
