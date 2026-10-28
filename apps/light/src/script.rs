@@ -78,6 +78,7 @@ impl App {
             "completion" => self.completion.active && !self.completion.items.is_empty(),
             "hover" => self.hover.info.is_some(),
             "checks_idle" => self.checks.idle(),
+            "lsp_idle" => self.lsp_idle(),
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             "git_settled" => self.git.rx.is_none(),
@@ -871,6 +872,11 @@ impl App {
                 let min = step["min"].as_u64().unwrap_or(1) as usize;
                 if self.find_results.hits.len() < min {
                     self.fail(format!("assert_find_results: expected >= {min}, got {}", self.find_results.hits.len()));
+                }
+                if let Some(t) = step["title_contains"].as_str()
+                    && !self.find_results.title.contains(t)
+                {
+                    self.fail(format!("assert_find_results: {t:?} not in the title {:?}", self.find_results.title));
                 }
             }
             "assert_git_changes" => {

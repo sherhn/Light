@@ -95,6 +95,21 @@ def run_one(script_path):
             web.mkdir(exist_ok=True)
             (web / "main.mjs").write_text('export const double = (x) => x * 2;\nconsole.log("javascript module ready", double(3));\n', encoding="utf-8")
             (web / "package.json").write_text(json.dumps({"name": "light-test", "private": True, "type": "module", "scripts": {"test": "node main.mjs", "build": "node main.mjs"}}), encoding="utf-8")
+        if "@fake_clangd" in text:
+            # C files, and a fake clangd on PATH (tests/fake_lsp.py) in place of a real one
+            (proj / "csrc").mkdir(exist_ok=True)
+            (proj / "csrc" / "util.h").write_text("#ifndef UTIL_H\n#define UTIL_H\nint add(int a, int b);\n#endif\n", encoding="utf-8")
+            (proj / "csrc" / "util.c").write_text('#include "util.h"\nint add(int a, int b) { return a + b; }\n', encoding="utf-8")
+            (proj / "csrc" / "main.c").write_text('#include "util.h"\nconst char *s = "привет"; int x = add(1, 2);\nint main(void) {\n  return add(x, 3);\n}\n', encoding="utf-8")
+            commands = tmp / "fake-lsp"
+            commands.mkdir()
+            if os.name == "nt":
+                (commands / "clangd.cmd").write_text(f'@echo off\r\n"{sys.executable}" "{ROOT / "tests/fake_lsp.py"}" %*\r\n', encoding="utf-8")
+            else:
+                import shlex
+                wrapper = commands / "clangd"
+                wrapper.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(ROOT / "tests/fake_lsp.py"))} "$@"\n', encoding="utf-8")
+                wrapper.chmod(0o755)
         if "@docker_module" in text:
             (proj / "Dockerfile").write_text("FROM busybox AS base\nWORKDIR /app\nCMD [\"echo\", \"fixture\"]\n", encoding="utf-8")
             (proj / "compose.yaml").write_text("services:\n  web:\n    image: busybox\n    command: [echo, fixture]\n", encoding="utf-8")
@@ -200,6 +215,14 @@ def run_one(script_path):
 
             shutil.rmtree(proj / ".git", onexc=_unlock)
         env = dict(os.environ, LIGHT_CONFIG_DIR=str(tmp / "cfg"))
+        if "@fake_clangd" in text:
+            env["PATH"] = str(tmp / "fake-lsp") + os.pathsep + env.get("PATH", "")
+            env["LIGHT_FAKE_LSP_LOG"] = str(tmp / "fake-lsp.log")
+            if "@fake_clangd_open_only" in text:
+                env["LIGHT_FAKE_LSP_OPEN_ONLY"] = "1"
+        else:
+            # a clangd that happens to be installed must not change what the other scripts see
+            env["LIGHT_LSP"] = "0"
         if "@docker_module" in text:
             import shlex
             commands = tmp / "fake-cli"
