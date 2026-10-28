@@ -53,6 +53,16 @@ pub fn to_path(uri: &str) -> Option<String> {
     Some(s)
 }
 
+/// What two URIs of one file have in common, however a server writes them (`file:///e%3A/a.c` and
+/// `file:///E:/a.c` are one file; so are `C:/A.c` and `c:/a.c`, Windows ignoring case). For comparing only.
+pub fn key(uri: &str) -> String {
+    match to_path(uri) {
+        Some(p) if p.as_bytes().get(1) == Some(&b':') || p.starts_with("//") => p.to_lowercase(),
+        Some(p) => p,
+        None => uri.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -73,6 +83,15 @@ mod tests {
         assert_eq!(to_path("file:///e%3A/Projects/demo/main.c").unwrap(), "E:/Projects/demo/main.c");
         assert_eq!(from_path(r"\\wsl.localhost\Ubuntu\home\a.c"), "file://wsl.localhost/Ubuntu/home/a.c");
         assert_eq!(to_path("file://wsl.localhost/Ubuntu/home/a.c").unwrap(), "//wsl.localhost/Ubuntu/home/a.c");
+    }
+
+    #[test]
+    fn one_file_has_one_key() {
+        assert_eq!(key("file:///e%3A/Projects/Demo/main.c"), key("file:///E:/Projects/Demo/main.c"));
+        assert_eq!(key("file:///E:/Projects/Demo/main.c"), key("file:///e:/projects/demo/MAIN.c"));
+        // Linux tells case apart
+        assert_ne!(key("file:///home/me/A.c"), key("file:///home/me/a.c"));
+        assert_eq!(key("file:///home/me/a%20b.c"), key("file:///home/me/a b.c"));
     }
 
     #[test]

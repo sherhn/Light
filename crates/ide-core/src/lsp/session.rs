@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 use super::client::{Client, Event, ResponseError};
 use super::pos::Encoding;
 use super::proto::{self, Diagnostic};
+use super::uri;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum State {
@@ -84,6 +85,8 @@ pub enum Output {
 }
 
 struct Doc {
+    /// The URI as the IDE gave it (and as the server is told it).
+    uri: String,
     language: String,
     version: i64,
     text: String,
@@ -97,6 +100,8 @@ pub struct Session {
     pub caps: Capabilities,
     init_id: u64,
     shutdown_id: Option<u64>,
+    /// By [`uri::key`]: a server may write the URI of a file in another way than it was told (VS Code's servers
+    /// write `file:///e%3A/...` for `file:///E:/...`).
     docs: HashMap<String, Doc>,
 }
 
@@ -153,10 +158,10 @@ impl Session {
         &mut self.client
     }
 
-    fn send_open(&mut self, uri: &str) {
-        let Some(d) = self.docs.get_mut(uri) else { return };
+    fn send_open(&mut self, key: &str) {
+        let Some(d) = self.docs.get_mut(key) else { return };
         d.sent = true;
-        let params = json!({"textDocument": {"uri": uri, "languageId": d.language, "version": d.version, "text": d.text}});
+        let params = json!({"textDocument": {"uri": d.uri, "languageId": d.language, "version": d.version, "text": d.text}});
         if self.caps.sync {
             self.client.notify("textDocument/didOpen", params);
         }
@@ -191,8 +196,10 @@ impl Session {
                 Event::Response { id, result } => out.push(Output::Response { id, result }),
                 Event::Notification { method, params } => match method.as_str() {
                     "textDocument/publishDiagnostics" => {
-                        if let Some((uri, version, list)) = proto::diagnostics(&params) {
-                            out.push(Output::Diagnostics { uri, version, list });
+                        if let Some((u, version, list)) = proto::diagnostics(&params) {
+                            // the URI the document was opened with
+                            let u = self.docs.get(&uri::key(&u)).map_or(u, |d| d.uri.clone());
+                            out.push(Output::Diagnostics { uri: u, version, list });
                         }
                     }
                     "window/showMessage" => {
@@ -222,44 +229,47 @@ impl Session {
 
     /// Tell the server about a document (now, or as soon as it is ready).
     pub fn open(&mut self, uri: &str, language: &str, text: &str) {
-        if self.docs.contains_key(uri) {
+        let key = uri::key(uri);
+        if self.docs.contains_key(&key) {
             self.change(uri, text);
             return;
         }
-        self.docs.insert(uri.to_string(), Doc { language: language.to_string(), version: 1, text: text.to_string(), sent: false });
+        self.docs.insert(key.clone(), Doc { uri: uri.to_string(), language: language.to_string(), version: 1, text: text.to_string(), sent: false });
         if self.ready() {
-            self.send_open(uri);
+            self.send_open(&key);
         }
     }
 
     /// The document's text is now `text`.
     pub fn change(&mut self, uri: &str, text: &str) {
         let ready = self.ready();
-        let Some(d) = self.docs.get_mut(uri) else { return };
+        let Some(d) = self.docs.get_mut(&uri::key(uri)) else { return };
         if d.text == text {
             return;
         }
         d.version += 1;
         d.text = text.to_string();
         if ready && d.sent && self.caps.sync {
-            let params = json!({"textDocument": {"uri": uri, "version": d.version}, "contentChanges": [{"text": d.text}]});
+            let params = json!({"textDocument": {"uri": d.uri, "version": d.version}, "contentChanges": [{"text": d.text}]});
             self.client.notify("textDocument/didChange", params);
         }
     }
 
     pub fn save(&mut self, uri: &str) {
-        if self.ready() && self.caps.save && self.docs.get(uri).is_some_and(|d| d.sent) {
-            self.client.notify("textDocument/didSave", json!({"textDocument": {"uri": uri}}));
+        let Some(d) = self.docs.get(&uri::key(uri)) else { return };
+        if self.ready() && self.caps.save && d.sent {
+            let params = json!({"textDocument": {"uri": d.uri}});
+            self.client.notify("textDocument/didSave", params);
         }
     }
 
     pub fn close(&mut self, uri: &str) {
-        if let Some(d) = self.docs.remove(uri)
+        if let Some(d) = self.docs.remove(&uri::key(uri))
             && d.sent
             && self.ready()
             && self.caps.sync
         {
-            self.client.notify("textDocument/didClose", json!({"textDocument": {"uri": uri}}));
+            self.client.notify("textDocument/didClose", json!({"textDocument": {"uri": d.uri}}));
         }
     }
 
@@ -272,21 +282,21 @@ impl Session {
     }
 
     pub fn is_open(&self, uri: &str) -> bool {
-        self.docs.contains_key(uri)
+        self.docs.contains_key(&uri::key(uri))
     }
 
     pub fn open_uris(&self) -> Vec<String> {
-        self.docs.keys().cloned().collect()
+        self.docs.values().map(|d| d.uri.clone()).collect()
     }
 
     /// The version of the document's text the server has last been told about.
     pub fn version(&self, uri: &str) -> Option<i64> {
-        self.docs.get(uri).map(|d| d.version)
+        self.docs.get(&uri::key(uri)).map(|d| d.version)
     }
 
-    /// The text the server has of the document (the positions it names are in it).
+    /// The text the server has of the document (the positions it names are in it), whichever way its URI is written.
     pub fn text(&self, uri: &str) -> Option<&str> {
-        self.docs.get(uri).map(|d| d.text.as_str())
+        self.docs.get(&uri::key(uri)).map(|d| d.text.as_str())
     }
 
     /// Ask the server to stop and wait for it, at most `timeout`. True when it ended by itself; otherwise ending it
