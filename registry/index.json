@@ -50,16 +50,16 @@
     {
       "id": "c-cpp",
       "name": "C and C++",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "category": "Languages",
-      "summary": "Highlighting, brackets, folding and an outline for C, C++ and headers; compile and run a file; the compilers and debuggers in Linux.",
+      "summary": "Highlighting, brackets, folding and an outline for C, C++ and headers; code intelligence from clangd; compile and run a file; the compilers and debuggers in Linux.",
       "cover": "cover.png",
       "path": "modules/c-cpp",
       "files": [
         {
           "name": "module.json",
-          "size": 13631,
-          "sha256": "1bfeb4d297498a54622e11ed1a922ee2d0b52c3393d51e8eab2fba7f40121f14"
+          "size": 14157,
+          "sha256": "6ca68e58d121a5819fe40d3ed838fbd45d9b52484f227927c8a519b638a807b2"
         },
         {
           "name": "LICENSE",

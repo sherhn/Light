@@ -53,12 +53,12 @@ COMMON = dict(
 )
 
 MODULE = module(
-    version="1.1.1",
+    version="1.2.0",
     id="c-cpp",
     name="C and C++",
     category="Languages",
-    summary="Highlighting, brackets, folding and an outline for C, C++ and headers; compile and run a file; the compilers and debuggers in Linux.",
-    description="C and C++ for Light: syntax highlighting with preprocessor and types, matching brackets, folding of blocks, the outline of functions, structs and macros, Enter after a brace indents, and a command to compile and run the current file. The Linux side brings gcc, g++, make, cmake, ninja, gdb, clang, clangd, valgrind and friends - installed from inside the IDE.",
+    summary="Highlighting, brackets, folding and an outline for C, C++ and headers; code intelligence from clangd; compile and run a file; the compilers and debuggers in Linux.",
+    description="C and C++ for Light: syntax highlighting with preprocessor and types, matching brackets, folding of blocks, the outline of functions, structs and macros, Enter after a brace indents, and a command to compile and run the current file. The Linux side brings gcc, g++, make, cmake, ninja, gdb, clang, clangd, valgrind and friends - installed from inside the IDE. With clangd installed (the Clang and LLVM tools), Go to Declaration, Find Usages, Rename, completion, the documentation on hover, Reformat Code and the compiler's errors as you type come from it; a project with a compile_commands.json (CMake, or bear for make) gets them across all of its files.",
     languages=[
         dict(id="c", name="C", extensions=["c", "h", "ld", "lds"], filenames=[], grammar=grammar(False), **COMMON),
         dict(id="cpp", name="C++", extensions=["cc", "cpp", "cxx", "c++", "hpp", "hh", "hxx", "ipp", "inl", "tpp"], filenames=[], grammar=grammar(True), **COMMON),
@@ -67,6 +67,8 @@ MODULE = module(
         dict(language="c", name="Compile and run file", command='cc -g -Wall -Wextra "{file}" -o "{dir}/{stem}" && "{dir}/{stem}"', windows='gcc -g -Wall -Wextra "{file}" -o "{dir}/{stem}.exe" && "{dir}/{stem}.exe"'),
         dict(language="cpp", name="Compile and run file", command='c++ -g -Wall -Wextra -std=c++17 "{file}" -o "{dir}/{stem}" && "{dir}/{stem}"', windows='g++ -g -Wall -Wextra -std=c++17 "{file}" -o "{dir}/{stem}.exe" && "{dir}/{stem}.exe"'),
     ],
+    # header insertion would come as extra edits of a completion, which the IDE does not make
+    lsp=[dict(languages=["c", "cpp"], name="clangd", command="clangd --log=error --header-insertion=never", program="clangd")],
     tools=[
         dict(name="C and C++", required=["make", "gcc"], programs=["make", "gcc", "g++", "ld", "gdb", "cmake", "ninja", "pkg-config"],
              apt="build-essential gdb cmake ninja-build pkg-config autoconf automake libtool ccache bear gcc-multilib g++-multilib"),

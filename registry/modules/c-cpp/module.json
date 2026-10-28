@@ -1,13 +1,13 @@
 {
-  "version": "1.1.1",
+  "version": "1.2.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
   "id": "c-cpp",
   "name": "C and C++",
   "category": "Languages",
-  "summary": "Highlighting, brackets, folding and an outline for C, C++ and headers; compile and run a file; the compilers and debuggers in Linux.",
-  "description": "C and C++ for Light: syntax highlighting with preprocessor and types, matching brackets, folding of blocks, the outline of functions, structs and macros, Enter after a brace indents, and a command to compile and run the current file. The Linux side brings gcc, g++, make, cmake, ninja, gdb, clang, clangd, valgrind and friends - installed from inside the IDE.",
+  "summary": "Highlighting, brackets, folding and an outline for C, C++ and headers; code intelligence from clangd; compile and run a file; the compilers and debuggers in Linux.",
+  "description": "C and C++ for Light: syntax highlighting with preprocessor and types, matching brackets, folding of blocks, the outline of functions, structs and macros, Enter after a brace indents, and a command to compile and run the current file. The Linux side brings gcc, g++, make, cmake, ninja, gdb, clang, clangd, valgrind and friends - installed from inside the IDE. With clangd installed (the Clang and LLVM tools), Go to Declaration, Find Usages, Rename, completion, the documentation on hover, Reformat Code and the compiler's errors as you type come from it; a project with a compile_commands.json (CMake, or bear for make) gets them across all of its files.",
   "languages": [
     {
       "id": "c",
@@ -474,6 +474,17 @@
       "name": "Compile and run file",
       "command": "c++ -g -Wall -Wextra -std=c++17 \"{file}\" -o \"{dir}/{stem}\" && \"{dir}/{stem}\"",
       "windows": "g++ -g -Wall -Wextra -std=c++17 \"{file}\" -o \"{dir}/{stem}.exe\" && \"{dir}/{stem}.exe\""
+    }
+  ],
+  "lsp": [
+    {
+      "languages": [
+        "c",
+        "cpp"
+      ],
+      "name": "clangd",
+      "command": "clangd --log=error --header-insertion=never",
+      "program": "clangd"
     }
   ],
   "tools": [
