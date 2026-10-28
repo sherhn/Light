@@ -7,6 +7,7 @@
 //! reads the answers and [`pos`] / [`uri`] turn the server's positions and file names into the editor's.
 
 pub mod client;
+pub mod install;
 pub mod pos;
 pub mod proto;
 pub mod rpc;

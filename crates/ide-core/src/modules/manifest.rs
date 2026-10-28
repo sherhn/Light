@@ -85,6 +85,116 @@ pub struct LspDef {
     /// Its settings, by section (`{"basedpyright": {"analysis": {...}}}`): what it asks for with
     /// `workspace/configuration`.
     pub settings: serde_json::Value,
+    /// How Light installs the server when it is not there (none: the user installs it).
+    pub install: Option<InstallDef>,
+}
+
+/// The platforms a server is installed for.
+pub const PLATFORMS: [&str; 6] = ["linux-x64", "linux-arm64", "darwin-x64", "darwin-arm64", "win-x64", "win-arm64"];
+
+/// A release download: where it is, its SHA-256 and size, and how it unpacks.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct ArchiveDef {
+    /// An `https://` address.
+    pub url: String,
+    /// 64 hexadecimal digits.
+    pub sha256: String,
+    pub size: u64,
+    /// Leading folders left out when unpacking (1 for an archive with everything in one folder).
+    pub strip: u32,
+    /// The folder of the programs, after unpacking (`bin`; empty: the top).
+    pub bin: String,
+}
+
+/// A runtime servers run on (Node.js for the npm servers), installed once for all of them.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct RuntimeDef {
+    /// `node`.
+    pub name: String,
+    pub version: String,
+    /// Where it comes from, as the user is told (`nodejs.org`).
+    pub source: String,
+    /// By platform (see [`PLATFORMS`]).
+    pub archives: BTreeMap<String, ArchiveDef>,
+}
+
+impl RuntimeDef {
+    /// The folder it is installed in, among the servers: `node-24.22.2`.
+    pub fn folder(&self) -> String {
+        format!("{}-{}", self.name, self.version)
+    }
+}
+
+/// How Light installs a server, at the user's word: exact versions, and every download checked (see
+/// `docs/language-servers.md`). Either an npm package, from the lockfile the module carries, on a runtime; or a
+/// prebuilt archive of the server.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct InstallDef {
+    pub version: String,
+    /// Where the server comes from, as the user is told (`registry.npmjs.org`).
+    pub source: String,
+    /// About how much the server takes, in bytes, as the user is told (the runtime's archives say their own).
+    pub size: u64,
+    pub runtime: Option<RuntimeDef>,
+    /// npm: the module's files `<npm>.package.json` and `<npm>.package-lock.json` (installed with `npm ci`).
+    pub npm: String,
+    /// Or prebuilt archives of the server, by platform.
+    pub archives: BTreeMap<String, ArchiveDef>,
+}
+
+impl InstallDef {
+    /// The folder the server `name` is installed in, among the servers: `basedpyright-1.40.2`.
+    pub fn folder(&self, name: &str) -> String {
+        format!("{name}-{}", self.version)
+    }
+
+    /// Can it be installed on `platform`?
+    pub fn available_for(&self, platform: &str) -> bool {
+        if self.npm.is_empty() { self.archives.contains_key(platform) } else { self.runtime.as_ref().is_some_and(|r| r.archives.contains_key(platform)) }
+    }
+
+    /// The folder of the server's programs inside its install folder.
+    pub fn bin(&self, platform: &str) -> String {
+        if self.npm.is_empty() { self.archives.get(platform).map(|a| a.bin.clone()).unwrap_or_default() } else { "node_modules/.bin".into() }
+    }
+
+    /// Reasons it cannot be installed safely.
+    fn check(&self) -> Result<(), String> {
+        let plain = |v: &str| !v.is_empty() && v.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '+'));
+        if !plain(&self.version) {
+            return Err(format!("the version {:?} is not a plain version", self.version));
+        }
+        if self.npm.is_empty() == self.archives.is_empty() {
+            return Err("an install is either npm or archives".into());
+        }
+        if !self.npm.is_empty() && (!plain(&self.npm) || self.runtime.is_none()) {
+            return Err("an npm install names its files plainly and the runtime it runs on".into());
+        }
+        let archives = self.archives.iter().chain(self.runtime.iter().flat_map(|r| r.archives.iter()));
+        for (platform, a) in archives {
+            if !PLATFORMS.contains(&platform.as_str()) {
+                return Err(format!("unknown platform {platform:?}"));
+            }
+            if !a.url.starts_with("https://") || a.url.contains(['"', '\'', ' ', '\\']) {
+                return Err(format!("the address {:?} is not a plain https address", a.url));
+            }
+            if a.sha256.len() != 64 || !a.sha256.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err(format!("{}: the SHA-256 is not 64 hexadecimal digits", a.url));
+            }
+            if a.bin.split('/').any(|p| p == ".." || p.starts_with('.')) || a.bin.contains(['\\', ':']) {
+                return Err(format!("{}: the folder of its programs {:?} is not inside it", a.url, a.bin));
+            }
+        }
+        if let Some(r) = &self.runtime
+            && (!plain(&r.name) || !plain(&r.version))
+        {
+            return Err("the runtime has no plain name and version".into());
+        }
+        Ok(())
+    }
 }
 
 impl LspDef {
@@ -214,6 +324,12 @@ impl Manifest {
             if let Some(l) = s.languages.iter().chain(s.language_ids.keys()).find(|l| !self.languages.iter().any(|x| x.id == **l)) {
                 return Err(format!("{}: the language server {:?} is for the unknown language {l:?}", self.id, s.name));
             }
+            if let Some(i) = &s.install {
+                if !s.name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) || s.name.is_empty() {
+                    return Err(format!("{}: a language server Light installs needs a plain name, not {:?}", self.id, s.name));
+                }
+                i.check().map_err(|e| format!("{}: installing {:?}: {e}", self.id, s.name))?;
+            }
         }
         Ok(())
     }
@@ -298,6 +414,33 @@ mod tests {
             "lsp":[{"languages":["javascript"],"language_ids":{"tsx":"typescriptreact"},"name":"ts","command":"t"}]}"#).is_err());
         // an older module has none
         assert!(Manifest::parse(OK).unwrap().lsp.is_empty());
+    }
+
+    fn with_install(install: &str) -> Result<Manifest, String> {
+        Manifest::parse(&format!(r#"{{"id":"py","name":"Py","version":"1.0.0","languages":[{{"id":"python","grammar":[]}}],
+            "lsp":[{{"languages":["python"],"name":"basedpyright","command":"basedpyright-langserver --stdio","install":{install}}}]}}"#))
+    }
+
+    const NODE: &str = r#"{"name":"node","version":"24.22.2","source":"nodejs.org","archives":{
+        "linux-x64":{"url":"https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-x64.tar.gz","sha256":"361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9","size":58300000,"strip":1,"bin":"bin"},
+        "win-x64":{"url":"https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-x64.zip","sha256":"ca1bff5d8ead13c9f2ea404a176db46bd430704d5b5113734049fa365e7799e2","size":37800000,"strip":1,"bin":""}}}"#;
+
+    #[test]
+    fn installs_are_checked() {
+        let m = with_install(&format!(r#"{{"version":"1.40.2","source":"registry.npmjs.org","size":36000000,"npm":"basedpyright","runtime":{NODE}}}"#)).unwrap();
+        let i = m.lsp[0].install.as_ref().unwrap();
+        assert_eq!((i.folder("basedpyright"), i.runtime.as_ref().unwrap().folder(), i.bin("win-x64")), ("basedpyright-1.40.2".into(), "node-24.22.2".into(), "node_modules/.bin".into()));
+        assert!(i.available_for("linux-x64") && i.available_for("win-x64") && !i.available_for("darwin-arm64"));
+        let asm = with_install(r#"{"version":"0.10.1","archives":{"linux-x64":{"url":"https://github.com/x/releases/download/v0.10.1/a.tar.gz","sha256":"2a2f386c10348e365df484d5c66d084813e7dbf8ab4e9eb7a7cc0bb0acf2f8f8","bin":""}}}"#).unwrap();
+        assert!(asm.lsp[0].install.as_ref().unwrap().available_for("linux-x64"));
+        let err = |i: &str| with_install(i).expect_err("must fail");
+        assert!(err(r#"{"version":"1 ; rm","npm":"x","runtime":{"name":"node","version":"1"}}"#).contains("plain version"));
+        assert!(err(r#"{"version":"1.0.0","npm":"x"}"#).contains("runtime"));
+        assert!(err(r#"{"version":"1.0.0"}"#).contains("either"));
+        assert!(err(r#"{"version":"1.0.0","archives":{"linux-x64":{"url":"http://example.com/a.tgz","sha256":"2a2f386c10348e365df484d5c66d084813e7dbf8ab4e9eb7a7cc0bb0acf2f8f8"}}}"#).contains("https"));
+        assert!(err(r#"{"version":"1.0.0","archives":{"linux-x64":{"url":"https://example.com/a.tgz","sha256":"abc"}}}"#).contains("SHA-256"));
+        assert!(err(r#"{"version":"1.0.0","archives":{"amiga-68k":{"url":"https://example.com/a.tgz","sha256":"2a2f386c10348e365df484d5c66d084813e7dbf8ab4e9eb7a7cc0bb0acf2f8f8"}}}"#).contains("platform"));
+        assert!(err(r#"{"version":"1.0.0","archives":{"linux-x64":{"url":"https://example.com/a.tgz","sha256":"2a2f386c10348e365df484d5c66d084813e7dbf8ab4e9eb7a7cc0bb0acf2f8f8","bin":"../.."}}}"#).contains("inside"));
     }
 
     #[test]
