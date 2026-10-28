@@ -110,6 +110,20 @@ def run_one(script_path):
                 wrapper = commands / "clangd"
                 wrapper.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(ROOT / "tests/fake_lsp.py"))} "$@"\n', encoding="utf-8")
                 wrapper.chmod(0o755)
+        if "@two_servers" in text:
+            # a module whose languages have a server that is not installed first, then (for one of them) the fake one
+            (proj / "alt").mkdir(exist_ok=True)
+            (proj / "alt" / "demo.zc").write_text("int f(void) { return 1; }\n", encoding="utf-8")
+            (proj / "alt" / "only.zd").write_text("int g(void) { return 2; }\n", encoding="utf-8")
+            alt = tmp / "cfg" / "modules" / "alt"
+            alt.mkdir(parents=True)
+            grammar = [{"match": r"\bint\b", "class": "keyword"}]
+            (alt / "module.json").write_text(json.dumps({
+                "id": "alt", "name": "Alternatives", "version": "1.0.0", "category": "Languages", "summary": "two servers",
+                "languages": [{"id": "zc", "name": "ZC", "extensions": ["zc"], "grammar": grammar}, {"id": "zd", "name": "ZD", "extensions": ["zd"], "grammar": grammar}],
+                "lsp": [{"languages": ["zc", "zd"], "name": "nowhere-lsp", "command": "nowhere-lsp-not-installed --stdio", "program": "nowhere-lsp"},
+                        {"languages": ["zc"], "name": "clangd", "command": "clangd"}],
+            }), encoding="utf-8")
         if "@docker_module" in text:
             (proj / "Dockerfile").write_text("FROM busybox AS base\nWORKDIR /app\nCMD [\"echo\", \"fixture\"]\n", encoding="utf-8")
             (proj / "compose.yaml").write_text("services:\n  web:\n    image: busybox\n    command: [echo, fixture]\n", encoding="utf-8")

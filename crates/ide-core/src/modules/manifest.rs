@@ -70,6 +70,8 @@ impl CheckDef {
 pub struct LspDef {
     /// The language ids it serves.
     pub languages: Vec<String>,
+    /// The protocol's name of a language, where it is not the module's (`jsx` is `javascriptreact`).
+    pub language_ids: BTreeMap<String, String>,
     /// What the IDE calls it in messages (`clangd`).
     pub name: String,
     /// The shell command line that starts it, in the project's folder. It talks over its stdin and stdout.
@@ -91,6 +93,11 @@ impl LspDef {
     /// The program the server is.
     pub fn program(&self) -> &str {
         if self.program.is_empty() { self.command.split_whitespace().next().unwrap_or("") } else { &self.program }
+    }
+
+    /// The protocol's name of the module's language `lang`.
+    pub fn language_id<'a>(&'a self, lang: &'a str) -> &'a str {
+        self.language_ids.get(lang).map_or(lang, String::as_str)
     }
 }
 
@@ -201,7 +208,7 @@ impl Manifest {
             if s.languages.is_empty() {
                 return Err(format!("{}: the language server {:?} serves no language", self.id, s.name));
             }
-            if let Some(l) = s.languages.iter().find(|l| !self.languages.iter().any(|x| x.id == **l)) {
+            if let Some(l) = s.languages.iter().chain(s.language_ids.keys()).find(|l| !self.languages.iter().any(|x| x.id == **l)) {
                 return Err(format!("{}: the language server {:?} is for the unknown language {l:?}", self.id, s.name));
             }
         }
@@ -280,6 +287,12 @@ mod tests {
         assert_eq!(s.options["fallbackFlags"][0], "-std=c11");
         let named = LspDef { program: "pyright".into(), windows: String::new(), ..s.clone() };
         assert_eq!((named.program(), named.command_line(true)), ("pyright", "clangd --log=error"));
+        assert_eq!(s.language_id("cpp"), "cpp");
+        let js = Manifest::parse(r#"{"id":"js","name":"JS","version":"1.0.0","languages":[{"id":"javascript","grammar":[]},{"id":"jsx","grammar":[]}],
+            "lsp":[{"languages":["javascript","jsx"],"language_ids":{"jsx":"javascriptreact"},"name":"ts","command":"typescript-language-server --stdio"}]}"#).unwrap();
+        assert_eq!((js.lsp[0].language_id("jsx"), js.lsp[0].language_id("javascript")), ("javascriptreact", "javascript"));
+        assert!(Manifest::parse(r#"{"id":"js","name":"JS","version":"1.0.0","languages":[{"id":"javascript","grammar":[]}],
+            "lsp":[{"languages":["javascript"],"language_ids":{"tsx":"typescriptreact"},"name":"ts","command":"t"}]}"#).is_err());
         // an older module has none
         assert!(Manifest::parse(OK).unwrap().lsp.is_empty());
     }

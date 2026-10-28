@@ -160,6 +160,11 @@ fn path_key(p: &Path) -> String {
     }
 }
 
+/// What the user is told about a server that is not installed on this computer.
+fn not_found(program: &str) -> String {
+    i18n::fmt("{0} was not found. Install it to have Go to Declaration, Find Usages, Rename and the errors in the code from it.", &[&program])
+}
+
 /// The badge of a completion: `f` function, `m` keyword, `v` variable, `C` type, `s` anything else.
 fn badge(kind: u64) -> &'static str {
     match kind {
@@ -207,9 +212,9 @@ struct Place {
 }
 
 impl App {
-    /// The language server a module names for `lang`: (module id, its definition).
-    fn lsp_def_for(&self, lang: &str) -> Option<(String, LspDef)> {
-        self.mods.installed.iter().filter(|m| m.enabled).find_map(|m| m.manifest.lsp.iter().find(|s| s.languages.iter().any(|l| l == lang)).map(|s| (m.manifest.id.clone(), s.clone())))
+    /// The language servers the modules name for `lang`, best first: (module id, its definition).
+    fn lsp_defs_for(&self, lang: &str) -> Vec<(String, LspDef)> {
+        self.mods.installed.iter().filter(|m| m.enabled).flat_map(|m| m.manifest.lsp.iter().filter(|s| s.languages.iter().any(|l| l == lang)).map(|s| (m.manifest.id.clone(), s.clone()))).collect()
     }
 
     fn server_mut(&mut self, id: u64) -> Option<&mut Server> {
@@ -242,7 +247,16 @@ impl App {
                 continue;
             }
             let Some(lang) = d.ed.language().map(|l| l.id().to_string()) else { continue };
-            let Some((module, def)) = self.lsp_def_for(&lang) else { continue };
+            // the first server that has not given up serves it; one that is not installed gives way to the next
+            let candidates = self.lsp_defs_for(&lang);
+            let dead = |m: &str, n: &str| self.lsp.servers.iter().find(|s| s.module == m && s.def.name == n).and_then(|s| s.dead.clone());
+            let Some((module, def)) = candidates.iter().find(|(m, d)| dead(m, &d.name).is_none()).cloned() else {
+                // none is left: the user hears why the best one is not there, once
+                if let Some(why) = candidates.first().and_then(|(m, d)| dead(m, &d.name)) {
+                    self.tell_once(format!("lsp:{lang}"), why, Sev::Weak);
+                }
+                continue;
+            };
             let found = self.lsp.servers.iter().position(|s| s.module == module && s.def.name == def.name);
             let si = match found {
                 Some(si) => si,
@@ -289,7 +303,7 @@ impl App {
                         let path = d.path.as_deref().unwrap_or(Path::new(""));
                         let uri = uri::from_path(&server_path(path, s.target.as_ref()));
                         let lang = d.ed.language().map(|l| l.id().to_string()).unwrap_or_default();
-                        session.open(&uri, &lang, d.ed.text());
+                        session.open(&uri, s.def.language_id(&lang), d.ed.text());
                         let version = session.version(&uri).unwrap_or(1);
                         s.docs.insert(d.id, SentDoc { uri, rev, versions: vec![(version, rev)] });
                     }
@@ -313,6 +327,12 @@ impl App {
     fn start_server(&mut self, si: usize, ctx: &egui::Context) {
         let now = self.now;
         let s = &mut self.lsp.servers[si];
+        // on this computer a server that is not installed is known before it is started (what `cmd` says when it
+        // cannot find a program is no different from a failure); in Linux the shell's 127 tells
+        if s.target.is_none() && ide_core::cmdscript::find_program(s.def.program(), std::env::var_os("PATH").as_deref()).is_none() {
+            s.dead = Some(not_found(s.def.program()));
+            return;
+        }
         let line = s.def.command_line(s.target.is_none()).to_string();
         let (mut cmd, cleanup) = match &s.target {
             Some(t) => {
@@ -400,8 +420,9 @@ impl App {
         }
     }
 
-    /// A server stopped without being asked: started again if it had been working a while, else left off (and the
-    /// user told why). What was asked of it is answered from the text.
+    /// A server stopped without being asked: started again if it had been working a while, else left off (the next
+    /// server of its languages takes over, and when there is none the user is told why). What was asked of it is
+    /// answered from the text.
     fn server_stopped(&mut self, sid: u64, why: Option<String>) {
         let now = self.now;
         let pending: Vec<Pending> = {
@@ -428,16 +449,15 @@ impl App {
             let reason = if missing {
                 match target {
                     Some(_) => self.linux_command_not_found(Some(&program)).unwrap_or_default(),
-                    None => i18n::fmt("{0} was not found. Install it to have Go to Declaration, Find Usages, Rename and the errors in the code from it.", &[&program]),
+                    None => not_found(&program),
                 }
             } else {
                 let last = why.or_else(|| log.iter().rev().find(|l| !l.trim().is_empty()).cloned()).unwrap_or_default();
                 i18n::fmt("{0} stopped: {1}", &[&name, &last])
             };
             if let Some(s) = self.server_mut(sid) {
-                s.dead = Some(reason.clone());
+                s.dead = Some(reason);
             }
-            self.tell_once(format!("dead:{name}"), reason, Sev::Weak);
         }
         drop(session);
         for d in self.docs.iter_mut().filter(|d| docs.contains(&d.id)) {
