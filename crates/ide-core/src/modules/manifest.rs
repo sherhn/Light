@@ -61,6 +61,39 @@ impl CheckDef {
     }
 }
 
+/// A language server for languages of the module (the Language Server Protocol, see [`crate::lsp`]): started for a
+/// project when a file of one of its languages is opened, in the project's Linux or on Windows like a run command,
+/// and asked where names are defined and used, how to rename them, what may be typed and what is wrong in the text.
+/// Without it (not installed, or it stopped) the IDE answers from the text, as it does for a language without one.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct LspDef {
+    /// The language ids it serves.
+    pub languages: Vec<String>,
+    /// What the IDE calls it in messages (`clangd`).
+    pub name: String,
+    /// The shell command line that starts it, in the project's folder. It talks over its stdin and stdout.
+    pub command: String,
+    /// A different command line for a project that runs on Windows (empty: the same one).
+    pub windows: String,
+    /// The program that must be installed (empty: the first word of the command).
+    pub program: String,
+    /// The server's `initializationOptions`, sent as they are.
+    pub options: serde_json::Value,
+}
+
+impl LspDef {
+    /// The command line that starts the server; `windows`: the project runs on Windows.
+    pub fn command_line(&self, windows: bool) -> &str {
+        if windows && !self.windows.is_empty() { &self.windows } else { &self.command }
+    }
+
+    /// The program the server is.
+    pub fn program(&self) -> &str {
+        if self.program.is_empty() { self.command.split_whitespace().next().unwrap_or("") } else { &self.program }
+    }
+}
+
 /// A group of tools a module wants in the project's Linux (see the developer tools on the Linux page).
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
@@ -122,6 +155,8 @@ pub struct Manifest {
     pub run: Vec<RunDef>,
     /// Syntax checks of the language's files, run when a file is saved.
     pub check: Vec<CheckDef>,
+    /// Language servers of the module's languages.
+    pub lsp: Vec<LspDef>,
     pub tools: Vec<ToolDef>,
     pub detect: Detect,
     pub templates: Vec<Template>,
@@ -158,6 +193,17 @@ impl Manifest {
                 return Err(format!("{}: the check {:?} is for the unknown language {:?}", self.id, c.name, c.language));
             }
             crate::modules::check::compile(&c.pattern).map_err(|e| format!("{}: the check {:?}: {e}", self.id, c.name))?;
+        }
+        for s in &self.lsp {
+            if s.command.trim().is_empty() {
+                return Err(format!("{}: the language server {:?} has no command", self.id, s.name));
+            }
+            if s.languages.is_empty() {
+                return Err(format!("{}: the language server {:?} serves no language", self.id, s.name));
+            }
+            if let Some(l) = s.languages.iter().find(|l| !self.languages.iter().any(|x| x.id == **l)) {
+                return Err(format!("{}: the language server {:?} is for the unknown language {l:?}", self.id, s.name));
+            }
         }
         Ok(())
     }
@@ -219,6 +265,23 @@ mod tests {
         assert!(err(r#"{"id":"x","name":"X","version":"1.0.0","run":[{"language":"nope","name":"r","command":"c"}]}"#).contains("unknown language"));
         // a built-in module has no languages of its own to run
         assert!(Manifest::parse(r#"{"id":"lisp","name":"Lisp","version":"1.0.0","builtin":"lisp","run":[{"language":"lisp","name":"r","command":"c"}]}"#).is_ok());
+        let lang = r#""languages":[{"id":"c","grammar":[]}]"#;
+        assert!(err(&format!(r#"{{"id":"x","name":"X","version":"1.0.0",{lang},"lsp":[{{"languages":["c"],"name":"s"}}]}}"#)).contains("no command"));
+        assert!(err(&format!(r#"{{"id":"x","name":"X","version":"1.0.0",{lang},"lsp":[{{"name":"s","command":"s"}}]}}"#)).contains("serves no language"));
+        assert!(err(&format!(r#"{{"id":"x","name":"X","version":"1.0.0",{lang},"lsp":[{{"languages":["c","go"],"name":"s","command":"s"}}]}}"#)).contains("unknown language \"go\""));
+    }
+
+    #[test]
+    fn a_language_server() {
+        let m = Manifest::parse(r#"{"id":"c-cpp","name":"C","version":"1.0.0","languages":[{"id":"c","grammar":[]},{"id":"cpp","grammar":[]}],
+            "lsp":[{"languages":["c","cpp"],"name":"clangd","command":"clangd --log=error","windows":"clangd.exe --log=error","options":{"fallbackFlags":["-std=c11"]}}]}"#).unwrap();
+        let s = &m.lsp[0];
+        assert_eq!((s.command_line(false), s.command_line(true), s.program()), ("clangd --log=error", "clangd.exe --log=error", "clangd"));
+        assert_eq!(s.options["fallbackFlags"][0], "-std=c11");
+        let named = LspDef { program: "pyright".into(), windows: String::new(), ..s.clone() };
+        assert_eq!((named.program(), named.command_line(true)), ("pyright", "clangd --log=error"));
+        // an older module has none
+        assert!(Manifest::parse(OK).unwrap().lsp.is_empty());
     }
 
     #[test]
