@@ -50,7 +50,17 @@ pub fn host_dir() -> Option<PathBuf> {
 /// The folder of the servers inside a WSL distribution, as a shell word (`$HOME` is the project user's):
 /// `LIGHT_WSL_SERVERS_DIR`, else `$HOME/.local/share/light/servers`.
 pub fn wsl_dir() -> String {
-    std::env::var("LIGHT_WSL_SERVERS_DIR").ok().filter(|d| !d.trim().is_empty()).unwrap_or_else(|| "$HOME/.local/share/light/servers".into())
+    checked_wsl_dir(std::env::var("LIGHT_WSL_SERVERS_DIR").ok())
+}
+
+/// A folder for the servers in Linux, if it is one: absolute (or under `$HOME`), and nothing a shell would take for
+/// more than a path inside double quotes. Anything else is the default: a relative folder would land wherever the
+/// command happens to start.
+fn checked_wsl_dir(dir: Option<String>) -> String {
+    match dir.map(|d| d.trim().trim_end_matches('/').to_string()) {
+        Some(d) if (d.starts_with('/') || d == "$HOME" || d.starts_with("$HOME/")) && !d.contains(['"', '`', '\\', '\n']) && !d[1..].contains('$') => d,
+        _ => "$HOME/.local/share/light/servers".into(),
+    }
 }
 
 /// Where servers are installed and run.
@@ -190,10 +200,11 @@ fn exec(mut cmd: Command, what: &str, log: &mut dyn FnMut(&str)) -> Result<(), S
     Err(if tail.is_empty() { format!("{what} failed") } else { format!("{what} failed: {tail}") })
 }
 
-/// A shell script run at a WSL place, with arguments `$1`, `$2`... (never put into the script itself).
+/// A shell script run at a WSL place, in the user's home, with arguments `$1`, `$2`... (never put into the script
+/// itself).
 fn wsl_sh(place: &Place, script: &str, args: &[&str]) -> Command {
     let Place::Wsl { distro, user, .. } = place else { unreachable!("a WSL place") };
-    let mut c = crate::wsl::command_as_user(distro, user.as_deref(), None, "sh");
+    let mut c = crate::wsl::command_as_user(distro, user.as_deref(), Some("~"), "sh");
     c.args(["-c", script, "sh"]).args(args);
     c
 }
@@ -395,6 +406,18 @@ mod tests {
         );
         // a server Light does not install starts as it is
         assert_eq!(wsl_line(&LspDef::default(), "/x", "linux-x64", "clangd"), "clangd");
+    }
+
+    #[test]
+    fn the_folder_in_linux_is_absolute_and_plain() {
+        let default = "$HOME/.local/share/light/servers";
+        assert_eq!(checked_wsl_dir(None), default);
+        assert_eq!(checked_wsl_dir(Some("/mnt/e/servers/".into())), "/mnt/e/servers");
+        assert_eq!(checked_wsl_dir(Some("$HOME/srv".into())), "$HOME/srv");
+        // what Git Bash makes of /mnt/e/... for a Windows program, and other things that are no such folder
+        for bad in ["C:/Program Files/Git/mnt/e/servers", "servers", "/x\"; rm -rf ~", "/x/$(id)", "/x/`id`", "$HOME$PATH", ""] {
+            assert_eq!(checked_wsl_dir(Some(bad.into())), default, "{bad}");
+        }
     }
 
     #[test]
