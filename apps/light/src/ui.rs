@@ -121,6 +121,7 @@ impl App {
         self.draw_env_banner(ui);
         self.draw_tools_banner(ui);
         self.draw_modules_banner(ui);
+        self.draw_lsp_banner(ui);
         if self.docs.is_empty() {
             self.split = None;
             self.draw_welcome(ui, ctx);

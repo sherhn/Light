@@ -124,6 +124,32 @@ def run_one(script_path):
                 "lsp": [{"languages": ["zc", "zd"], "name": "nowhere-lsp", "command": "nowhere-lsp-not-installed --stdio", "program": "nowhere-lsp"},
                         {"languages": ["zc"], "name": "clangd", "command": "clangd"}],
             }), encoding="utf-8")
+        if "@managed_server" in text:
+            # a module whose servers Light installs: one is installed already (the fake server, in Light's folder of
+            # servers), the other is not, and its download cannot work (nothing listens on that port)
+            (proj / "alt2").mkdir(exist_ok=True)
+            (proj / "alt2" / "demo.zm").write_text("int f(void) { return 1; }\n", encoding="utf-8")
+            (proj / "alt2" / "demo.zn").write_text("int g(void) { return 2; }\n", encoding="utf-8")
+            platforms = ["linux-x64", "linux-arm64", "darwin-x64", "darwin-arm64", "win-x64", "win-arm64"]
+            recipe = lambda name: {"version": "1.0.0", "source": "nowhere", "size": 1000, "archives": {p: {"url": f"https://127.0.0.1:9/{name}.tar.gz", "sha256": "0" * 64, "size": 1000, "bin": ""} for p in platforms}}
+            grammar = [{"match": r"\bint\b", "class": "keyword"}]
+            mng = tmp / "cfg" / "modules" / "mng"
+            mng.mkdir(parents=True)
+            (mng / "module.json").write_text(json.dumps({
+                "id": "mng", "name": "Managed", "version": "1.0.0", "category": "Languages", "summary": "servers Light installs",
+                "languages": [{"id": "zm", "name": "ZM", "extensions": ["zm"], "grammar": grammar}, {"id": "zn", "name": "ZN", "extensions": ["zn"], "grammar": grammar}],
+                "lsp": [{"languages": ["zm"], "name": "fakesrv", "command": "fakesrv", "install": recipe("fakesrv")},
+                        {"languages": ["zn"], "name": "fresh-srv", "command": "fresh-srv", "install": recipe("fresh-srv")}],
+            }), encoding="utf-8")
+            home = tmp / "servers" / "fakesrv-1.0.0"
+            home.mkdir(parents=True)
+            if os.name == "nt":
+                (home / "fakesrv.cmd").write_text(f'@echo off\r\n"{sys.executable}" "{ROOT / "tests/fake_lsp.py"}" %*\r\n', encoding="utf-8")
+            else:
+                import shlex
+                (home / "fakesrv").write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(ROOT / "tests/fake_lsp.py"))} "$@"\n', encoding="utf-8")
+                (home / "fakesrv").chmod(0o755)
+            (home / ".light-installed").write_text("fakesrv 1.0.0", encoding="utf-8")
         if "@docker_module" in text:
             (proj / "Dockerfile").write_text("FROM busybox AS base\nWORKDIR /app\nCMD [\"echo\", \"fixture\"]\n", encoding="utf-8")
             (proj / "compose.yaml").write_text("services:\n  web:\n    image: busybox\n    command: [echo, fixture]\n", encoding="utf-8")
@@ -229,6 +255,8 @@ def run_one(script_path):
 
             shutil.rmtree(proj / ".git", onexc=_unlock)
         env = dict(os.environ, LIGHT_CONFIG_DIR=str(tmp / "cfg"))
+        if "@managed_server" in text:
+            env["LIGHT_SERVERS_DIR"] = str(tmp / "servers")
         if "@fake_clangd" in text:
             env["PATH"] = str(tmp / "fake-lsp") + os.pathsep + env.get("PATH", "")
             env["LIGHT_FAKE_LSP_LOG"] = str(tmp / "fake-lsp.log")

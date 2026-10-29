@@ -79,6 +79,7 @@ impl App {
             "hover" => self.hover.info.is_some(),
             "checks_idle" => self.checks.idle(),
             "lsp_idle" => self.lsp_idle(),
+            "lsp_install_done" => self.lsp.installing.is_none(),
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             "git_settled" => self.git.rx.is_none(),
@@ -1066,6 +1067,22 @@ impl App {
                     }
                 }
             }
+            // the language server the banner offers to install (`none`: no banner)
+            "assert_lsp_offer" => {
+                let got = self.lsp.offer.as_ref().map_or("none".to_string(), |o| o.def.name.clone());
+                if got != sval {
+                    self.fail(format!("assert_lsp_offer: expected {sval}, got {got}"));
+                }
+            }
+            "lsp_install_click" => self.lsp_ask_install(),
+            "lsp_decline" => self.lsp_decline_install(),
+            "assert_lsp_install_failed" => match &self.lsp.install_failed {
+                Some((_, why, _)) if why.contains(&sval) => {}
+                other => {
+                    let got = format!("{other:?}");
+                    self.fail(format!("assert_lsp_install_failed: {sval:?} not in {got}"));
+                }
+            },
             "assert_toast" => {
                 if !self.toasts.iter().any(|t| t.text.contains(&sval)) {
                     let all: Vec<_> = self.toasts.iter().map(|t| t.text.clone()).collect();

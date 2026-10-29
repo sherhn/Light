@@ -672,6 +672,7 @@ impl App {
                                 ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) => tr("Restore"),
                                 ConfirmKind::DeleteLocal(_) => tr("Delete"),
                                 ConfirmKind::PartialRename => tr("Rename Anyway"),
+                                ConfirmKind::InstallServer => tr("Install"),
                             };
                             let danger = matches!(kind, ConfirmKind::Delete(_) | ConfirmKind::Rollback(_) | ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) | ConfirmKind::DeleteLocal(_) | ConfirmKind::PartialRename);
                             let galley = ui.painter().layout_no_wrap(main_label.to_string(), fonts::semibold(13.5), pal.text_on_accent);
@@ -731,6 +732,7 @@ impl App {
                             ConfirmKind::RestoreLocalFile(id, rel) => self.local_restore_file(id, &rel),
                             ConfirmKind::DeleteLocal(id) => self.local_delete(id),
                             ConfirmKind::PartialRename => self.accept_partial_rename(),
+                            ConfirmKind::InstallServer => self.lsp_install(),
                         }
                     }
                 }

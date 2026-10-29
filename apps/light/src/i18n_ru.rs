@@ -1058,4 +1058,11 @@ pub const RU: &[(&str, &str)] = &[
     ("{0} would rename {1} occurrences in {2} file(s), but '{3}' is also used in {4} - files {0} does not see as part of the project (a C or C++ project needs a compile_commands.json for that). Renaming only what {0} found may break the code.", "{0} переименует вхождений: {1} в файлах: {2}, но '{3}' используется ещё и в {4} — эти файлы {0} не считает частью проекта (проекту на C или C++ для этого нужен compile_commands.json). Если переименовать только найденное {0}, код может сломаться."),
     ("Rename Anyway", "Всё равно переименовать"),
     ("Usages of '{0}' - and {1} found by the text in {2} file(s) {3} does not see", "Использования '{0}' — и ещё {1} найдено по тексту в файлах, которые {3} не видит: {2}"),
+    ("{0}: {1} gives Go to Declaration, Find Usages, Rename and the errors in the code", "{0}: {1} даёт переход к объявлению, поиск использований, переименование и ошибки в коде"),
+    ("It is not installed. Light can download and install it, for you only.", "Он не установлен. Light может скачать и установить его — только для вас."),
+    ("Install...", "Установить..."),
+    ("Try again", "Повторить"),
+    ("{} is installed", "{} установлен"),
+    ("What it printed is in {}", "Что он вывел — в {}"),
+    ("Light will download and install:\n{0}\ninto {1}. Each download is checked against the SHA-256 its module names, and npm runs no scripts of the packages. What is there already is not downloaded again.", "Light скачает и установит:\n{0}\nв {1}. Каждая загрузка сверяется с SHA-256, указанным в модуле, а npm не запускает скрипты пакетов. То, что уже есть, повторно не скачивается."),
 ];

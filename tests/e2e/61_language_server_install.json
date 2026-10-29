@@ -1,0 +1,38 @@
+[
+  {"op": "log", "value": "@fake_clangd @managed_server: a server Light installed is found in its folder; one that is not installed is offered, asked about, and a failed download is told"},
+  {"op": "open_project", "path": "${PROJ}"},
+  {"op": "wait", "what": "index"},
+
+  {"op": "log", "value": "fakesrv is on no PATH, only in Light's folder of servers"},
+  {"op": "open", "path": "${PROJ}/alt2/demo.zm"},
+  {"op": "assert_language", "value": "zm"},
+  {"op": "set_text", "value": "int f(void) { return missing; }\n"},
+  {"op": "wait", "what": "lsp_idle", "timeout": 30},
+  {"op": "assert_problem", "value": "use of undeclared identifier 'missing'", "line": 1},
+  {"op": "assert_lsp_offer", "value": "none"},
+
+  {"op": "log", "value": "fresh-srv is not installed: the banner offers it"},
+  {"op": "open", "path": "${PROJ}/alt2/demo.zn"},
+  {"op": "wait", "what": "lsp_idle", "timeout": 30},
+  {"op": "frames", "value": 3},
+  {"op": "assert_lsp_offer", "value": "fresh-srv"},
+  {"op": "screenshot", "path": "${SHOTS}/${NAME}_offer.png"},
+
+  {"op": "log", "value": "Install says what is downloaded first; its download fails, and the banner says so"},
+  {"op": "lsp_install_click"},
+  {"op": "assert_popup", "value": "confirm"},
+  {"op": "frames", "value": 2},
+  {"op": "screenshot", "path": "${SHOTS}/${NAME}_confirm.png"},
+  {"op": "confirm_accept"},
+  {"op": "frames", "value": 2},
+  {"op": "wait", "what": "lsp_install_done", "timeout": 60},
+  {"op": "frames", "value": 2},
+  {"op": "assert_lsp_install_failed", "value": "download"},
+  {"op": "screenshot", "path": "${SHOTS}/${NAME}_failed.png"},
+
+  {"op": "log", "value": "Not now: no more offers of it"},
+  {"op": "lsp_decline"},
+  {"op": "frames", "value": 3},
+  {"op": "assert_lsp_offer", "value": "none"},
+  {"op": "quit"}
+]

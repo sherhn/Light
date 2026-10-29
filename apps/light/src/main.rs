@@ -18,6 +18,7 @@ mod app_git;
 mod app_github;
 mod app_local;
 mod app_lsp;
+mod ui_lsp;
 mod app_run;
 mod app_split;
 mod app_terminal;

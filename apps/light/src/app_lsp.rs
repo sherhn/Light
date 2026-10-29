@@ -11,6 +11,7 @@ use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
 use eframe::egui;
+use ide_core::lsp::install::{self, Place as InstallPlace};
 use ide_core::lsp::proto::{self, CompletionItem, Diagnostic, TextEdit};
 use ide_core::lsp::{Capabilities, Client, Encoding, LineMap, Output, Session, uri};
 use ide_core::modules::LspDef;
@@ -95,6 +96,30 @@ struct PartialRename {
     changes: Vec<(String, Vec<TextEdit>)>,
 }
 
+/// A server Light can install for a language that has none: what the banner offers.
+#[derive(Clone)]
+pub struct Offer {
+    pub module: String,
+    pub def: LspDef,
+    /// The language's name, as the user knows it.
+    pub language: String,
+}
+
+/// What an install says while it runs.
+enum InstallMsg {
+    Line(String),
+    Done(Result<(), String>),
+}
+
+/// The install that runs.
+pub struct Installing {
+    pub server: String,
+    /// The last line it printed.
+    pub last: String,
+    log: Vec<String>,
+    rx: Receiver<InstallMsg>,
+}
+
 /// The last completions a server gave.
 struct Completions {
     doc: u64,
@@ -118,6 +143,12 @@ pub struct LspState {
     rename_check: Option<RenameCheck>,
     partial_rename: Option<PartialRename>,
     usages_check: Option<UsagesCheck>,
+    pub offer: Option<Offer>,
+    /// Servers the user said "not now" to, by name (for this run of the IDE).
+    declined: HashSet<String>,
+    pub installing: Option<Installing>,
+    /// The last install that failed: (server, why, where its log is).
+    pub install_failed: Option<(String, String, String)>,
     /// Servers and messages the user has been told about (once per run of the IDE).
     told: HashSet<String>,
 }
@@ -127,6 +158,15 @@ pub struct LspState {
 fn switched_off() -> bool {
     static OFF: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *OFF.get_or_init(|| std::env::var_os("LIGHT_LSP").is_some_and(|v| v == "0"))
+}
+
+/// The platform servers run on: the project's Linux, or this computer.
+fn platform_of(target: Option<&Target>) -> &'static str {
+    match target {
+        Some(_) => install::wsl_platform(),
+        None => install::host_platform(),
+    }
+    .unwrap_or("")
 }
 
 /// A path of this computer as the server sees it.
@@ -251,9 +291,21 @@ impl App {
             let candidates = self.lsp_defs_for(&lang);
             let dead = |m: &str, n: &str| self.lsp.servers.iter().find(|s| s.module == m && s.def.name == n).and_then(|s| s.dead.clone());
             let Some((module, def)) = candidates.iter().find(|(m, d)| dead(m, &d.name).is_none()).cloned() else {
-                // none is left: the user hears why the best one is not there, once
-                if let Some(why) = candidates.first().and_then(|(m, d)| dead(m, &d.name)) {
-                    self.tell_once(format!("lsp:{lang}"), why, Sev::Weak);
+                // none is left: Light offers to install one it can; else the user hears why the best one is not there
+                let platform = platform_of(target.as_ref());
+                let installable = candidates.iter().find(|(_, d)| d.install.as_ref().is_some_and(|i| i.available_for(platform)) && !self.lsp.declined.contains(&d.name)).cloned();
+                match installable {
+                    Some((module, def)) => {
+                        if self.lsp.offer.is_none() && self.lsp.installing.is_none() {
+                            let language = d.ed.language().map(|l| l.name().to_string()).unwrap_or_else(|| lang.clone());
+                            self.lsp.offer = Some(Offer { module, def, language });
+                        }
+                    }
+                    None => {
+                        if let Some(why) = candidates.first().and_then(|(m, d)| dead(m, &d.name)) {
+                            self.tell_once(format!("lsp:{lang}"), why, Sev::Weak);
+                        }
+                    }
                 }
                 continue;
             };
@@ -316,6 +368,7 @@ impl App {
             }
         }
         self.take_lsp_outputs();
+        self.poll_install(ctx);
         self.poll_rename_check();
         self.poll_usages_check();
         // what the server says wakes the UI by itself; the text that waits for typing to pause does not
@@ -327,9 +380,16 @@ impl App {
     fn start_server(&mut self, si: usize, ctx: &egui::Context) {
         let now = self.now;
         let s = &mut self.lsp.servers[si];
+        let platform = platform_of(s.target.as_ref());
+        // a server Light installed comes first: its folders lead PATH
+        let installed = match s.target {
+            Some(_) => vec![],
+            None => install::host_dir().map(|dir| install::host_paths(&s.def, &dir, platform)).unwrap_or_default(),
+        };
+        let path = std::env::join_paths(installed.iter().cloned().chain(std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()))).ok();
         // on this computer a server that is not installed is known before it is started (what `cmd` says when it
         // cannot find a program is no different from a failure); in Linux the shell's 127 tells
-        if s.target.is_none() && ide_core::cmdscript::find_program(s.def.program(), std::env::var_os("PATH").as_deref()).is_none() {
+        if s.target.is_none() && ide_core::cmdscript::find_program(s.def.program(), path.as_deref()).is_none() {
             s.dead = Some(not_found(s.def.program()));
             return;
         }
@@ -337,9 +397,16 @@ impl App {
         let (mut cmd, cleanup) = match &s.target {
             Some(t) => {
                 let marker = wsl::new_marker();
+                let line = install::wsl_line(&s.def, &install::wsl_dir(), platform, &line);
                 (wsl::shell(t, &s.root, &line, &[], &marker), Some(wsl::Cleanup { target: t.clone(), marker }))
             }
-            None => (ide_core::cmdscript::shell_command(&line, &s.root, &[]), None),
+            None => {
+                let mut c = ide_core::cmdscript::shell_command(&line, &s.root, &[]);
+                if let Some(p) = &path {
+                    c.env("PATH", p);
+                }
+                (c, None)
+            }
         };
         lisp_runtime::no_window(&mut cmd);
         let ctx = ctx.clone();
@@ -554,6 +621,115 @@ impl App {
         out
     }
 
+    // ------------------------------------------------------------------ installing servers
+
+    /// Where the offered server is installed, the folder its module is in, and the platform.
+    fn install_place(&self) -> Option<(InstallPlace, PathBuf, &'static str)> {
+        let o = self.lsp.offer.as_ref()?;
+        let module = self.mods.installed.iter().find(|m| m.manifest.id == o.module)?.dir.clone();
+        let target = self.wsl_target();
+        let platform = platform_of(target.as_ref());
+        let place = match target {
+            Some(t) => InstallPlace::Wsl { distro: t.distro, user: None, dir: install::wsl_dir(), mount_root: t.mount_root },
+            None => InstallPlace::Host(install::host_dir()?),
+        };
+        Some((place, module, platform))
+    }
+
+    /// The banner's Install: say what is downloaded, from where and how much, and where it goes, before anything is.
+    pub fn lsp_ask_install(&mut self) {
+        let Some(o) = self.lsp.offer.clone() else { return };
+        let Some((place, module, platform)) = self.install_place() else { return };
+        let units = match install::plan(&o.def, &module, platform) {
+            Ok(u) => u,
+            Err(e) => {
+                self.toast(i18n::fmt("Cannot install {0}: {1}", &[&o.def.name, &e]), Sev::Error);
+                return;
+            }
+        };
+        let list: Vec<String> = units.iter().map(|u| format!("- {} ({}, {} MB)", u.title, u.source, u.size.div_ceil(1_000_000))).collect();
+        let into = match &place {
+            InstallPlace::Host(dir) => dir.display().to_string(),
+            InstallPlace::Wsl { distro, dir, .. } => format!("{dir} ({distro})"),
+        };
+        let message = i18n::fmt(
+            "Light will download and install:\n{0}\ninto {1}. Each download is checked against the SHA-256 its module names, and npm runs no scripts of the packages. What is there already is not downloaded again.",
+            &[&list.join("\n"), &into],
+        );
+        self.popup = Popup::Confirm { kind: ConfirmKind::InstallServer, message };
+    }
+
+    /// Install the offered server (the user said yes), in the background.
+    pub fn lsp_install(&mut self) {
+        let Some(o) = self.lsp.offer.clone() else { return };
+        let Some((place, module, platform)) = self.install_place() else { return };
+        let Some(downloads) = install::host_dir().map(|d| d.join("downloads")) else { return };
+        let units = match install::plan(&o.def, &module, platform) {
+            Ok(u) => u,
+            Err(e) => {
+                self.toast(i18n::fmt("Cannot install {0}: {1}", &[&o.def.name, &e]), Sev::Error);
+                return;
+            }
+        };
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let r = install::run(&units, &place, &downloads, &mut |l| {
+                let _ = tx.send(InstallMsg::Line(l.to_string()));
+            });
+            let _ = tx.send(InstallMsg::Done(r));
+        });
+        self.lsp.install_failed = None;
+        self.lsp.installing = Some(Installing { server: o.def.name.clone(), last: String::new(), log: vec![], rx });
+    }
+
+    /// The banner's "Not now": no more offers of this server in this run of the IDE.
+    pub fn lsp_decline_install(&mut self) {
+        if let Some(o) = self.lsp.offer.take() {
+            self.lsp.declined.insert(o.def.name);
+        }
+        self.lsp.install_failed = None;
+    }
+
+    /// Take what the running install said; when it is done, the server starts (or the banner says why not).
+    fn poll_install(&mut self, ctx: &egui::Context) {
+        let Some(inst) = self.lsp.installing.as_mut() else { return };
+        ctx.request_repaint_after(Duration::from_millis(150));
+        let mut done = None;
+        while let Ok(m) = inst.rx.try_recv() {
+            match m {
+                InstallMsg::Line(l) => {
+                    inst.last = l.clone();
+                    inst.log.push(l);
+                }
+                InstallMsg::Done(r) => done = Some(r),
+            }
+        }
+        let Some(result) = done else { return };
+        let Some(inst) = self.lsp.installing.take() else { return };
+        // the log is kept beside the servers, for when something went wrong
+        let log_path = install::host_dir().map(|d| d.join("install.log"));
+        if let Some(p) = &log_path {
+            let _ = std::fs::create_dir_all(p.parent().unwrap_or(Path::new(".")));
+            let _ = std::fs::write(p, inst.log.join("\n") + "\n");
+        }
+        match result {
+            Ok(()) => {
+                self.lsp.offer = None;
+                // it starts afresh, with the folders it was installed in
+                let (gone, keep): (Vec<Server>, Vec<Server>) = std::mem::take(&mut self.lsp.servers).into_iter().partition(|s| s.def.name == inst.server);
+                self.lsp.servers = keep;
+                for s in gone {
+                    self.end_server(s);
+                }
+                self.toast(i18n::fmt("{} is installed", &[&inst.server]), Sev::Weak);
+            }
+            Err(e) => {
+                let where_log = log_path.map(|p| p.display().to_string()).unwrap_or_default();
+                self.lsp.install_failed = Some((inst.server, e, where_log));
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ what the editor asks
 
     /// Ask the server where the name at the caret is defined. False when no server can tell (the caller looks in
@@ -650,6 +826,7 @@ impl App {
     /// them (the UI tests wait for this).
     pub fn lsp_idle(&self) -> bool {
         self.lsp.pending.is_empty()
+            && self.lsp.installing.is_none()
             && self.lsp.rename_check.is_none()
             && self.lsp.usages_check.is_none()
             && self.lsp.servers.iter().all(|s| {

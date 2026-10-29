@@ -334,6 +334,8 @@ pub enum ConfirmKind {
     DeleteLocal(u64),
     /// A language server's rename that leaves the name in files it does not see (the plan waits in the LSP state).
     PartialRename,
+    /// Light downloads and installs the language server the banner offers.
+    InstallServer,
 }
 
 /// Messages from the background clone thread.
