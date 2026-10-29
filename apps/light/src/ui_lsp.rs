@@ -22,6 +22,8 @@ impl App {
         let running = self.lsp.installing.as_ref().map(|i| i.last.clone());
         let tint = if failed.is_some() { pal.error } else { pal.accent };
         egui::Frame::new().fill(tint.gamma_multiply(0.12)).corner_radius(widgets::radius()).stroke(Stroke::new(1.0, tint.gamma_multiply(0.4))).inner_margin(egui::Margin::symmetric(14, 10)).outer_margin(egui::Margin { left: 12, right: 12, top: 8, bottom: 0 }).show(ui, |ui| {
+            // as wide as the editor whatever it holds (while it installs there are no buttons to stretch it)
+            ui.set_min_width(ui.available_width());
             ui.horizontal(|ui| {
                 let (r, _) = ui.allocate_exact_size(Vec2::splat(18.0), Sense::hover());
                 let icon = match (&running, &failed) {
