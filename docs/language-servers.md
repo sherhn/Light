@@ -29,20 +29,40 @@ This serves run commands, checks, the terminal and servers alike.
 ## Which server serves a language
 
 `lsp` is a list; a language may have several servers, best first. The first that starts serves it. One that is not
-installed (the shell says 127, `cmd` says 9009) gives way to the next, and the user is told only when none is there.
+installed gives way to the next, and the user is told only when none is there. On this computer a missing server is
+known before it is started (its program is looked for on PATH; `cmd` would only say 1); in Linux the shell's 127 tells.
 
 A server is looked for in Light's own folder of installed servers first (below), then on PATH: a server the user
 installed with apt, Homebrew or by hand works as it is.
 
-Each server says which LSP language id each of its languages has (`jsx` is `javascriptreact`).
+Each server says which LSP language id each of its languages has (`jsx` is `javascriptreact`), its
+`initializationOptions` and its settings: the answers to `workspace/configuration`, also sent once it is ready
+(basedpyright gets the checks of pyright's default; typescript-language-server renames a name everywhere instead of
+aliasing it where it is imported).
+
+## What the client copes with
+
+Found by running the real servers (`crates/ide-core/tests/lsp_clangd.rs`, `lsp_servers.rs`, `lsp_install.rs`):
+
+- clangd 18 agrees on UTF-8 positions only by its own `offsetEncoding`, not the protocol's `positionEncodings`;
+  both are offered, and UTF-16 is used with servers that take neither.
+- Servers built on VS Code's libraries write `file:///e%3A/...` for the `file:///E:/...` they were told: documents are
+  matched by a key (decoded, Windows paths without case).
+- typescript-language-server says nothing when a changed text has no problems again: "no problems" is carried over
+  to the new text until the server says more.
+- Its member completions replace the `.` before the word (`.max` for `Math.`): what an item repeats of the text
+  before the word is left out of it, what it does not is replaced.
+- Without a `compile_commands.json` clangd sees only what the open files include: Find Usages adds what the text has
+  in the files it did not name, and a rename that would leave the name in such files is asked about first.
 
 ## Servers Light installs
 
 A server that is not installed can be installed by Light, at the user's click, into a folder of its own:
 
 - this computer: `<local data>/Light/servers/<server>-<version>/` (`%LOCALAPPDATA%`, `~/Library/Application Support`,
-  `~/.local/share`);
-- a WSL distribution: `~/.local/share/light/servers/<server>-<version>/` of the project user.
+  `~/.local/share`), or `LIGHT_SERVERS_DIR`;
+- a WSL distribution: `~/.local/share/light/servers/<server>-<version>/`, or `LIGHT_WSL_SERVERS_DIR` (an absolute
+  Linux path; anything else is ignored). The downloads stay on this computer, in `<servers>/downloads`.
 
 Nothing is installed system-wide, nothing needs administrator rights, and removing the folder removes the server.
 A stamp file written last marks an install as complete; a half-finished one is installed again.
@@ -56,8 +76,8 @@ Every recipe pins exact versions and checks what it downloads:
 | `archive` | a release download (GitHub) | SHA-256 pinned in the module, per platform |
 
 `npm ci` runs with `--ignore-scripts`: no package code runs while installing. npm servers run on a Node runtime
-Light installs the same way (the current LTS), so they do not depend on the Node the system has (Ubuntu 24.04 has 18,
-the servers want 20 or 22).
+Light installs the same way (the current LTS, 24), so they do not depend on the Node the system has (Ubuntu 24.04 has 18,
+typescript-language-server 6 and the Compose server want 22).
 
 The module's own files (lockfiles included) are checked against the registry's `index.json` like every other module
 file.
@@ -66,8 +86,12 @@ file.
 
 When a file of a language whose servers are all missing is opened, a banner says what would be gained and offers
 **Install**. Before anything is downloaded the dialog says what (name, version, source, size). The install runs in
-the background with a log, like the Linux developer tools; the server starts when it is done. Servers can be removed
-from Settings.
+the background; the banner shows its progress, and why it failed (with the log, `<servers>/install.log`). The server
+starts when it is done. "Not now" stops the offers of that server until Light starts again. To remove a server,
+delete its folder.
+
+The banner waits while Light asks whether the project runs on Windows or in Linux: where a server is installed
+depends on it.
 
 ## The servers
 
