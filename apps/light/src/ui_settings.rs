@@ -303,6 +303,7 @@ impl App {
                                     ui.add_space(14.0);
                                 });
                             }
+                            self.draw_lsp_settings(ui);
                         }
                         5 => {
                             group(ui, &pal, tr("Get from Version Control"), |ui, rows| {

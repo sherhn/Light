@@ -1077,6 +1077,28 @@ impl App {
                 }
             }
             "lsp_install_click" => self.lsp_ask_install(),
+            // the language servers of the settings: `status` is installed, path, missing or looking
+            "assert_lsp_status" => {
+                let (_, rows) = self.lsp_server_rows();
+                let got = rows.iter().find(|r| r.def.name == sval).map(|r| match r.status {
+                    Some(ide_core::lsp::install::Status::Installed) => "installed",
+                    Some(ide_core::lsp::install::Status::OnPath) => "path",
+                    Some(ide_core::lsp::install::Status::Missing) => "missing",
+                    None => "looking",
+                });
+                let want = step["status"].as_str().unwrap_or("");
+                if got != Some(want) {
+                    self.fail(format!("assert_lsp_status: {sval} expected {want}, got {got:?}"));
+                }
+            }
+            "lsp_settings_ask" => self.lsp.settings_confirm = Some(sval.clone()),
+            "lsp_remove" => {
+                let (_, rows) = self.lsp_server_rows();
+                match rows.into_iter().find(|r| r.def.name == sval) {
+                    Some(r) => self.lsp_remove(&r.module, &r.def),
+                    None => self.fail(format!("lsp_remove: no server {sval}")),
+                }
+            }
             "log_lsp" => println!("[lsp] {}", self.lsp_state()),
             "lsp_decline" => self.lsp_decline_install(),
             "assert_lsp_install_failed" => match &self.lsp.install_failed {

@@ -112,6 +112,21 @@ pub struct Offer {
     pub language: String,
 }
 
+/// A language server of a module that is on, as the settings list it.
+pub struct ServerRow {
+    pub module: String,
+    pub def: LspDef,
+    /// The names of its languages.
+    pub languages: String,
+    /// Where it stands where the project runs (`None`: still asked, in Linux).
+    pub status: Option<install::Status>,
+    /// Light can install it there.
+    pub installable: bool,
+}
+
+/// The answer of a look at what is installed in Linux: (the place's key, server name and status of each, or why not).
+type WslStatus = (String, Result<Vec<(String, install::Status)>, String>);
+
 /// What an install says while it runs.
 enum InstallMsg {
     Line(String),
@@ -157,6 +172,12 @@ pub struct LspState {
     /// Documents a server was just told about: (server id, document id).
     opened: Vec<(u64, u64)>,
     pub offer: Option<Offer>,
+    /// Where the servers stand in the project's Linux, as the settings show it: (the place's key, server name ->
+    /// status), and the look that runs.
+    wsl_status: Option<(String, HashMap<String, install::Status>)>,
+    wsl_status_rx: Option<Receiver<WslStatus>>,
+    /// The server whose install the settings ask about (what it downloads is shown first).
+    pub settings_confirm: Option<String>,
     /// Servers the user said "not now" to, by name (for this run of the IDE).
     declined: HashSet<String>,
     pub installing: Option<Installing>,
@@ -680,7 +701,12 @@ impl App {
     /// Where the offered server is installed, the folder its module is in, and the platform.
     fn install_place(&self) -> Option<(InstallPlace, PathBuf, &'static str)> {
         let o = self.lsp.offer.as_ref()?;
-        let module = self.mods.installed.iter().find(|m| m.manifest.id == o.module)?.dir.clone();
+        self.place_for(&o.module)
+    }
+
+    /// Where servers go for the open project, the folder of the module `module`, and the platform.
+    fn place_for(&self, module: &str) -> Option<(InstallPlace, PathBuf, &'static str)> {
+        let module = self.mods.installed.iter().find(|m| m.manifest.id == module)?.dir.clone();
         let target = self.wsl_target();
         let platform = platform_of(target.as_ref());
         let place = match target {
@@ -736,6 +762,101 @@ impl App {
         self.lsp.installing = Some(Installing { server: o.def.name.clone(), last: String::new(), log: vec![], rx });
     }
 
+    /// The language servers of the modules that are on, and where each stands where the project runs: on this
+    /// computer it is looked at now, in Linux asked in the background (the rows say `None` until the answer comes).
+    /// Also says where that is, as the user knows it.
+    pub fn lsp_server_rows(&mut self) -> (String, Vec<ServerRow>) {
+        let target = self.wsl_target();
+        let platform = platform_of(target.as_ref());
+        let mut rows = vec![];
+        for m in self.mods.installed.iter().filter(|m| m.enabled) {
+            for def in &m.manifest.lsp {
+                let languages = def.languages.iter().map(|l| m.manifest.languages.iter().find(|x| x.id == *l).map_or(l.clone(), |x| x.name.clone())).collect::<Vec<_>>().join(", ");
+                let installable = def.install.as_ref().is_some_and(|i| i.available_for(platform));
+                rows.push(ServerRow { module: m.manifest.id.clone(), def: def.clone(), languages, status: None, installable });
+            }
+        }
+        let place = match &target {
+            None => {
+                let dir = install::host_dir();
+                for r in &mut rows {
+                    r.status = Some(install::host_status(&r.def, dir.as_deref(), platform));
+                }
+                return (tr("this computer").to_string(), rows);
+            }
+            Some(t) => InstallPlace::Wsl { distro: t.distro.clone(), user: None, dir: install::wsl_dir(), mount_root: t.mount_root.clone() },
+        };
+        let (distro, dir) = match &place {
+            InstallPlace::Wsl { distro, dir, .. } => (distro.clone(), dir.clone()),
+            InstallPlace::Host(_) => unreachable!("a WSL place"),
+        };
+        let key = format!("{distro}|{dir}|{}", rows.iter().map(|r| r.def.name.as_str()).collect::<Vec<_>>().join(","));
+        if let Some(rx) = &self.lsp.wsl_status_rx
+            && let Ok((k, r)) = rx.try_recv()
+        {
+            self.lsp.wsl_status_rx = None;
+            if let Ok(list) = r {
+                self.lsp.wsl_status = Some((k, list.into_iter().collect()));
+            }
+        }
+        match &self.lsp.wsl_status {
+            Some((k, map)) if *k == key => {
+                for r in &mut rows {
+                    r.status = map.get(&r.def.name).cloned();
+                }
+            }
+            _ if self.lsp.wsl_status_rx.is_none() && !rows.is_empty() => {
+                let asked: Vec<(String, String)> = rows.iter().map(|r| (r.def.install.as_ref().map_or_else(|| format!("{}-", r.def.name), |i| i.folder(&r.def.name)), r.def.program().to_string())).collect();
+                let names: Vec<String> = rows.iter().map(|r| r.def.name.clone()).collect();
+                let (tx, rx) = mpsc::channel();
+                let k = key.clone();
+                std::thread::spawn(move || {
+                    let r = install::wsl_status(&place, &asked).map(|s| names.into_iter().zip(s).collect());
+                    let _ = tx.send((k, r));
+                });
+                self.lsp.wsl_status_rx = Some(rx);
+            }
+            _ => {}
+        }
+        (i18n::fmt("Linux ({})", &[&distro]), rows)
+    }
+
+    /// What installing `def` of `module` downloads, line by line, and where it goes.
+    pub fn lsp_install_lines(&self, module: &str, def: &LspDef) -> Result<(Vec<String>, String), String> {
+        let (place, dir, platform) = self.place_for(module).ok_or_else(|| tr("there is no folder for the servers").to_string())?;
+        let units = install::plan(def, &dir, platform)?;
+        let into = match &place {
+            InstallPlace::Host(d) => d.display().to_string(),
+            InstallPlace::Wsl { distro, dir, .. } => format!("{dir} ({distro})"),
+        };
+        Ok((units.iter().map(|u| format!("{} ({}, {} MB)", u.title, u.source, u.size.div_ceil(1_000_000))).collect(), into))
+    }
+
+    /// Install `def` of `module` from the settings (the user has seen what it downloads).
+    pub fn lsp_install_from_settings(&mut self, module: &str, def: &LspDef) {
+        let manifest = self.mods.installed.iter().find(|m| m.manifest.id == module).map(|m| &m.manifest);
+        let language = def.languages.first().map(|l| manifest.and_then(|m| m.languages.iter().find(|x| x.id == *l)).map_or(l.clone(), |x| x.name.clone())).unwrap_or_default();
+        self.lsp.declined.remove(&def.name);
+        self.lsp.offer = Some(Offer { module: module.to_string(), def: def.clone(), language });
+        self.lsp.settings_confirm = None;
+        self.lsp_install();
+    }
+
+    /// Remove `def` where the project runs; its servers stop, and start again from what is left (PATH).
+    pub fn lsp_remove(&mut self, module: &str, def: &LspDef) {
+        let Some((place, _, _)) = self.place_for(module) else { return };
+        match install::remove(def, &place) {
+            Ok(()) => self.toast(i18n::fmt("{} is removed", &[&def.name]), Sev::Weak),
+            Err(e) => self.toast(i18n::fmt("Cannot remove {0}: {1}", &[&def.name, &e]), Sev::Error),
+        }
+        let (gone, keep): (Vec<Server>, Vec<Server>) = std::mem::take(&mut self.lsp.servers).into_iter().partition(|s| s.def.name == def.name);
+        self.lsp.servers = keep;
+        for s in gone {
+            self.end_server(s);
+        }
+        self.lsp.wsl_status = None;
+    }
+
     /// The banner's "Not now": no more offers of this server in this run of the IDE.
     pub fn lsp_decline_install(&mut self) {
         if let Some(o) = self.lsp.offer.take() {
@@ -776,6 +897,7 @@ impl App {
                     self.end_server(s);
                 }
                 self.toast(i18n::fmt("{} is installed", &[&inst.server]), Sev::Weak);
+                self.lsp.wsl_status = None;
             }
             Err(e) => {
                 let where_log = log_path.map(|p| p.display().to_string()).unwrap_or_default();

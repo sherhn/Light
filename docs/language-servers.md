@@ -87,8 +87,11 @@ file.
 When a file of a language whose servers are all missing is opened, a banner says what would be gained and offers
 **Install**. Before anything is downloaded the dialog says what (name, version, source, size). The install runs in
 the background; the banner shows its progress, and why it failed (with the log, `<servers>/install.log`). The server
-starts when it is done. "Not now" stops the offers of that server until Light starts again. To remove a server,
-delete its folder.
+starts when it is done. "Not now" stops the offers of that server until Light starts again.
+
+Settings > Modules > Language servers lists the servers of the modules that are on and where each stands where the
+project runs (installed by Light, found on PATH, not installed): Install there says what is downloaded before it is,
+and Remove takes out what Light installed.
 
 The banner waits while Light asks whether the project runs on Windows or in Linux: where a server is installed
 depends on it.
