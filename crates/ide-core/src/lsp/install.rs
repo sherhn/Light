@@ -325,6 +325,51 @@ pub fn run(units: &[Unit], place: &Place, downloads: &Path, log: &mut dyn FnMut(
     Ok(())
 }
 
+/// Where a server stands at a place.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Status {
+    /// Light installed it (in its folder of servers).
+    Installed,
+    /// The user's own: its program is on PATH.
+    OnPath,
+    Missing,
+}
+
+/// Where the server `def` stands on this computer, from the folder of its servers `dir`.
+pub fn host_status(def: &LspDef, dir: Option<&Path>, platform: &str) -> Status {
+    if dir.is_some_and(|d| !host_paths(def, d, platform).is_empty()) {
+        Status::Installed
+    } else if crate::cmdscript::find_program(def.program(), std::env::var_os("PATH").as_deref()).is_some() {
+        Status::OnPath
+    } else {
+        Status::Missing
+    }
+}
+
+/// Where each server (its install folder and its program) stands at a WSL place, asked in one call (the user's login
+/// shell, whose PATH the servers start with).
+pub fn wsl_status(place: &Place, servers: &[(String, String)]) -> Result<Vec<Status>, String> {
+    let Place::Wsl { distro, user, dir, .. } = place else { return Err("not a WSL place".into()) };
+    let script = format!("for s in \"$@\"; do f=${{s%%|*}}; p=${{s#*|}}; if [ -f \"{dir}/$f/{STAMP}\" ]; then echo installed; elif command -v \"$p\" >/dev/null 2>&1; then echo path; else echo missing; fi; done");
+    let mut c = crate::wsl::command_as_user(distro, user.as_deref(), Some("~"), "sh");
+    c.args(["-lc", &script, "sh"]).args(servers.iter().map(|(f, p)| format!("{f}|{p}")));
+    let out = quiet(&mut c).output().map_err(|e| e.to_string())?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let found: Vec<Status> = text
+        .lines()
+        .filter_map(|l| match l.trim() {
+            "installed" => Some(Status::Installed),
+            "path" => Some(Status::OnPath),
+            "missing" => Some(Status::Missing),
+            _ => None,
+        })
+        .collect();
+    if found.len() != servers.len() {
+        return Err(format!("{distro} did not answer: {}", String::from_utf8_lossy(&out.stderr).trim()));
+    }
+    Ok(found)
+}
+
 /// Remove the server `def` from the place (its runtime stays: other servers may run on it).
 pub fn remove(def: &LspDef, place: &Place) -> Result<(), String> {
     let Some(install) = &def.install else { return Ok(()) };
@@ -418,6 +463,23 @@ mod tests {
         for bad in ["C:/Program Files/Git/mnt/e/servers", "servers", "/x\"; rm -rf ~", "/x/$(id)", "/x/`id`", "$HOME$PATH", ""] {
             assert_eq!(checked_wsl_dir(Some(bad.into())), default, "{bad}");
         }
+    }
+
+    #[test]
+    fn where_a_server_stands_here() {
+        let d = TempDir::new("install-status");
+        let def = npm_server(d.path());
+        let platform = host_platform().unwrap();
+        assert_eq!(host_status(&def, Some(d.path()), platform), Status::Missing);
+        assert_eq!(host_status(&def, None, platform), Status::Missing);
+        std::fs::create_dir_all(d.path().join("basedpyright-1.40.2")).unwrap();
+        std::fs::write(d.path().join("basedpyright-1.40.2").join(STAMP), "x").unwrap();
+        // installed only where Light can install it (the test recipe has linux-x64 and win-x64)
+        if def.install.as_ref().unwrap().available_for(platform) {
+            assert_eq!(host_status(&def, Some(d.path()), platform), Status::Installed);
+        }
+        let shell = LspDef { command: if cfg!(windows) { "cmd".into() } else { "sh".into() }, install: None, ..def };
+        assert_eq!(host_status(&shell, Some(d.path()), platform), Status::OnPath);
     }
 
     #[test]

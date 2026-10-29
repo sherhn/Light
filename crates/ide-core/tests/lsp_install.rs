@@ -108,3 +108,19 @@ fn every_recipe_installs_and_its_server_starts_in_wsl() {
         answers(cmd, &wsl_dir, &def.name);
     }
 }
+
+#[test]
+fn what_is_installed_in_wsl_is_told() {
+    let (Ok(distro), Ok(wsl_dir)) = (std::env::var("LIGHT_TEST_INSTALL_WSL"), std::env::var("LIGHT_TEST_INSTALL_WSL_DIR")) else {
+        eprintln!("LIGHT_TEST_INSTALL_WSL / LIGHT_TEST_INSTALL_WSL_DIR not set: skipped");
+        return;
+    };
+    let place = Place::Wsl { distro, user: None, dir: wsl_dir, mount_root: "/mnt/".into() };
+    let mut asked: Vec<(String, String)> = servers().iter().map(|(_, d)| (d.install.as_ref().unwrap().folder(&d.name), d.program().to_string())).collect();
+    asked.push(("nothing-1.0".into(), "sh".into()));
+    asked.push(("nothing-1.0".into(), "no-such-program-at-all".into()));
+    let status = install::wsl_status(&place, &asked).unwrap();
+    let n = asked.len();
+    assert!(status[..n - 2].iter().all(|s| *s == install::Status::Installed), "{asked:?} {status:?}");
+    assert_eq!(status[n - 2..], [install::Status::OnPath, install::Status::Missing]);
+}
