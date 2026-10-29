@@ -80,6 +80,8 @@ impl App {
             "checks_idle" => self.checks.idle(),
             "lsp_idle" => self.lsp_idle(),
             "lsp_install_done" => self.lsp.installing.is_none(),
+            // a problem whose message has `value` is shown
+            "problem" => self.all_problems().iter().any(|p| p.message.contains(cond["value"].as_str().unwrap_or(""))),
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             "git_settled" => self.git.rx.is_none(),
@@ -1075,6 +1077,7 @@ impl App {
                 }
             }
             "lsp_install_click" => self.lsp_ask_install(),
+            "log_lsp" => println!("[lsp] {}", self.lsp_state()),
             "lsp_decline" => self.lsp_decline_install(),
             "assert_lsp_install_failed" => match &self.lsp.install_failed {
                 Some((_, why, _)) if why.contains(&sval) => {}

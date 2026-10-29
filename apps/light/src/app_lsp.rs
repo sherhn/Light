@@ -51,6 +51,8 @@ struct SentDoc {
     rev: u64,
     /// Which revision each of the last versions the server heard of is.
     versions: Vec<(i64, u64)>,
+    /// When a "no problems" was carried over to a newer text the server has said nothing of yet (UI clock).
+    quiet_since: Option<f64>,
 }
 
 struct Server {
@@ -67,6 +69,11 @@ struct Server {
     restarts: u32,
     /// Why it is not running, once it will not be started again.
     dead: Option<String>,
+    /// It says "no problems" again of a text it had said so of before (clangd, basedpyright do; typescript-language-
+    /// server and asm-lsp do not): then a carried "no problems" is not the last word.
+    repeats_quiet: bool,
+    /// It has said what is wrong in a document at least once (a server starting cold may take a while to).
+    heard: bool,
 }
 
 /// A rename the server answered, waiting for the look through the project's text: does the name appear in files of
@@ -144,6 +151,11 @@ pub struct LspState {
     rename_check: Option<RenameCheck>,
     partial_rename: Option<PartialRename>,
     usages_check: Option<UsagesCheck>,
+    /// Documents whose new text a server was just told: (server id, document id, the revision it had before, whether
+    /// the server had that very text already).
+    carry: Vec<(u64, u64, u64, bool)>,
+    /// Documents a server was just told about: (server id, document id).
+    opened: Vec<(u64, u64)>,
     pub offer: Option<Offer>,
     /// Servers the user said "not now" to, by name (for this run of the IDE).
     declined: HashSet<String>,
@@ -316,7 +328,7 @@ impl App {
                 None => {
                     self.lsp.next_id += 1;
                     let id = self.lsp.next_id;
-                    self.lsp.servers.push(Server { id, module, def, root: root.clone(), target: target.clone(), session: None, cleanup: None, docs: HashMap::new(), started: 0.0, restarts: 0, dead: None });
+                    self.lsp.servers.push(Server { id, module, def, root: root.clone(), target: target.clone(), session: None, cleanup: None, docs: HashMap::new(), started: 0.0, restarts: 0, dead: None, repeats_quiet: false, heard: false });
                     self.lsp.servers.len() - 1
                 }
             };
@@ -358,16 +370,19 @@ impl App {
                         let lang = d.ed.language().map(|l| l.id().to_string()).unwrap_or_default();
                         session.open(&uri, s.def.language_id(&lang), d.ed.text());
                         let version = session.version(&uri).unwrap_or(1);
-                        s.docs.insert(d.id, SentDoc { uri, rev, versions: vec![(version, rev)] });
+                        s.docs.insert(d.id, SentDoc { uri, rev, versions: vec![(version, rev)], quiet_since: None });
+                        self.lsp.opened.push((s.id, d.id));
                     }
                     Some(sent) if sent.rev != rev && now - d.view.last_input_time >= SETTLE => {
-                        session.change(&sent.uri, d.ed.text());
-                        record(sent, session, rev);
+                        let before = sent.rev;
+                        let same = tell(sent, session, d.ed.text(), rev);
+                        self.lsp.carry.push((s.id, d.id, before, same));
                     }
                     Some(sent) => waiting |= sent.rev != rev,
                 }
             }
         }
+        self.carry_quiet();
         self.take_lsp_outputs();
         self.poll_install(ctx);
         self.poll_rename_check();
@@ -537,15 +552,20 @@ impl App {
     }
 
     fn lsp_diagnostics(&mut self, sid: u64, uri: &str, version: Option<i64>, list: &[Diagnostic]) {
-        let Some(s) = self.lsp.servers.iter().find(|s| s.id == sid) else { return };
+        let Some(s) = self.lsp.servers.iter_mut().find(|s| s.id == sid) else { return };
         let Some(session) = s.session.as_ref() else { return };
-        let Some((&doc, sent)) = s.docs.iter().find(|(_, d)| d.uri == uri) else { return };
+        let Some((&doc, sent)) = s.docs.iter_mut().find(|(_, d)| d.uri == uri) else { return };
+        if sent.quiet_since.take().is_some() && list.is_empty() {
+            s.repeats_quiet = true;
+        }
+        s.heard = true;
         // problems of an older text than the server has are followed by newer ones
         let latest = session.version(uri);
         if version.is_some() && version != latest {
             return;
         }
-        let Some(rev) = sent.versions.iter().find(|(v, _)| Some(*v) == latest).map(|(_, r)| *r) else { return };
+        // the newest revision of that version (one text may be several revisions: typed and taken back)
+        let Some(rev) = sent.versions.iter().rev().find(|(v, _)| Some(*v) == latest).map(|(_, r)| *r) else { return };
         let (Some(text), enc) = (session.text(uri), session.caps.encoding) else { return };
         let found = markers(text, list, enc);
         if let Some(d) = self.docs.iter_mut().find(|d| d.id == doc) {
@@ -562,10 +582,41 @@ impl App {
         let session = s.session.as_mut().filter(|x| x.ready() && need(&x.caps))?;
         let sent = s.docs.get_mut(&d.id)?;
         if sent.rev != d.ed.revision() {
-            session.change(&sent.uri, d.ed.text());
-            record(sent, session, d.ed.revision());
+            let before = sent.rev;
+            let same = tell(sent, session, d.ed.text(), d.ed.revision());
+            self.lsp.carry.push((s.id, d.id, before, same));
         }
-        Some((s.id, sent.uri.clone()))
+        let found = (s.id, sent.uri.clone());
+        self.carry_quiet();
+        Some(found)
+    }
+
+    /// What a server said of a document's text holds for its new revision when the text is the same (typed and
+    /// taken back before the server heard of it). And a server told a new text says nothing when it finds no problems
+    /// again (typescript-language-server): the "no problems" it said before holds for the new text too, until it
+    /// says more.
+    fn carry_quiet(&mut self) {
+        let now = self.now;
+        // a document the server has just been told about has no problems until it says some (a server may say
+        // nothing at all: asm-lsp without a compiler to ask)
+        for (sid, doc) in std::mem::take(&mut self.lsp.opened) {
+            let Some(sent) = self.lsp.servers.iter_mut().find(|s| s.id == sid).and_then(|s| s.docs.get_mut(&doc)) else { continue };
+            if let Some(d) = self.docs.iter_mut().find(|d| d.id == doc) {
+                d.lsp_markers.clear();
+                d.lsp_rev = sent.rev;
+                sent.quiet_since = Some(now);
+            }
+        }
+        for (sid, doc, before, same) in std::mem::take(&mut self.lsp.carry) {
+            let Some(sent) = self.lsp.servers.iter_mut().find(|s| s.id == sid).and_then(|s| s.docs.get_mut(&doc)) else { continue };
+            let Some(d) = self.docs.iter_mut().find(|d| d.id == doc).filter(|d| d.lsp_rev == before) else { continue };
+            if same {
+                d.lsp_rev = sent.rev;
+            } else if d.lsp_markers.is_empty() {
+                d.lsp_rev = sent.rev;
+                sent.quiet_since = Some(now);
+            }
+        }
     }
 
     /// Tell server `sid` the current text of every document it has (before a request about the whole project).
@@ -576,10 +627,12 @@ impl App {
             if let Some(sent) = s.docs.get_mut(&d.id)
                 && sent.rev != d.ed.revision()
             {
-                session.change(&sent.uri, d.ed.text());
-                record(sent, session, d.ed.revision());
+                let before = sent.rev;
+                let same = tell(sent, session, d.ed.text(), d.ed.revision());
+                self.lsp.carry.push((sid, d.id, before, same));
             }
         }
+        self.carry_quiet();
     }
 
     /// `textDocument` and `position` of byte `offset` in a document the server has.
@@ -823,6 +876,31 @@ impl App {
         None
     }
 
+    /// What the servers are doing, for a UI test that waits too long.
+    pub fn lsp_state(&self) -> String {
+        let mut out = format!("pending {}, installing {}, checks {}/{}", self.lsp.pending.len(), self.lsp.installing.is_some(), self.lsp.rename_check.is_some(), self.lsp.usages_check.is_some());
+        for s in &self.lsp.servers {
+            let state = s.session.as_ref().map_or("none".to_string(), |x| format!("{:?}", x.state));
+            out.push_str(&format!("\n  {} ({}): session {state}, dead {:?}", s.def.name, s.module, s.dead));
+            for (id, sent) in &s.docs {
+                let d = self.docs.iter().find(|d| d.id == *id);
+                out.push_str(&format!(
+                    "\n    {} sent rev {} / doc rev {:?} / problems rev {:?} ({:?} markers) / versions {:?} / quiet {:?} / server version {:?} / repeats {}",
+                    sent.uri,
+                    sent.rev,
+                    d.map(|d| d.ed.revision()),
+                    d.map(|d| d.lsp_rev),
+                    d.map(|d| d.lsp_markers.len()),
+                    sent.versions,
+                    sent.quiet_since,
+                    s.session.as_ref().and_then(|x| x.version(&sent.uri)),
+                    s.repeats_quiet
+                ));
+            }
+        }
+        out
+    }
+
     /// Nothing is asked of a server and every one that runs has the documents as they are and said what is wrong in
     /// them (the UI tests wait for this).
     pub fn lsp_idle(&self) -> bool {
@@ -833,7 +911,12 @@ impl App {
             && self.lsp.servers.iter().all(|s| {
                 let Some(session) = s.session.as_ref() else { return s.dead.is_some() || s.docs.is_empty() };
                 session.ready()
-                    && s.docs.iter().all(|(id, sent)| self.docs.iter().find(|d| d.id == *id).is_none_or(|d| sent.rev == d.ed.revision() && d.lsp_rev == sent.rev))
+                    && s.docs.iter().all(|(id, sent)| {
+                        // a carried "no problems" waits for the server that would say it again; from one that would
+                        // not, it is believed once the server has had time to say otherwise
+                        sent.quiet_since.is_none_or(|t| !s.repeats_quiet && self.now - t >= if s.heard { 2.0 } else { 15.0 })
+                            && self.docs.iter().find(|d| d.id == *id).is_none_or(|d| sent.rev == d.ed.revision() && d.lsp_rev == sent.rev)
+                    })
             })
     }
 
@@ -1142,6 +1225,16 @@ impl App {
         }
         Ok((count, files))
     }
+}
+
+/// Tell the server the document's text of revision `rev`. True when it had that very text already (no new version
+/// went out).
+fn tell(sent: &mut SentDoc, session: &mut Session, text: &str, rev: u64) -> bool {
+    let before = session.version(&sent.uri);
+    session.change(&sent.uri, text);
+    let same = session.version(&sent.uri) == before;
+    record(sent, session, rev);
+    same
 }
 
 /// The server was told revision `rev` of a document: remember which version that is.
