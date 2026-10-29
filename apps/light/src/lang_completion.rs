@@ -113,7 +113,7 @@ impl App {
         let mut push = |name: String, kind: &str, source: u8, items: &mut Vec<CItem>| {
             let l = name.to_lowercase();
             if l.starts_with(&low) && l != low && seen.insert(l) {
-                items.push(CItem { text: name, kind: kind.to_string(), source });
+                items.push(CItem { text: name, back: 0, kind: kind.to_string(), source });
             }
         };
         // the language's own words come first, so that a keyword is offered as the keyword it is even when the file

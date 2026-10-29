@@ -106,6 +106,8 @@ pub struct CompletionItem {
     /// `CompletionItemKind`: 2 method, 3 function, 6 variable, 7 class, 14 keyword...
     pub kind: u64,
     pub detail: String,
+    /// The text the item replaces, when the server says (it may begin before the word: the `.` of `.max`).
+    pub range: Option<Range>,
 }
 
 /// A snippet as plain text: `${1:name}` is `name`, `$1` and `$0` are nothing, `\$` is `$`.
@@ -176,6 +178,8 @@ pub fn completion(v: &Value) -> (Vec<CompletionItem>, bool) {
                 sort: i["sortText"].as_str().map_or_else(|| label.clone(), str::to_string),
                 kind: i["kind"].as_u64().unwrap_or(1),
                 detail: i["detail"].as_str().unwrap_or("").trim().to_string(),
+                // a TextEdit's range, or what an InsertReplaceEdit inserts over
+                range: range(&edit["range"]).or_else(|| range(&edit["insert"])),
                 label,
                 insert,
             })
@@ -371,6 +375,9 @@ mod tests {
         assert_eq!((items[0].label.as_str(), items[0].insert.as_str(), items[0].detail.as_str()), ("add(int a, int b)", "add", "int"));
         assert_eq!((items[1].insert.as_str(), items[1].filter.as_str(), items[1].kind), ("while", "while", 14));
         assert_eq!(items[2].insert, "printf(const char *format)");
+        assert_eq!(items[2].range, None, "an edit without a range");
+        let v = json!([{"label": "max", "filterText": ".max", "textEdit": {"newText": ".max", "range": {"start": {"line": 0, "character": 4}, "end": {"line": 0, "character": 5}}}}]);
+        assert_eq!(completion(&v).0[0].range, Some(r(0, 4, 0, 5)));
         assert_eq!(completion(&json!([{"label": "x"}])).0.len(), 1);
         assert_eq!(snippet_text(r"a\$b$1${2:${3:x}y}$0"), "a$bxy");
     }

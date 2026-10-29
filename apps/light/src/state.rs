@@ -306,6 +306,8 @@ pub struct FindBar {
 #[derive(Clone, Debug)]
 pub struct CItem {
     pub text: String,
+    /// Bytes before the word the item replaces too (a server's `.` of `?.member`).
+    pub back: usize,
     pub kind: String,
     pub source: u8,
 }

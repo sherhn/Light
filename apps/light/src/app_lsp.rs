@@ -126,7 +126,8 @@ struct Completions {
     start: usize,
     /// What was typed of the word when they were asked for.
     prefix: String,
-    items: Vec<CompletionItem>,
+    /// With the bytes before the word each one replaces too.
+    items: Vec<(CompletionItem, usize)>,
     /// Typing more must ask again rather than narrow these down.
     incomplete: bool,
 }
@@ -810,9 +811,9 @@ impl App {
             && prefix.starts_with(c.prefix.as_str())
         {
             let low = prefix.to_lowercase();
-            let mut items: Vec<&CompletionItem> = c.items.iter().filter(|i| i.filter.to_lowercase().starts_with(&low)).collect();
-            items.sort_by(|a, b| a.sort.cmp(&b.sort));
-            return Some(items.into_iter().map(|i| CItem { text: i.insert.clone(), kind: badge(i.kind).to_string(), source: 0 }).collect());
+            let mut items: Vec<&(CompletionItem, usize)> = c.items.iter().filter(|(i, _)| i.filter.to_lowercase().starts_with(&low)).collect();
+            items.sort_by(|a, b| a.0.sort.cmp(&b.0.sort));
+            return Some(items.into_iter().map(|(i, back)| CItem { text: i.insert.clone(), back: *back, kind: badge(i.kind).to_string(), source: 0 }).collect());
         }
         let asked = self.lsp.pending.values().any(|p| matches!(p, Pending::Completion { doc: d, start: s, prefix: p, .. } if *d == doc && *s == start && p == prefix));
         if !asked && let Some((sid, uri)) = self.lsp_doc(idx, |c| c.completion) {
@@ -897,6 +898,27 @@ impl App {
             Pending::Completion { doc, start, prefix, explicit } => {
                 let Ok(v) = result else { return };
                 let (items, incomplete) = proto::completion(&v);
+                // an item that replaces text before the word (typescript-language-server's `.max` for the `.` of
+                // `Math.`): what it repeats of that text is left out of it, and what it does not is replaced
+                let s = self.lsp.servers.iter().find(|s| s.id == sid);
+                let text = s.and_then(|s| s.docs.get(&doc)).and_then(|sent| s.and_then(|s| s.session.as_ref()).and_then(|x| x.text(&sent.uri))).unwrap_or("");
+                let enc = s.and_then(|s| s.session.as_ref()).map_or(Encoding::Utf16, |x| x.caps.encoding);
+                let map = LineMap::new(text);
+                let items = items
+                    .into_iter()
+                    .map(|mut i| {
+                        let from = i.range.map_or(start, |r| map.offset(r.start, enc)).min(start);
+                        let before = text.get(from..start).unwrap_or("");
+                        match i.insert.strip_prefix(before) {
+                            Some(rest) if !before.is_empty() => {
+                                i.insert = rest.to_string();
+                                i.filter = i.filter.strip_prefix(before).map_or(i.filter.clone(), str::to_string);
+                                (i, 0)
+                            }
+                            _ => (i, start - from),
+                        }
+                    })
+                    .collect();
                 self.lsp.completions = Some(Completions { doc, start, prefix, items, incomplete });
                 // the list is made again, if the caret is still in that word
                 let still = self.docs.get(self.active).is_some_and(|d| d.id == doc && d.ed.identifier_range_at(d.ed.caret()).0 == start);

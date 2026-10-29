@@ -1016,7 +1016,7 @@ impl App {
                         .lines()
                         .filter_map(|l| {
                             let (n, k) = l.split_once('\t')?;
-                            Some(CItem { text: n.to_string(), kind: k.to_string(), source: 0 })
+                            Some(CItem { text: n.to_string(), back: 0, kind: k.to_string(), source: 0 })
                         })
                         .collect();
                     let mut seen: HashSet<String> = live.iter().map(|c| c.text.to_lowercase()).collect();
@@ -1561,7 +1561,7 @@ impl App {
         let mut push = |text: String, kind: &str, source: u8, items: &mut Vec<CItem>| {
             let l = text.to_lowercase();
             if l.starts_with(&low) && l != low && seen.insert(l) {
-                items.push(CItem { text, kind: kind.to_string(), source });
+                items.push(CItem { text, back: 0, kind: kind.to_string(), source });
             }
         };
         // definitions in the project
@@ -1617,7 +1617,7 @@ impl App {
         if let Some(d) = self.docs.get_mut(self.active) {
             let caret = d.ed.caret();
             if start <= caret {
-                d.ed.replace_range(start, caret, &item.text);
+                d.ed.replace_range(start.saturating_sub(item.back), caret, &item.text);
                 d.view.scroll_to_caret = true;
             }
         }
