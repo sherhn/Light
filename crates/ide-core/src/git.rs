@@ -80,6 +80,57 @@ pub fn git_command(dir: &Path) -> Command {
     }
 }
 
+/// The branch a local branch follows on its remote, and how far apart they are.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Upstream {
+    /// `origin/main`
+    pub name: String,
+    /// Commits here that the remote branch does not have (to push).
+    pub ahead: usize,
+    /// Commits of the remote branch that are not here yet (to pull).
+    pub behind: usize,
+}
+
+/// `git fetch` that never asks anything: no prompt in a terminal, no window of a credential manager, no passphrase of
+/// SSH. Without what it needs it just fails, and it gives up after `timeout`.
+fn fetch_in(dir: &Path, timeout: std::time::Duration) -> Result<(), String> {
+    let mut cmd = git_command(dir);
+    let quiet = [("GCM_INTERACTIVE", "never"), ("SSH_ASKPASS_REQUIRE", "never"), ("GIT_ASKPASS", ""), ("SSH_ASKPASS", "")];
+    match crate::wsl::wsl_path(dir) {
+        Some(_) => crate::wsl::pass_env(&mut cmd, &quiet.map(|(k, v)| (k.to_string(), v.to_string()))),
+        None => {
+            cmd.envs(quiet);
+        }
+    }
+    cmd.args(["-c", "credential.interactive=false", "fetch", "--quiet", "--no-tags", "--prune"]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000 | 0x0000_4000);
+    }
+    let mut child = cmd.spawn().map_err(|e| format!("cannot run git: {e}"))?;
+    let started = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => return Ok(()),
+            Ok(Some(_)) => {
+                let mut err = String::new();
+                if let Some(mut e) = child.stderr.take() {
+                    let _ = std::io::Read::read_to_string(&mut e, &mut err);
+                }
+                return Err(err.trim().to_string());
+            }
+            Ok(None) if started.elapsed() > timeout => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("git fetch took too long".into());
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+}
+
 fn run_in(dir: &Path, args: &[&str]) -> Result<String, String> {
     let mut cmd = git_command(dir);
     cmd.arg("-c").arg("core.quotepath=false").arg("-c").arg("color.ui=false").args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -300,6 +351,20 @@ impl Repo {
         self.run(&["checkout", "-q", "HEAD", "--", &change.path]).map(|_| ())
     }
 
+    /// The branch the current one follows on its remote and how far apart they are, as of the last fetch.
+    pub fn upstream(&self) -> Option<Upstream> {
+        let name = self.run(&["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]).ok()?.trim().to_string();
+        let counts = self.run(&["rev-list", "--left-right", "--count", "HEAD...@{upstream}"]).ok()?;
+        let mut parts = counts.split_whitespace().map(|n| n.parse::<usize>().ok());
+        let (ahead, behind) = (parts.next()??, parts.next()??);
+        (!name.is_empty()).then_some(Upstream { name, ahead, behind })
+    }
+
+    /// Ask the remotes what they have now, without a question to anyone (see [`fetch_in`]).
+    pub fn fetch_quietly(&self, timeout: std::time::Duration) -> Result<(), String> {
+        fetch_in(&self.root, timeout)
+    }
+
     pub fn pull(&self) -> Result<String, String> {
         self.run(&["pull", "--ff-only"]).map(|s| s.trim().to_string())
     }
@@ -447,6 +512,42 @@ mod tests {
         std::fs::write(d.path().join("a"), "x").unwrap();
         r.commit("c", &["a".into()]).unwrap();
         assert!(r.push().is_err());
+    }
+
+    #[test]
+    fn a_fetch_tells_how_far_behind_and_ahead_the_branch_is() {
+        let Some((d, r)) = repo() else { return };
+        std::fs::write(d.path().join("a"), "1").unwrap();
+        r.commit("one", &["a".into()]).unwrap();
+        assert_eq!(r.upstream(), None, "no remote yet");
+        // a remote, and a second clone of it that goes ahead
+        let remote = TempDir::new("gitremote");
+        run_in(remote.path(), &["init", "-q", "--bare"]).unwrap();
+        let url = remote.path().to_string_lossy().replace('\\', "/");
+        r.run(&["remote", "add", "origin", &url]).unwrap();
+        let branch = r.branch().unwrap();
+        r.run(&["push", "-q", "-u", "origin", &branch]).unwrap();
+        assert_eq!(r.upstream().map(|u| (u.ahead, u.behind)), Some((0, 0)));
+        assert!(r.upstream().unwrap().name.ends_with(&format!("origin/{branch}")));
+        let other = TempDir::new("gitother");
+        run_in(other.path(), &["clone", "-q", &url, "."]).unwrap();
+        let o = Repo { root: other.path().to_path_buf() };
+        for (k, v) in [("user.email", "o@example.com"), ("user.name", "Other"), ("commit.gpgsign", "false")] {
+            o.run(&["config", k, v]).unwrap();
+        }
+        std::fs::write(other.path().join("b"), "2").unwrap();
+        o.commit("two", &["b".into()]).unwrap();
+        o.run(&["push", "-q"]).unwrap();
+        // nothing is known before a fetch
+        assert_eq!(r.upstream().map(|u| u.behind), Some(0));
+        r.fetch_quietly(std::time::Duration::from_secs(60)).unwrap();
+        assert_eq!(r.upstream().map(|u| (u.ahead, u.behind)), Some((0, 1)));
+        std::fs::write(d.path().join("c"), "3").unwrap();
+        r.commit("three", &["c".into()]).unwrap();
+        assert_eq!(r.upstream().map(|u| (u.ahead, u.behind)), Some((1, 1)));
+        // a remote that is not there fails without asking anything
+        r.run(&["remote", "set-url", "origin", "https://127.0.0.1:9/nothing.git"]).unwrap();
+        assert!(r.fetch_quietly(std::time::Duration::from_secs(60)).is_err());
     }
 }
 

@@ -1106,4 +1106,12 @@ pub const RU: &[(&str, &str)] = &[
     ("Choose the folder in the system's own window", "Выбрать папку в окне системы"),
     ("Projects can live in Linux once WSL and a distribution are set up.", "Проекты можно держать в Linux, когда установлены WSL и дистрибутив."),
     ("This computer", "Этот компьютер"),
+    // ---- new commits on the remote
+    ("{0} has {1} new commit(s): Update Project (Ctrl+T) brings them here", "В {0} новых коммитов: {1}. Обновить проект (Ctrl+T) — забрать их сюда"),
+    ("{0} new commit(s) on {1} - Update Project (Ctrl+T)", "Новых коммитов в {1}: {0} — обновить проект (Ctrl+T)"),
+    ("{0} new commit(s) on {1} - click to update", "Новых коммитов в {1}: {0} — нажмите, чтобы обновить"),
+    ("{0} commit(s) not pushed to {1}", "Не отправлено в {1} коммитов: {0}"),
+    ("Remote changes", "Изменения на сервере"),
+    ("Check for new commits", "Проверять новые коммиты"),
+    ("Every few minutes, ask the remotes of the project whether there are new commits to pull (a git fetch that never asks for a password)", "Раз в несколько минут спрашивать удалённые репозитории проекта о новых коммитах (git fetch, который никогда не запрашивает пароль)"),
 ];

@@ -81,6 +81,8 @@ impl App {
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             "git_settled" => self.git.rx.is_none(),
+            // the commits of the remote branch not here yet, as of the last fetch: `value` of them, with no git work going on
+            "git_behind" => self.git.rx.is_none() && self.git.op_rx.is_none() && self.git.fetch_rx.is_none() && self.commits_to_pull() as u64 == cond["value"].as_u64().unwrap_or(1),
             "git_clean" => self.git.rx.is_none() && self.git.changes.is_empty(),
             "term_idle" => !self.term_busy(),
             "script_done" => self.term.script.is_none() && self.term.handle.is_none(),

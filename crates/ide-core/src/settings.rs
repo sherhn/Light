@@ -211,6 +211,8 @@ pub struct Settings {
     /// The project tree shows the size and the time of the last change beside each file.
     pub show_file_details: bool,
     pub logo: LogoStyle,
+    /// Ask the remotes of the project now and then whether they have new commits (a quiet `git fetch`).
+    pub git_auto_fetch: bool,
 }
 
 impl Default for Settings {
@@ -246,6 +248,7 @@ impl Default for Settings {
             show_bottom_panel: true,
             show_file_details: true,
             logo: LogoStyle::Auto,
+            git_auto_fetch: true,
         }
     }
 }

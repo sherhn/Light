@@ -10,6 +10,10 @@ use ide_core::localvcs::{Base, LocalVcs};
 
 const MAX_CHANGES: usize = 5000;
 
+/// How often the remotes are asked for new commits (seconds), and how long a fetch may take.
+pub const FETCH_EVERY: f64 = 300.0;
+const FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
+
 use crate::app::App;
 use crate::editor_view::Sev;
 use crate::i18n::{self, tr};
@@ -26,7 +30,30 @@ impl App {
                 self.git.repo = git::find_repo(&root).filter(|r| r.is_valid());
             }
         }
+        // the first look at the remotes comes a moment after the project opens
+        self.git.last_fetch = self.now - FETCH_EVERY + 2.0;
         self.git_refresh();
+    }
+
+    /// Ask the remotes for new commits in the background, never asking the user anything: when it is done the counts of
+    /// commits to pull and to push are read again.
+    pub fn git_fetch_in_background(&mut self) {
+        let Some(repo) = self.git.repo.clone() else { return };
+        if self.git.fetch_rx.is_some() {
+            return;
+        }
+        let (tx, rx) = mpsc::channel();
+        self.git.fetch_rx = Some(rx);
+        self.git.last_fetch = self.now;
+        std::thread::spawn(move || {
+            let result = if repo.has_remote() { repo.fetch_quietly(FETCH_TIMEOUT) } else { Ok(()) };
+            let _ = tx.send(result);
+        });
+    }
+
+    /// Commits of the remote branch that are not here yet.
+    pub fn commits_to_pull(&self) -> usize {
+        self.git.upstream.as_ref().map_or(0, |u| u.behind)
     }
 
     /// Is a local commit (checkpoint) the base of diffs right now?
@@ -88,6 +115,7 @@ impl App {
                 branches: repo.as_ref().map(|r| r.branches()).unwrap_or_default(),
                 log: repo.as_ref().map(|r| r.log_all(200)).unwrap_or_default(),
                 truncated,
+                upstream: repo.as_ref().and_then(|r| r.upstream()),
             };
             let _ = tx.send(snap);
         });
@@ -105,6 +133,16 @@ impl App {
             self.git.graph = ide_core::graph::layout(&snap.log);
             self.git.log = snap.log;
             self.git.changes_truncated = snap.truncated;
+            self.git.upstream = snap.upstream;
+            // new commits on the remote: say so once (and again only when there are more of them)
+            let behind = self.commits_to_pull();
+            if behind > self.git.told_behind
+                && let Some(up) = &self.git.upstream
+            {
+                let text = i18n::fmt("{0} has {1} new commit(s): Update Project (Ctrl+T) brings them here", &[&up.name, &behind]);
+                self.toast(text, Sev::Weak);
+            }
+            self.git.told_behind = behind;
             // keep the user's check marks for files that are still changed; check new tracked ones by default
             // (untracked files stay unchecked, as in PyCharm: adding a file to git is a decision)
             let old: HashSet<String> = self.git.changes.iter().map(|c| c.path.clone()).collect();
@@ -148,6 +186,27 @@ impl App {
         // periodic refresh while idle
         if (self.git.repo.is_some() || self.base_is_local()) && self.git.rx.is_none() && self.now - self.git.last_refresh > 4.0 {
             self.git_refresh();
+        }
+        // a fetch that ended: read the counts again
+        if let Some(rx) = &self.git.fetch_rx
+            && let Ok(result) = rx.try_recv()
+        {
+            self.git.fetch_rx = None;
+            self.git.last_fetch = self.now;
+            if let Err(e) = result {
+                eprintln!("background fetch: {e}");
+            }
+            self.git.rx = None;
+            self.git_refresh();
+        }
+        // the remotes are asked now and then, not while another git operation or the first indexing runs
+        if self.settings.git_auto_fetch
+            && self.git.repo.is_some()
+            && self.git.op_rx.is_none()
+            && self.project.as_ref().is_some_and(|p| p.index_rx.is_none())
+            && self.now - self.git.last_fetch > FETCH_EVERY
+        {
+            self.git_fetch_in_background();
         }
     }
 

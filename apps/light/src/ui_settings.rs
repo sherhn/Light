@@ -322,6 +322,11 @@ impl App {
                             }
                         }
                         5 => {
+                            group(ui, &pal, tr("Remote changes"), |ui, rows| {
+                                rows.row(ui, &pal, tr("Check for new commits"), tr("Every few minutes, ask the remotes of the project whether there are new commits to pull (a git fetch that never asks for a password)"), 44.0, |ui| {
+                                    widgets::toggle(ui, &pal, &mut self.settings.git_auto_fetch);
+                                });
+                            });
                             group(ui, &pal, tr("Get from Version Control"), |ui, rows| {
                                 rows.row(ui, &pal, tr("Default clone directory"), tr("Parent folder for cloned repositories"), 130.0, |ui| {
                                     if widgets::secondary_button(ui, &pal, tr("Browse...")).clicked()

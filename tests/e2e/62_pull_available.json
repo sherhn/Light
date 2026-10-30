@@ -1,0 +1,15 @@
+[
+  {"op": "log", "value": "@behind_remote: the remote has a commit that is not here; the IDE finds it out by itself"},
+  {"op": "open_project", "path": "${PROJ}"},
+  {"op": "wait", "what": "index"},
+  {"op": "wait", "what": "git_behind", "value": 1, "timeout": 60},
+  {"op": "assert_toast", "value": "origin/main has 1 new commit(s)"},
+  {"op": "frames", "value": 3},
+  {"op": "screenshot", "path": "${SHOTS}/${NAME}_behind.png"},
+
+  {"op": "log", "value": "Update Project brings it here and the count goes"},
+  {"op": "command", "value": "git.pull"},
+  {"op": "wait", "what": "git_behind", "value": 0, "timeout": 60},
+  {"op": "assert_file_contains", "path": "${PROJ}/news.txt", "value": "from the remote"},
+  {"op": "quit"}
+]

@@ -193,6 +193,24 @@ def run_one(script_path):
             g("add", "-A")
             g("commit", "-q", "-m", "hotfix: patch")
             g("checkout", "-q", "main")
+        if "@behind_remote" in text:
+            # a remote the project follows, which another clone has pushed a new commit to
+            def g(*args, cwd=proj):
+                subprocess.run(["git", "-c", "commit.gpgsign=false", *args], cwd=cwd, capture_output=True, check=True)
+
+            remote = tmp / "remote.git"
+            g("clone", "-q", "--bare", str(proj), str(remote), cwd=tmp)
+            g("remote", "add", "origin", fwd(remote))
+            g("fetch", "-q", "origin")
+            g("branch", "-q", "-u", "origin/main", "main")
+            other = tmp / "other"
+            g("clone", "-q", fwd(remote), str(other), cwd=tmp)
+            for k, v in (("user.email", "other@example.com"), ("user.name", "Other"), ("core.autocrlf", "false")):
+                g("config", k, v, cwd=other)
+            (other / "news.txt").write_text("from the remote\n", encoding="utf-8")
+            g("add", "-A", cwd=other)
+            g("commit", "-q", "-m", "news from the remote", cwd=other)
+            g("push", "-q", "origin", "main", cwd=other)
         if "@no_git" in text:
             def _unlock(func, path, exc):
                 os.chmod(path, stat.S_IWRITE)

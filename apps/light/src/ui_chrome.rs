@@ -224,7 +224,21 @@ impl App {
                 }
                 if self.git.repo.is_some() {
                     ui.add_space(4.0);
-                    if widgets::icon_button(ui, &pal, Icon::ArrowDown, 34.0, pal.text_dim, tr("Update Project (Ctrl+T)")).clicked() {
+                    // new commits on the remote: the button says how many
+                    let behind = self.commits_to_pull();
+                    let tip = match &self.git.upstream {
+                        Some(up) if behind > 0 => i18n::fmt("{0} new commit(s) on {1} - Update Project (Ctrl+T)", &[&behind, &up.name]),
+                        _ => tr("Update Project (Ctrl+T)").to_string(),
+                    };
+                    let resp = widgets::icon_button(ui, &pal, Icon::ArrowDown, 34.0, if behind > 0 { pal.accent } else { pal.text_dim }, &tip);
+                    if behind > 0 {
+                        let text = if behind > 99 { "99+".to_string() } else { behind.to_string() };
+                        let g = ui.painter().layout_no_wrap(text, fonts::semibold(9.5), pal.text_on_accent);
+                        let badge = Rect::from_center_size(resp.rect.right_top() + Vec2::new(-7.0, 8.0), Vec2::new((g.size().x + 7.0).max(15.0), 15.0));
+                        ui.painter().rect_filled(badge, CornerRadius::same(8), pal.accent);
+                        ui.painter().galley(badge.center() - g.size() / 2.0, g, pal.text_on_accent);
+                    }
+                    if resp.clicked() {
                         self.run_command(ctx, "git.pull");
                     }
                     let n = self.git.changes.len();
@@ -629,6 +643,18 @@ impl App {
                 let (r, _) = ui.allocate_exact_size(Vec2::splat(14.0), Sense::hover());
                 icons::paint(ui.painter(), r, Icon::Branch, pal.text_dim);
                 ui.label(RichText::new(b).color(pal.text_dim).font(fonts::ui(12.0)));
+                // how far the branch is from the one it follows: to pull (a click updates), to push
+                if let Some(up) = self.git.upstream.clone() {
+                    if up.behind > 0 {
+                        let resp = ui.add(egui::Label::new(RichText::new(format!("\u{2193}{}", up.behind)).color(pal.accent).font(fonts::semibold(12.0))).sense(Sense::click()));
+                        if resp.on_hover_text(i18n::fmt("{0} new commit(s) on {1} - click to update", &[&up.behind, &up.name])).clicked() {
+                            self.run_command(ctx, "git.pull");
+                        }
+                    }
+                    if up.ahead > 0 {
+                        ui.label(RichText::new(format!("\u{2191}{}", up.ahead)).color(pal.text_dim).font(fonts::ui(12.0))).on_hover_text(i18n::fmt("{0} commit(s) not pushed to {1}", &[&up.ahead, &up.name]));
+                    }
+                }
                 ui.add_space(8.0);
             }
             if self.base_is_local() {

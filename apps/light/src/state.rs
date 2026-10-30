@@ -60,6 +60,7 @@ pub struct GitSnapshot {
     pub branches: Vec<Branch>,
     pub log: Vec<Commit>,
     pub truncated: bool,
+    pub upstream: Option<ide_core::git::Upstream>,
 }
 
 pub struct GitState {
@@ -91,6 +92,13 @@ pub struct GitState {
     pub by_dir: bool,
     /// Put the keyboard focus into the commit message on the next frame.
     pub focus_msg: bool,
+    /// The branch the current one follows on its remote, and how far apart they are as of the last fetch.
+    pub upstream: Option<ide_core::git::Upstream>,
+    /// A fetch in the background, and when the last one ended (or should be thought to have ended).
+    pub fetch_rx: Option<Receiver<Result<(), String>>>,
+    pub last_fetch: f64,
+    /// How many new commits of the remote the user was told about (told again only when there are more).
+    pub told_behind: usize,
 }
 
 impl Default for GitState {
@@ -118,6 +126,10 @@ impl Default for GitState {
             collapsed: HashSet::new(),
             by_dir: true,
             focus_msg: false,
+            upstream: None,
+            fetch_rx: None,
+            last_fetch: f64::NEG_INFINITY,
+            told_behind: 0,
         }
     }
 }
