@@ -166,6 +166,10 @@ impl App {
                 if widgets::secondary_button(ui, &pal, tr("New Project")).clicked() {
                     self.run_command(ctx, "file.new_project");
                 }
+                ui.add_space(8.0);
+                if widgets::secondary_button(ui, &pal, tr("Get from VCS")).clicked() {
+                    self.run_command(ctx, "file.clone");
+                }
             });
             return;
         }

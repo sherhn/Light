@@ -956,7 +956,8 @@ impl App {
                 }
             });
             ui.add_space(28.0);
-            if !self.settings.recent_projects.is_empty() {
+            // the section is always there: getting a project from version control is its last row
+            {
                 widgets::caption(ui, &pal, &tr("Recent projects").to_uppercase());
                 ui.add_space(8.0);
                 for p in self.settings.recent_projects.iter().take(6) {
@@ -972,6 +973,17 @@ impl App {
                     if resp.clicked() {
                         open = Some(PathBuf::from(p));
                     }
+                }
+                let (r, resp) = ui.allocate_exact_size(Vec2::new(col_w, 46.0), Sense::click());
+                widgets::row_background(ui, &pal, r.expand2(Vec2::new(6.0, 0.0)), false, resp.hovered());
+                let av = Rect::from_min_size(Pos2::new(r.min.x + 4.0, r.center().y - 15.0), Vec2::splat(30.0));
+                ui.painter().rect_filled(av, CornerRadius::same(8), pal.hover.gamma_multiply(1.6));
+                crate::icons::paint(ui.painter(), av.shrink(7.0), Icon::FolderGit, pal.accent);
+                ui.painter().text(Pos2::new(r.min.x + 46.0, r.center().y - 8.0), Align2::LEFT_CENTER, tr("Get from Version Control..."), fonts::semibold(13.5), pal.text);
+                ui.painter().text(Pos2::new(r.min.x + 46.0, r.center().y + 9.0), Align2::LEFT_CENTER, tr("Clone a repository from GitHub or any Git URL"), fonts::ui(11.5), pal.text_dim);
+                ui.data_mut(|data| data.insert_temp(egui::Id::unique("welcome_clone_row"), r));
+                if resp.clicked() {
+                    self.run_command(ctx, "file.clone");
                 }
                 ui.add_space(20.0);
             }

@@ -1049,4 +1049,5 @@ pub const RU: &[(&str, &str)] = &[
     // ---- menus
     ("Line endings", "Окончания строк"),
     ("opened", "открыт"),
+    ("Clone a repository from GitHub or any Git URL", "Клонировать репозиторий с GitHub или по любому адресу Git"),
 ];

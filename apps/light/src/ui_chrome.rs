@@ -66,6 +66,9 @@ impl App {
                             self.request_open_project(std::path::Path::new(p));
                         }
                     }
+                    // getting a new project from version control is offered with the list, whatever it holds
+                    ui.separator();
+                    self.menu_item(ui, ctx, "file.clone");
                 });
                 self.menu_items(ui, ctx, &["-", "file.reload", "file.close_tab", "file.close_all", "-", "file.copy_path", "file.reveal", "-", "app.modules", "app.settings", "app.exit"]);
             });
