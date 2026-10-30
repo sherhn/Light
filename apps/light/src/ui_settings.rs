@@ -232,6 +232,11 @@ impl App {
                                     widgets::toggle(ui, &pal, &mut self.settings.auto_popup);
                                 });
                             });
+                            group(ui, &pal, tr("Project tree"), |ui, rows| {
+                                rows.row(ui, &pal, tr("File size and date"), tr("Show beside each file how big it is and when it was last changed"), 44.0, |ui| {
+                                    widgets::toggle(ui, &pal, &mut self.settings.show_file_details);
+                                });
+                            });
                         }
                         2 => {
                             group(ui, &pal, tr("Lisp implementation"), |ui, rows| {

@@ -11,6 +11,9 @@ pub struct Entry {
     pub name: String,
     pub path: PathBuf,
     pub is_dir: bool,
+    /// Size in bytes (0 for a folder) and the time of the last change, as the listing of the folder gives them.
+    pub size: u64,
+    pub modified: Option<std::time::SystemTime>,
 }
 
 /// Folders the coding agents keep their settings, memory and caches in: a project hides them unless it says otherwise.
@@ -60,7 +63,11 @@ pub fn list_dir(path: &Path) -> io::Result<Vec<Entry>> {
                 return None;
             }
             let is_dir = e.file_type().ok()?.is_dir();
-            Some(Entry { name, path: e.path(), is_dir })
+            // on Windows the listing carries these already: no extra call per file
+            let meta = e.metadata().ok();
+            let size = meta.as_ref().filter(|_| !is_dir).map_or(0, |m| m.len());
+            let modified = meta.and_then(|m| m.modified().ok());
+            Some(Entry { name, path: e.path(), is_dir, size, modified })
         })
         .collect();
     v.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));

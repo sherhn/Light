@@ -123,7 +123,7 @@ impl App {
                     Some(p) => (e.is_dir && p.expanded.contains(&e.path), p.ignore.is_ignored(&e.path, e.is_dir)),
                     None => (false, false),
                 };
-                rows.push(TreeRow { path: e.path.clone(), depth, is_dir: e.is_dir, expanded, name: e.name.clone(), ignored });
+                rows.push(TreeRow { path: e.path.clone(), depth, is_dir: e.is_dir, expanded, name: e.name.clone(), ignored, size: e.size, modified: e.modified });
                 if expanded && !ignored {
                     walk(app, e.path, depth + 1, rows);
                 }
@@ -132,7 +132,7 @@ impl App {
         let mut rows = Vec::new();
         let name = self.project.as_ref().map(|p| p.name.clone()).unwrap_or_default();
         let expanded = self.project.as_ref().is_some_and(|p| p.expanded.contains(&root));
-        rows.push(TreeRow { path: root.clone(), depth: 0, is_dir: true, expanded, name, ignored: false });
+        rows.push(TreeRow { path: root.clone(), depth: 0, is_dir: true, expanded, name, ignored: false, size: 0, modified: None });
         if expanded {
             walk(self, root, 1, &mut rows);
         }
@@ -183,7 +183,7 @@ impl App {
         let query = self.project_filter.trim().to_lowercase();
         let matches: Vec<TreeRow> = self.project.as_ref().filter(|_| !query.is_empty()).into_iter().flat_map(|p| p.files.iter()).filter_map(|path| {
             let name = path.file_name()?.to_string_lossy().into_owned();
-            (!query.is_empty() && name.to_lowercase().contains(&query)).then(|| TreeRow { path: path.clone(), depth: 0, is_dir: false, expanded: false, name, ignored: false })
+            (!query.is_empty() && name.to_lowercase().contains(&query)).then(|| TreeRow { path: path.clone(), depth: 0, is_dir: false, expanded: false, name, ignored: false, size: 0, modified: None })
         }).collect();
         let rows = if query.is_empty() { &cached_rows } else { &matches };
         let mut toggle: Option<PathBuf> = None;
@@ -193,6 +193,7 @@ impl App {
         let selected = self.project.as_ref().and_then(|p| p.selected.clone());
         let active_path = self.doc().and_then(|d| d.path.clone());
         let font = fonts::ui(13.5);
+        let (details, now, offset) = (self.settings.show_file_details, std::time::SystemTime::now(), crate::file_info::local_offset());
         // show_rows must see the same spacing as the rows it virtualizes.
         ui.spacing_mut().item_spacing.y = 0.0;
         crate::scrollbars::reserve_gutter(ui);
@@ -229,7 +230,16 @@ impl App {
                 } else {
                     pal.text
                 };
-                ui.painter().text(Pos2::new(x + 42.0, r.center().y), egui::Align2::LEFT_CENTER, &row.name, font.clone(), color);
+                let name_end = ui.painter().text(Pos2::new(x + 42.0, r.center().y), egui::Align2::LEFT_CENTER, &row.name, font.clone(), color).max.x;
+                // the file's size and when it changed, at the right edge of what is visible, when there is room
+                if details && !row.is_dir && let Some(time) = row.modified {
+                    let text = format!("{}  ·  {}", crate::file_info::size(row.size), crate::file_info::modified(time, now, offset));
+                    let g = ui.painter().layout_no_wrap(text, fonts::ui(11.5), pal.text_dim.gamma_multiply(0.85));
+                    let right = r.max.x.min(ui.clip_rect().max.x) - 14.0;
+                    if right - g.size().x > name_end + 16.0 {
+                        ui.painter().galley(Pos2::new(right - g.size().x, r.center().y - g.size().y / 2.0), g, pal.text_dim);
+                    }
+                }
                 let resp = if dirty_dir { resp.on_hover_text(tr("Contains files with changes")) } else { resp.on_hover_text(row.path.display().to_string()) };
                 if resp.clicked() {
                     select = Some(row.path.clone());
@@ -1432,7 +1442,7 @@ mod layout_tests {
 
     fn project() -> Project {
         let root = PathBuf::from("C:/light-layout-project");
-        let rows: Vec<_> = (0..200).map(|i| TreeRow { path: root.join(format!("file{i:03}.rs")), depth: 1, is_dir: false, expanded: false, name: format!("file{i:03}.rs"), ignored: false }).collect();
+        let rows: Vec<_> = (0..200).map(|i| TreeRow { path: root.join(format!("file{i:03}.rs")), depth: 1, is_dir: false, expanded: false, name: format!("file{i:03}.rs"), ignored: false, size: 0, modified: None }).collect();
         Project { root: root.clone(), name: "layout".into(), tree_ver: 0, tree_cache: Some((0, rows)), ignore: ide_core::workspace::IgnoreMatcher::new(&root), expanded: Default::default(), selected: None, dir_cache: Default::default(), files: vec![root.join("collapsed/Navigator.rs"), root.join("other.rs")], files_rel: vec![], files_gen: 0, index: Default::default(), index_rx: None, branch: None, hidden: Default::default() }
     }
 

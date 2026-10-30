@@ -130,6 +130,10 @@ pub struct TreeRow {
     pub expanded: bool,
     pub name: String,
     pub ignored: bool,
+    /// What the listing of its folder said: size in bytes and the time of the last change (none for the matches of a
+    /// search by name).
+    pub size: u64,
+    pub modified: Option<std::time::SystemTime>,
 }
 
 pub struct Project {

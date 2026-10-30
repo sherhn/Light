@@ -198,6 +198,8 @@ pub struct Settings {
     pub active_file: Option<String>,
     pub show_project_panel: bool,
     pub show_bottom_panel: bool,
+    /// The project tree shows the size and the time of the last change beside each file.
+    pub show_file_details: bool,
 }
 
 impl Default for Settings {
@@ -231,6 +233,7 @@ impl Default for Settings {
             active_file: None,
             show_project_panel: true,
             show_bottom_panel: true,
+            show_file_details: true,
         }
     }
 }

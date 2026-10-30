@@ -25,6 +25,7 @@ mod diff_tab;
 mod doc;
 mod editor_view;
 mod folding;
+mod file_info;
 mod fonts;
 mod i18n;
 mod i18n_ru;
