@@ -322,24 +322,90 @@ impl App {
                     self.popup = Popup::Rename { old, input, just_opened };
                 }
             }
-            Popup::NewFile { dir, mut input, mut extension, is_dir, mut just_opened } => {
+            Popup::NewFile { dir, mut input, mut extension, mut kind, is_dir, mut just_opened } => {
                 let (mut ok, mut cancel) = (enter, esc);
                 let rel = self.project_root().map(|r| ide_core::workspace::relative(r, &dir)).unwrap_or_default();
-                self.dialog_card(ctx, "new_file", if is_dir { tr("New Directory") } else { tr("New File") }, 440.0, |ui| {
-                    if !is_dir {
-                        let mut extensions: Vec<String> = self.mods.installed.iter().filter(|m| m.enabled).flat_map(|m| m.manifest.languages.iter()).flat_map(|l| l.extensions.iter().cloned()).collect();
-                        extensions.extend(["js", "jsx", "mjs", "cjs", "json", "yaml", "yml", "rs", "py", "md", "txt"].map(String::from));
-                        extensions.sort(); extensions.dedup();
-                        egui::ComboBox::from_id_salt("new_file_extension").selected_text(if extension.is_empty() { tr("Full filename / no extension").to_string() } else { format!(".{extension}") }).show_ui(ui, |ui| {
-                            ui.selectable_value(&mut extension, String::new(), tr("Full filename / no extension"));
-                            for ext in extensions { ui.selectable_value(&mut extension, ext.clone(), format!(".{ext}")); }
-                        });
-                        ui.add_space(8.0);
+                let project_name = self.project.as_ref().map(|p| p.name.clone()).unwrap_or_else(|| dir.display().to_string());
+                let kinds = if is_dir { vec![] } else { crate::new_file::kinds(&self.mods.installed, self.lisp_enabled()) };
+                kind = kind.min(kinds.len().saturating_sub(1));
+                // Up and Down pick the kind while the name is typed
+                if kinds.len() > 1 {
+                    let (up, down) = ctx.input_mut(|i| (i.consume_key(egui::Modifiers::NONE, Key::ArrowUp), i.consume_key(egui::Modifiers::NONE, Key::ArrowDown)));
+                    if up || down {
+                        kind = if down { (kind + 1) % kinds.len() } else { (kind + kinds.len() - 1) % kinds.len() };
+                        extension = kinds[kind].extensions.first().cloned().unwrap_or_default();
                     }
-                    let r = self.text_field(ui, &mut input, if is_dir { tr("directory name") } else { tr("file name (include an extension to choose a language)") });
+                }
+                let filenames = kinds.get(kind).map(|k| k.filenames.clone()).unwrap_or_default();
+                let pal = self.pal;
+                let name_id = egui::Id::unique("new_file_name");
+                self.dialog_card(ctx, "new_file", if is_dir { tr("New Directory") } else { tr("New File") }, 480.0, |ui| {
+                    if kinds.len() > 1 {
+                        widgets::caption(ui, &pal, &tr("What kind of file").to_uppercase());
+                        ui.add_space(6.0);
+                        let col_w = (ui.available_width() - 8.0) / 2.0;
+                        for pair in kinds.iter().enumerate().collect::<Vec<_>>().chunks(2) {
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 8.0;
+                                for (i, k) in pair {
+                                    let (r, resp) = ui.allocate_exact_size(Vec2::new(col_w, 44.0), Sense::click());
+                                    let chosen = *i == kind;
+                                    let fill = if chosen { pal.selected } else if resp.hovered() { pal.hover.gamma_multiply(1.4) } else { pal.hover.gamma_multiply(0.6) };
+                                    ui.painter().rect_filled(r, CornerRadius::same(12), fill);
+                                    if chosen {
+                                        ui.painter().rect_stroke(r, CornerRadius::same(12), egui::Stroke::new(1.0, pal.accent.gamma_multiply(0.7)), egui::StrokeKind::Inside);
+                                    }
+                                    let badge = Rect::from_min_size(Pos2::new(r.min.x + 10.0, r.center().y - 13.0), Vec2::new(34.0, 26.0));
+                                    if k.extensions.is_empty() {
+                                        crate::icons::paint(ui.painter(), badge.shrink(4.0), Icon::Blank, pal.text_dim);
+                                    } else {
+                                        ui.painter().rect_filled(badge, CornerRadius::same(7), pal.accent.gamma_multiply(if chosen { 0.35 } else { 0.18 }));
+                                        ui.painter().text(badge.center(), Align2::CENTER_CENTER, k.badge(), fonts::semibold(10.5), pal.accent);
+                                    }
+                                    let title = if k.extensions.is_empty() { tr("File").to_string() } else { k.title.clone() };
+                                    let detail = if k.extensions.is_empty() { tr("any name, as typed").to_string() } else { k.extensions.iter().map(|e| format!(".{e}")).collect::<Vec<_>>().join("  ") };
+                                    let text_x = badge.max.x + 10.0;
+                                    let clip = ui.painter().with_clip_rect(Rect::from_min_max(Pos2::new(text_x, r.min.y), Pos2::new(r.max.x - 8.0, r.max.y)));
+                                    clip.text(Pos2::new(text_x, r.center().y - 8.0), Align2::LEFT_CENTER, title, fonts::semibold(13.0), pal.text);
+                                    clip.text(Pos2::new(text_x, r.center().y + 9.0), Align2::LEFT_CENTER, detail, fonts::ui(11.5), pal.text_dim);
+                                    if resp.clicked() {
+                                        kind = *i;
+                                        extension = k.extensions.first().cloned().unwrap_or_default();
+                                        ui.memory_mut(|m| m.request_focus(name_id));
+                                    }
+                                }
+                            });
+                            ui.add_space(4.0);
+                        }
+                        ui.add_space(10.0);
+                        widgets::caption(ui, &pal, &tr("Name").to_uppercase());
+                        ui.add_space(6.0);
+                    }
+                    let hint = if is_dir { tr("directory name") } else if extension.is_empty() { tr("file name with its extension") } else { tr("file name") };
+                    let ghost = crate::new_file::ghost(&input, &extension, &filenames);
+                    let r = TextField::new(&mut input).id(name_id).hint(hint).suffix(&ghost).show(ui, &pal);
                     widgets::focus_once(ui, &r, &mut just_opened);
+                    // a module of several languages: which of its extensions
+                    if let Some(k) = kinds.get(kind).filter(|k| k.extensions.len() > 1) {
+                        ui.add_space(8.0);
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new(tr("Extension")).color(pal.text_dim).size(12.0));
+                            ui.add_space(4.0);
+                            for e in &k.extensions {
+                                let mut on = *e == extension;
+                                if widgets::toggle_chip(ui, &pal, &format!(".{e}"), &mut on, "").clicked() {
+                                    extension = e.clone();
+                                    ui.memory_mut(|m| m.request_focus(name_id));
+                                }
+                            }
+                        });
+                    }
                     ui.add_space(8.0);
-                    ui.label(RichText::new(i18n::fmt("in {}", &[&(if rel.is_empty() { "." } else { &rel })])).color(self.pal.text_dim).size(12.0));
+                    let shown = crate::new_file::file_name(&input, &extension, &filenames);
+                    // the folder by its place in the project: the project's own name for its top
+                    let place = if rel.is_empty() { project_name.clone() } else { format!("{project_name}/{rel}") };
+                    let line = if input.trim().is_empty() || is_dir { i18n::fmt("in {}", &[&place]) } else { i18n::fmt("Creates {0} in {1}", &[&shown, &place]) };
+                    ui.label(RichText::new(line).color(pal.text_dim).size(12.0));
                     let (o, c) = self.ok_cancel(ui, tr("Create"));
                     ok |= o;
                     cancel |= c;
@@ -347,7 +413,7 @@ impl App {
                 if cancel {
                     self.editor_focus = true;
                 } else if ok && !input.trim().is_empty() {
-                    let name = ide_core::workspace::file_name_with_extension(&input, &extension);
+                    let name = crate::new_file::file_name(&input, &extension, &filenames);
                     let path = dir.join(&name);
                     let res = if is_dir { ide_core::workspace::create_dir(&path) } else { ide_core::workspace::create_file(&path, "") };
                     match res {
@@ -364,7 +430,7 @@ impl App {
                     }
                     self.editor_focus = true;
                 } else {
-                    self.popup = Popup::NewFile { dir, input, extension, is_dir, just_opened };
+                    self.popup = Popup::NewFile { dir, input, extension, kind, is_dir, just_opened };
                 }
             }
             Popup::RenameFile { path, mut input, mut just_opened } => {

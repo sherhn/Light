@@ -31,6 +31,7 @@ mod i18n_ru;
 mod icons;
 mod log_select;
 mod lucide;
+mod new_file;
 mod input;
 mod script;
 mod scrollbars;

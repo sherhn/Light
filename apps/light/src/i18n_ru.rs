@@ -30,7 +30,6 @@ pub const RU: &[(&str, &str)] = &[
     ("Build and run via WSL.", "Сборка и запуск в WSL."),
     ("Switch to Linux", "В Linux"),
     ("Set up Linux", "Настроить Linux"),
-    ("Full filename / no extension", "Полное имя / без расширения"),
     ("The project folder starts empty. Add files with + in Project.", "Папка проекта будет пустой. Добавляйте файлы кнопкой + в Project."),
     ("Choose a file supported by this run command", "Выберите файл, подходящий для этой команды запуска"),
     ("Search files by name", "Поиск файлов по имени"),
@@ -238,7 +237,6 @@ pub const RU: &[(&str, &str)] = &[
     ("New File", "Новый файл"),
     ("New Directory", "Новая папка"),
     ("directory name", "имя папки"),
-    ("file name (include an extension to choose a language)", "имя файла (укажите расширение для выбора языка)"),
     ("in {}", "в {}"),
     ("Local Commit", "Локальный коммит"),
     ("Message (optional)", "Сообщение (необязательно)"),
@@ -1058,4 +1056,11 @@ pub const RU: &[(&str, &str)] = &[
     ("Stopped", "Остановлено"),
     ("Close (stops the program)", "Закрыть (программа будет остановлена)"),
     ("Rerun", "Перезапустить"),
+    // ---- new file
+    ("What kind of file", "Что это за файл"),
+    ("any name, as typed", "любое имя, как введено"),
+    ("file name with its extension", "имя файла с расширением"),
+    ("file name", "имя файла"),
+    ("Extension", "Расширение"),
+    ("Creates {0} in {1}", "Будет создан {0} в {1}"),
 ];

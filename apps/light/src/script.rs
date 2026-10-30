@@ -256,10 +256,46 @@ impl App {
                 }
             }
             "new_file_set" => {
-                if let Popup::NewFile { input, extension, .. } = &mut self.popup {
+                let kinds = crate::new_file::kinds(&self.mods.installed, self.lisp_enabled());
+                if let Popup::NewFile { input, extension, kind, .. } = &mut self.popup {
                     *input = sval.clone();
                     *extension = step["extension"].as_str().unwrap_or("").into();
+                    // the kind whose extension it is
+                    *kind = kinds.iter().position(|k| k.extensions.contains(extension)).unwrap_or(0);
                 } else { self.fail("new_file_set: no new file dialog".into()); }
+            }
+            // the New File dialog: pick a kind by its title (`File` for any name), as a click on its tile does
+            "new_file_kind" => {
+                let kinds = crate::new_file::kinds(&self.mods.installed, self.lisp_enabled());
+                let found = kinds.iter().position(|k| k.title == sval || (sval == "File" && k.extensions.is_empty()));
+                match (&mut self.popup, found) {
+                    (Popup::NewFile { kind, extension, .. }, Some(i)) => {
+                        *kind = i;
+                        *extension = kinds[i].extensions.first().cloned().unwrap_or_default();
+                    }
+                    (Popup::NewFile { .. }, None) => self.fail(format!("new_file_kind: no kind {sval:?}")),
+                    _ => self.fail("new_file_kind: no new file dialog".into()),
+                }
+            }
+            // the kinds the New File dialog offers, by title (the first, a file of any name, has none)
+            "assert_new_file_kinds" => {
+                let titles: Vec<String> = crate::new_file::kinds(&self.mods.installed, self.lisp_enabled()).into_iter().map(|k| k.title).collect();
+                let want: Vec<String> = step["value"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(String::from)).collect();
+                if titles != want {
+                    self.fail(format!("assert_new_file_kinds: {titles:?}, expected {want:?}"));
+                }
+            }
+            "assert_new_file" => {
+                match &self.popup {
+                    Popup::NewFile { kind, extension, .. } => {
+                        let want_kind = step["kind"].as_u64().map(|k| k as usize);
+                        let want_ext = step["extension"].as_str();
+                        if want_kind.is_some_and(|k| k != *kind) || want_ext.is_some_and(|e| e != extension) {
+                            self.fail(format!("assert_new_file: kind {kind}, extension {extension:?}"));
+                        }
+                    }
+                    _ => self.fail("assert_new_file: no new file dialog".into()),
+                }
             }
             "assert_empty_directory" => {
                 let empty = path.as_ref().and_then(|p| std::fs::read_dir(p).ok()).is_some_and(|mut entries| entries.next().is_none());

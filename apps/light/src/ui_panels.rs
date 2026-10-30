@@ -313,8 +313,8 @@ impl App {
         }
         if let Some((a, path)) = action {
             match a.as_str() {
-                "new_file" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), is_dir: false, just_opened: true },
-                "new_dir" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), is_dir: true, just_opened: true },
+                "new_file" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), kind: 0, is_dir: false, just_opened: true },
+                "new_dir" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), kind: 0, is_dir: true, just_opened: true },
                 "rename" => {
                     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                     self.popup = Popup::RenameFile { path, input: name, just_opened: true };
