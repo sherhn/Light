@@ -390,19 +390,19 @@ impl App {
         let has_project = self.project.is_some();
         let mut choice: Option<Option<String>> = None;
         let mut setup = false;
-        egui::Popup::menu(&resp).width(260.0).show(|ui| {
+        widgets::menu_popup(&resp, &pal).width(260.0).show(|ui| {
             if !has_project {
                 ui.label(RichText::new(tr("Open a project to choose where it runs")).color(pal.text_dim).size(12.0));
             } else if linux_fs {
                 ui.label(RichText::new(tr("This project lives in Linux, so it always runs there")).color(pal.text_dim).size(12.0));
             } else {
-                ui.label(RichText::new(tr("Build and run this project:")).color(pal.text_dim).size(12.0));
-                if ui.selectable_label(current.is_none(), tr("On Windows")).clicked() {
+                widgets::menu_caption(ui, &pal, tr("Build and run this project:"));
+                if widgets::menu_row(ui, &pal, Some(if current.is_none() { Icon::Check } else { Icon::Monitor }), tr("On Windows"), "").clicked() {
                     choice = Some(None);
                     ui.close();
                 }
                 for d in &distros {
-                    if ui.selectable_label(current.as_deref() == Some(d.as_str()), i18n::fmt("In Linux: {}", &[d])).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(if current.as_deref() == Some(d.as_str()) { Icon::Check } else { Icon::Linux }), &i18n::fmt("In Linux: {}", &[d]), "").clicked() {
                         choice = Some(Some(d.clone()));
                         ui.close();
                     }
@@ -412,7 +412,7 @@ impl App {
                 }
             }
             ui.separator();
-            if ui.button(tr("Linux (WSL) setup...")).clicked() {
+            if widgets::menu_row(ui, &pal, Some(Icon::Gear), tr("Linux (WSL) setup..."), "").clicked() {
                 setup = true;
                 ui.close();
             }

@@ -92,8 +92,26 @@ pub struct ViewOut {
     pub gutter_rect: Option<Rect>,
 }
 
-fn editor_menu_item(ui: &mut egui::Ui, label: &'static str, shortcut: &'static str, action: &'static str, enabled: bool, out: &mut ViewOut, rects: &mut Vec<(&'static str, Rect)>) {
-    let response = ui.add_enabled(enabled, egui::Button::new(crate::i18n::tr(label)).shortcut_text(shortcut));
+#[allow(clippy::too_many_arguments)]
+fn editor_menu_item(ui: &mut egui::Ui, pal: &Palette, label: &'static str, shortcut: &'static str, action: &'static str, enabled: bool, out: &mut ViewOut, rects: &mut Vec<(&'static str, Rect)>) {
+    let icon = match action {
+        "edit.undo" => Some(Icon::Undo),
+        "edit.redo" => Some(Icon::Redo),
+        "edit.cut" => Some(Icon::Cut),
+        "edit.copy" | "file.copy_path" => Some(Icon::Copy),
+        "edit.paste" => Some(Icon::Paste),
+        "context.run" => Some(Icon::Play),
+        "file.save" | "file.save_as" => Some(Icon::Download),
+        "context.rename" => Some(Icon::Pencil),
+        "file.reveal" => Some(Icon::FolderSearch),
+        "context.delete" => Some(Icon::Trash),
+        "context.diff" => Some(Icon::FileDiff),
+        "context.stage" => Some(Icon::Plus),
+        "context.rollback" => Some(Icon::Undo),
+        "git.local_commit" => Some(Icon::History),
+        _ => None,
+    };
+    let response = ui.add_enabled_ui(enabled, |ui| crate::widgets::menu_row(ui, pal, icon, crate::i18n::tr(label), shortcut)).inner;
     rects.push((action, response.rect));
     if response.clicked() { out.context_action = Some(action); ui.close(); }
 }
@@ -287,39 +305,36 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     let mut hover_marker: Option<String> = None;
     let area = scroll.show_viewport(&mut child, |ui, viewport| {
         let (rect, resp) = ui.allocate_exact_size(Vec2::new(content_w.max(viewport.width()), content_h.max(viewport.height())), Sense::click_and_drag());
-        resp.context_menu(|ui| {
-            ui.set_width(220.0);
-            ui.spacing_mut().button_padding = egui::vec2(8.0, 3.0);
-            ui.spacing_mut().interact_size.y = 22.0;
-            ui.spacing_mut().item_spacing.y = 2.0;
+        crate::widgets::context_popup(&resp, pal).show(|ui| {
+            ui.set_width(240.0);
             let mut menu_rects: Vec<(&'static str, Rect)> = Vec::new();
-            editor_menu_item(ui, "Undo", "Ctrl+Z", "edit.undo", ed.can_undo(), &mut out, &mut menu_rects);
-            editor_menu_item(ui, "Redo", "Ctrl+Shift+Z", "edit.redo", ed.can_redo(), &mut out, &mut menu_rects);
+            editor_menu_item(ui, pal, "Undo", "Ctrl+Z", "edit.undo", ed.can_undo(), &mut out, &mut menu_rects);
+            editor_menu_item(ui, pal, "Redo", "Ctrl+Shift+Z", "edit.redo", ed.can_redo(), &mut out, &mut menu_rects);
             ui.separator();
             for (label, shortcut, action) in [("Cut", "Ctrl+X", "edit.cut"), ("Copy", "Ctrl+C", "edit.copy"), ("Paste", "Ctrl+V", "edit.paste"), ("Select All", "Ctrl+A", "edit.select_all")] {
-                editor_menu_item(ui, label, shortcut, action, true, &mut out, &mut menu_rects);
+                editor_menu_item(ui, pal, label, shortcut, action, true, &mut out, &mut menu_rects);
             }
             ui.separator();
-            editor_menu_item(ui, "Run Current File", "Ctrl+Shift+F10", "context.run", true, &mut out, &mut menu_rects);
-            editor_menu_item(ui, "Save", "Ctrl+S", "file.save", true, &mut out, &mut menu_rects);
-            let file = ui.menu_button(crate::i18n::tr("File"), |ui| {
-                ui.set_width(220.0);
+            editor_menu_item(ui, pal, "Run Current File", "Ctrl+Shift+F10", "context.run", true, &mut out, &mut menu_rects);
+            editor_menu_item(ui, pal, "Save", "Ctrl+S", "file.save", true, &mut out, &mut menu_rects);
+            let file = crate::widgets::submenu_row(ui, pal, Some(Icon::Blank), crate::i18n::tr("File"), |ui| {
+                ui.set_width(240.0);
                 for (label, shortcut, action) in [("Save As...", "Ctrl+Shift+S", "file.save_as"), ("Rename...", "", "context.rename"), ("Copy Path", "", "file.copy_path"), ("Reveal in File Manager", "", "file.reveal")] {
-                    editor_menu_item(ui, label, shortcut, action, true, &mut out, &mut menu_rects);
+                    editor_menu_item(ui, pal, label, shortcut, action, true, &mut out, &mut menu_rects);
                 }
                 ui.separator();
-                editor_menu_item(ui, "Delete...", "", "context.delete", true, &mut out, &mut menu_rects);
+                editor_menu_item(ui, pal, "Delete...", "", "context.delete", true, &mut out, &mut menu_rects);
             });
             menu_rects.push(("submenu.file", file.response.rect));
-            let git = ui.menu_button("Git", |ui| {
-                ui.set_width(220.0);
+            let git = crate::widgets::submenu_row(ui, pal, Some(Icon::Branch), "Git", |ui| {
+                ui.set_width(240.0);
                 for (label, action) in [("Show Diff", "context.diff"), ("Stage", "context.stage"), ("Unstage", "context.unstage")] {
-                    editor_menu_item(ui, label, "", action, true, &mut out, &mut menu_rects);
+                    editor_menu_item(ui, pal, label, "", action, true, &mut out, &mut menu_rects);
                 }
                 ui.separator();
-                editor_menu_item(ui, "Rollback...", "", "context.rollback", true, &mut out, &mut menu_rects);
+                editor_menu_item(ui, pal, "Rollback...", "", "context.rollback", true, &mut out, &mut menu_rects);
                 ui.separator();
-                editor_menu_item(ui, "Local Commit", "", "git.local_commit", true, &mut out, &mut menu_rects);
+                editor_menu_item(ui, pal, "Local Commit", "", "git.local_commit", true, &mut out, &mut menu_rects);
             });
             menu_rects.push(("submenu.git", git.response.rect));
             ui.data_mut(|data| data.insert_temp(egui::Id::unique("editor_context_rects"), menu_rects));

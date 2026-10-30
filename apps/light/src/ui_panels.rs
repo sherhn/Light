@@ -236,54 +236,54 @@ impl App {
                 if resp.double_clicked() && !row.is_dir {
                     open = Some(row.path.clone());
                 }
-                resp.context_menu(|ui| {
+                widgets::context_popup(&resp, &pal).show(|ui| {
                     let dir = if row.is_dir { row.path.clone() } else { row.path.parent().map(PathBuf::from).unwrap_or_default() };
-                    if ui.button(tr("New File...")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::FilePlus), tr("New File..."), "Alt+Insert").clicked() {
                         action = Some(("new_file".into(), dir.clone()));
                         ui.close();
                     }
-                    if ui.button(tr("New Directory...")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::FolderPlus), tr("New Directory..."), "").clicked() {
                         action = Some(("new_dir".into(), dir.clone()));
                         ui.close();
                     }
                     ui.separator();
-                    if !row.is_dir && ui.button(tr("Open")).clicked() {
+                    if !row.is_dir && widgets::menu_row(ui, &pal, Some(Icon::Blank), tr("Open"), "").clicked() {
                         open = Some(row.path.clone());
                         ui.close();
                     }
-                    if ui.button(tr("Rename...")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Pencil), tr("Rename..."), "").clicked() {
                         action = Some(("rename".into(), row.path.clone()));
                         ui.close();
                     }
-                    if ui.button(tr("Delete...")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Trash), tr("Delete..."), "").clicked() {
                         action = Some(("delete".into(), row.path.clone()));
                         ui.close();
                     }
-                    if row.is_dir && row.depth > 0 && ui.button(tr("Hide Folder")).on_hover_text(tr("Leave it out of the tree, search and Go to File (Settings > Project)")).clicked() {
+                    if row.is_dir && row.depth > 0 && widgets::menu_row(ui, &pal, Some(Icon::Eye), tr("Hide Folder"), "").on_hover_text(tr("Leave it out of the tree, search and Go to File (Settings > Project)")).clicked() {
                         action = Some(("hide".into(), row.path.clone()));
                         ui.close();
                     }
                     if !row.is_dir && self.git.repo.is_some() {
                         ui.separator();
-                        if ui.button(tr("Git: Show Diff")).clicked() {
+                        if widgets::menu_row(ui, &pal, Some(Icon::FileDiff), tr("Git: Show Diff"), "").clicked() {
                             action = Some(("diff".into(), row.path.clone()));
                             ui.close();
                         }
-                        if ui.button(tr("Git: Add")).clicked() {
+                        if widgets::menu_row(ui, &pal, Some(Icon::Plus), tr("Git: Add"), "").clicked() {
                             action = Some(("stage".into(), row.path.clone()));
                             ui.close();
                         }
                     }
                     ui.separator();
-                    if ui.button(tr("Copy Path")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Copy), tr("Copy Path"), "").clicked() {
                         ctx.copy_text(row.path.to_string_lossy().into_owned());
                         ui.close();
                     }
-                    if ui.button(tr("Reveal in File Manager")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::FolderSearch), tr("Reveal in File Manager"), "").clicked() {
                         crate::input::reveal_in_file_manager(&row.path);
                         ui.close();
                     }
-                    if ui.button(tr("Refresh")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Refresh), tr("Refresh"), "").clicked() {
                         action = Some(("refresh".into(), row.path.clone()));
                         ui.close();
                     }
@@ -603,16 +603,16 @@ impl App {
                     }
                 }
                 ui.painter().galley(origin, g.clone(), color);
-                resp.context_menu(|ui| {
-                    if ui.add_enabled(sel.is_some_and(|s| !s.is_empty()), egui::Button::new(tr("Copy"))).clicked() {
+                widgets::context_popup(&resp, &pal).show(|ui| {
+                    if ui.add_enabled_ui(sel.is_some_and(|s| !s.is_empty()), |ui| widgets::menu_row(ui, &pal, Some(Icon::Copy), tr("Copy"), "Ctrl+C")).inner.clicked() {
                         menu = Some(LogMenu::Copy);
                         ui.close();
                     }
-                    if ui.button(tr("Select all")).clicked() {
+                    if widgets::menu_row(ui, &pal, None, tr("Select all"), "Ctrl+A").clicked() {
                         menu = Some(LogMenu::SelectAll);
                         ui.close();
                     }
-                    if ui.button(tr("Copy all")).clicked() {
+                    if widgets::menu_row(ui, &pal, None, tr("Copy all"), "").clicked() {
                         menu = Some(LogMenu::CopyAll);
                         ui.close();
                     }
@@ -920,18 +920,18 @@ impl App {
             widgets::right_row(ui, 30.0, |ui| {
                 ui.add_space(8.0);
                 let resp = widgets::Pill::new(tr("Scripts")).icon(Icon::Script, pal.text_dim).chevron().bordered().height(28.0).show(ui, &pal);
-                egui::Popup::menu(&resp).width(320.0).show(|ui| {
+                widgets::menu_popup(&resp, &pal).width(320.0).show(|ui| {
                     if scripts.is_empty() {
-                        ui.label(RichText::new(tr("No scripts in the project (.als, .bat, .cmd, .ps1, .sh)")).color(pal.text_dim).size(11.5));
+                        widgets::menu_caption(ui, &pal, tr("No scripts in the project (.als, .bat, .cmd, .ps1, .sh)"));
                     }
                     for (rel, abs) in &scripts {
-                        if ui.button(rel).clicked() {
+                        if widgets::menu_row(ui, &pal, Some(Icon::Script), rel, "").clicked() {
                             run = Some(abs.clone());
                             ui.close();
                         }
                     }
                     ui.separator();
-                    if ui.button(tr("Choose a file...")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::FolderOpen), tr("Choose a file..."), "").clicked() {
                         pick = true;
                         ui.close();
                     }

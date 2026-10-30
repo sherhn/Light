@@ -92,18 +92,18 @@ impl App {
             let label = crate::ui_chrome::elide(&self.base_label(), 22);
             let resp = widgets::Pill::new(&label).icon(Icon::History, pal.text_dim).chevron().bordered().height(28.0).show(ui, &pal);
             let commits: Vec<_> = self.git.local.as_ref().map(|l| l.commits().iter().rev().map(|c| (c.id, c.message.clone())).collect()).unwrap_or_default();
-            egui::Popup::menu(&resp).width(300.0).show(|ui| {
-                ui.label(RichText::new(tr("Compare with")).color(pal.text_dim).size(11.5));
-                if ui.button(tr("HEAD (git)")).clicked() {
+            widgets::menu_popup(&resp, &pal).width(300.0).show(|ui| {
+                widgets::menu_caption(ui, &pal, tr("Compare with"));
+                if widgets::menu_row(ui, &pal, Some(Icon::Commit), tr("HEAD (git)"), "").clicked() {
                     set_base = Some(Base::Head);
                     ui.close();
                 }
                 if !commits.is_empty() {
                     ui.separator();
-                    ui.label(RichText::new(tr("Local commits")).color(pal.text_dim).size(11.5));
+                    widgets::menu_caption(ui, &pal, tr("Local commits"));
                 }
                 for (id, msg) in commits {
-                    if ui.button(format!("#{id}  {}", crate::ui_chrome::elide(&msg, 36))).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::History), &format!("#{id}  {}", crate::ui_chrome::elide(&msg, 36)), "").clicked() {
                         set_base = Some(Base::Local(id));
                         ui.close();
                     }
@@ -222,21 +222,21 @@ impl App {
                         if resp.double_clicked() && !hit_checkbox(&resp, cb) && c.kind != ChangeKind::Deleted {
                             act.open = Some(c.path.clone());
                         }
-                        resp.context_menu(|ui| {
-                            if ui.button(tr("Show Diff")).clicked() {
+                        widgets::context_popup(&resp, &pal).show(|ui| {
+                            if widgets::menu_row(ui, &pal, Some(Icon::FileDiff), tr("Show Diff"), "").clicked() {
                                 act.diff = Some(c.path.clone());
                                 ui.close();
                             }
-                            if c.kind != ChangeKind::Deleted && ui.button(tr("Open File")).clicked() {
+                            if c.kind != ChangeKind::Deleted && widgets::menu_row(ui, &pal, Some(Icon::Blank), tr("Open File"), "").clicked() {
                                 act.open = Some(c.path.clone());
                                 ui.close();
                             }
-                            if self.git.repo.is_some() && !self.base_is_local() && ui.button(if c.staged { tr("Unstage") } else { tr("Stage") }).clicked() {
+                            if self.git.repo.is_some() && !self.base_is_local() && widgets::menu_row(ui, &pal, Some(Icon::Plus), if c.staged { tr("Unstage") } else { tr("Stage") }, "").clicked() {
                                 act.stage = Some((c.path.clone(), !c.staged));
                                 ui.close();
                             }
                             ui.separator();
-                            if ui.button(tr("Rollback...")).clicked() {
+                            if widgets::menu_row(ui, &pal, Some(Icon::Undo), tr("Rollback..."), "").clicked() {
                                 act.rollback = Some(c.path.clone());
                                 ui.close();
                             }

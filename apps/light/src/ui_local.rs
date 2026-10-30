@@ -91,22 +91,22 @@ impl App {
                 } else if resp.clicked() {
                     open = Some(c.id);
                 }
-                resp.context_menu(|ui| {
-                    if ui.button(tr("View files and code...")).clicked() {
+                widgets::context_popup(&resp, &pal).show(|ui| {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Eye), tr("View files and code..."), "").clicked() {
                         open = Some(c.id);
                         ui.close();
                     }
-                    if ui.button(tr("Compare working tree with this commit")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::FileDiff), tr("Compare working tree with this commit"), "").clicked() {
                         use_base = Some(Base::Local(c.id));
                         show_changes = true;
                         ui.close();
                     }
-                    if ui.button(tr("Restore working tree to this commit...")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Undo), tr("Restore working tree to this commit..."), "").clicked() {
                         restore = Some(c.id);
                         ui.close();
                     }
                     ui.separator();
-                    if ui.button(tr("Delete")).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Trash), tr("Delete"), "").clicked() {
                         delete = Some(c.id);
                         ui.close();
                     }

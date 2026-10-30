@@ -117,8 +117,8 @@ fn paint_card(ui: &mut egui::Ui, pal: &Palette, rect: Rect, card: &Card, tex: Op
             }
             Some(m) => {
                 let resp = widgets::icon_button(ui, pal, Icon::More, 30.0, pal.text_dim, tr("More"));
-                egui::Popup::menu(&resp).width(180.0).show(|ui| {
-                    if ui.button(tr("Remove")).clicked() {
+                widgets::menu_popup(&resp, pal).width(180.0).show(|ui| {
+                    if widgets::menu_row(ui, pal, Some(Icon::Trash), tr("Remove"), "").clicked() {
                         actions.push(Action::Remove(card.id.clone()));
                         ui.close();
                     }

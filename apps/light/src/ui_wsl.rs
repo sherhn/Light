@@ -331,9 +331,9 @@ impl App {
                 } else {
                     let label = if selected.is_empty() { tr("Choose").to_string() } else { selected.clone() };
                     let resp = widgets::Pill::new(&label).icon(Icon::Linux, pal.text_dim).chevron().bordered().height(30.0).show(ui, &pal);
-                    egui::Popup::menu(&resp).width(240.0).show(|ui| {
+                    widgets::menu_popup(&resp, &pal).width(240.0).show(|ui| {
                         for d in &distros {
-                            if ui.button(d).clicked() {
+                            if widgets::menu_row(ui, &pal, Some(Icon::Linux), d, "").clicked() {
                                 act = Some(Act::Select(d.clone()));
                                 ui.close();
                             }
@@ -346,9 +346,9 @@ impl App {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new(tr("Distribution to install:")).color(pal.text_dim).size(12.0));
                     let resp = widgets::Pill::new(&chosen_friendly).icon(Icon::Install, pal.text_dim).chevron().bordered().height(28.0).show(ui, &pal);
-                    egui::Popup::menu(&resp).width(300.0).show(|ui| {
+                    widgets::menu_popup(&resp, &pal).width(300.0).show(|ui| {
                         if online.is_empty() {
-                            if ui.button(tr("Load the list of distributions (needs the internet)")).clicked() {
+                            if widgets::menu_row(ui, &pal, Some(Icon::Download), tr("Load the list of distributions (needs the internet)"), "").clicked() {
                                 act = Some(Act::LoadOnline);
                             }
                             if let Some(e) = &online_error {
@@ -357,7 +357,7 @@ impl App {
                         }
                         for (name, friendly) in &online {
                             let text = if friendly.is_empty() { name.clone() } else { format!("{friendly}   ({name})") };
-                            if ui.button(text).clicked() {
+                            if widgets::menu_row(ui, &pal, Some(Icon::Linux), &text, "").clicked() {
                                 act = Some(Act::Choose(name.clone()));
                                 ui.close();
                             }

@@ -484,6 +484,118 @@ pub fn segmented(ui: &mut egui::Ui, pal: &Palette, options: &[&str], selected: u
     chosen
 }
 
+// ---------------------------------------------------------------------- menus and dropdown lists
+
+/// Height of a row of a menu or dropdown list.
+pub const MENU_ROW_H: f32 = 30.0;
+
+/// The look of every menu, context menu and dropdown list: rows of one height with room around their texts, a rounded
+/// tinted hover, shortcuts well apart from the titles, hairline separators, and a bordered card with a soft shadow that
+/// lifts it off the page (the only shadow of the flat design: a menu floats above everything).
+pub fn menu_style(pal: &Palette) -> egui::style::StyleModifier {
+    let pal = *pal;
+    egui::style::StyleModifier::from(move |style: &mut egui::Style| {
+        egui::containers::menu::menu_style(style);
+        let s = &mut style.spacing;
+        s.button_padding = Vec2::new(10.0, 4.0);
+        s.interact_size.y = MENU_ROW_H;
+        s.item_spacing = Vec2::new(8.0, 2.0);
+        s.icon_spacing = 10.0;
+        s.menu_margin = Margin::same(6);
+        s.menu_width = 236.0;
+        let v = &mut style.visuals;
+        v.override_text_color = Some(pal.text);
+        v.menu_corner_radius = CornerRadius::same(12);
+        v.window_fill = pal.popup_bg.to_opaque();
+        v.window_stroke = Stroke::new(1.0, pal.border.gamma_multiply(1.6));
+        v.popup_shadow = egui::Shadow { offset: [0, 10], blur: 30, spread: 0, color: Color32::from_black_alpha(if pal.dark { 120 } else { 38 }) };
+        for w in [&mut v.widgets.noninteractive, &mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open] {
+            w.corner_radius = CornerRadius::same(8);
+            w.expansion = 0.0;
+            w.fg_stroke = Stroke::new(1.0, pal.text);
+        }
+        v.widgets.hovered.weak_bg_fill = pal.selected;
+        v.widgets.hovered.bg_fill = pal.selected;
+        v.widgets.active.weak_bg_fill = pal.selected.gamma_multiply(1.5);
+        v.widgets.active.bg_fill = pal.selected.gamma_multiply(1.5);
+        v.widgets.open.weak_bg_fill = pal.hover;
+        v.widgets.open.bg_fill = pal.hover;
+        // the separators between groups of rows
+        v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, pal.border);
+        // the chosen row of a list (the line ending in use, the environment the project runs in)
+        v.selection.bg_fill = pal.tab_active_bg;
+        v.selection.stroke = Stroke::new(1.0, pal.text);
+    })
+}
+
+/// The menu bar's settings: its menus and their submenus take [`menu_style`].
+pub fn menu_config(pal: &Palette) -> egui::containers::menu::MenuConfig {
+    egui::containers::menu::MenuConfig::new().style(menu_style(pal))
+}
+
+/// A dropdown menu under `button` (opened and closed by clicking it), in the look of every menu.
+pub fn menu_popup(button: &egui::Response, pal: &Palette) -> egui::Popup<'static> {
+    egui::Popup::menu(button).style(menu_style(pal))
+}
+
+/// A right-click menu of `response`, in the look of every menu.
+pub fn context_popup(response: &egui::Response, pal: &Palette) -> egui::Popup<'static> {
+    egui::Popup::context_menu(response).style(menu_style(pal))
+}
+
+/// A row of a menu: an icon column (kept even without an icon, so the titles line up), the title and a dim shortcut at
+/// the right edge.
+pub fn menu_row(ui: &mut egui::Ui, pal: &Palette, icon: Option<Icon>, title: &str, shortcut: &str) -> egui::Response {
+    // without an icon a transparent glyph keeps the column
+    let glyph = icon.and_then(icons::glyph);
+    let color = if glyph.is_some() { pal.text_dim } else { Color32::TRANSPARENT };
+    let glyph = egui::RichText::new(glyph.unwrap_or(crate::lucide::FILE).to_string()).font(fonts::icons(15.0)).color(color);
+    let mut button = egui::Button::new((glyph, egui::RichText::new(title).font(fonts::ui(13.5)))).gap(10.0);
+    if !shortcut.is_empty() {
+        button = button.shortcut_text(egui::RichText::new(shortcut).font(fonts::ui(12.0)).color(pal.text_dim));
+    }
+    ui.add(button)
+}
+
+/// A row of a menu that opens a submenu (shown while the row is hovered), lined up with the rows of [`menu_row`].
+pub fn submenu_row<R>(ui: &mut egui::Ui, pal: &Palette, icon: Option<Icon>, title: &str, add: impl FnOnce(&mut egui::Ui) -> R) -> egui::InnerResponse<Option<R>> {
+    let glyph = icon.and_then(icons::glyph);
+    let color = if glyph.is_some() { pal.text_dim } else { Color32::TRANSPARENT };
+    let glyph = egui::RichText::new(glyph.unwrap_or(crate::lucide::FILE).to_string()).font(fonts::icons(15.0)).color(color);
+    let button = egui::Button::new((glyph, egui::RichText::new(title).font(fonts::ui(13.5)), egui::Atom::grow(), egui::containers::menu::SubMenuButton::arrow_atom(Some(pal.text_dim)))).gap(10.0);
+    let (response, inner) = egui::containers::menu::SubMenuButton::from_button(button).ui(ui, add);
+    egui::InnerResponse::new(inner.map(|i| i.inner), response)
+}
+
+/// A small heading over a group of rows of a menu, lined up with their titles.
+pub fn menu_caption(ui: &mut egui::Ui, pal: &Palette, text: &str) {
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        ui.add_space(10.0);
+        ui.label(egui::RichText::new(text.to_uppercase()).font(fonts::semibold(10.5)).color(pal.text_dim));
+    });
+    ui.add_space(2.0);
+}
+
+/// A field that opens a list of choices: the chosen one is shown, with a chevron, in the look of a text field.
+/// `add` draws the rows of the list (with [`menu_row`] or `selectable_label`).
+pub fn dropdown<R>(ui: &mut egui::Ui, pal: &Palette, id: &str, width: f32, shown: &str, add: impl FnOnce(&mut egui::Ui) -> R) -> (egui::Response, Option<R>) {
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, FIELD_H), Sense::hover());
+    // a fixed id: the list stays open while the rows around the field change
+    let resp = ui.interact(rect, egui::Id::unique(("dropdown", id)), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+    let open = egui::Popup::is_id_open(ui.ctx(), egui::Popup::default_response_id(&resp));
+    let fill = if open || resp.is_pointer_button_down_on() { pal.selected } else if resp.hovered() { pal.hover.gamma_multiply(1.6) } else { pal.input_bg };
+    ui.painter().rect_filled(rect, CornerRadius::same(12), fill);
+    let text_rect = Rect::from_min_max(Pos2::new(rect.min.x + 12.0, rect.min.y), Pos2::new(rect.max.x - 30.0, rect.max.y));
+    ui.painter().with_clip_rect(text_rect.intersect(ui.clip_rect())).text(Pos2::new(text_rect.min.x, rect.center().y), Align2::LEFT_CENTER, shown, fonts::ui(13.5), pal.text);
+    icons::paint(ui.painter(), Rect::from_center_size(Pos2::new(rect.max.x - 18.0, rect.center().y), Vec2::splat(12.0)), if open { Icon::ChevronUp } else { Icon::ChevronDown }, pal.text_dim);
+    let inner = menu_popup(&resp, pal).width(width.max(180.0)).show(|ui| {
+        ui.set_min_width(width - 12.0);
+        egui::ScrollArea::vertical().max_height(320.0).min_scrolled_height(320.0).show_fading(ui, add).inner
+    });
+    (resp, inner.map(|r| r.inner))
+}
+
 // ---------------------------------------------------------------------- small pieces
 
 /// Section caption (small, dim).

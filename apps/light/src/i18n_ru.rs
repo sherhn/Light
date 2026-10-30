@@ -1046,4 +1046,7 @@ pub const RU: &[(&str, &str)] = &[
     ("The developer tools were not installed on this computer", "Инструменты разработчика не установлены на этот компьютер"),
     // ---- go to declaration
     ("Searching the project for the declaration of '{}'...", "Поиск объявления '{}' по всему проекту..."),
+    // ---- menus
+    ("Line endings", "Окончания строк"),
+    ("opened", "открыт"),
 ];

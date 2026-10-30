@@ -208,9 +208,9 @@ impl App {
                     widgets::right_row(ui, widgets::FIELD_H, |ui| {
                         if distros.len() > 1 {
                             let resp = widgets::Pill::new(&st.linux_distro).icon(Icon::Linux, pal.text_dim).chevron().bordered().height(widgets::FIELD_H).show(ui, &pal);
-                            egui::Popup::menu(&resp).width(220.0).show(|ui| {
+                            widgets::menu_popup(&resp, &pal).width(220.0).show(|ui| {
                                 for d in &distros {
-                                    if ui.button(d).clicked() {
+                                    if widgets::menu_row(ui, &pal, Some(if *d == st.linux_distro { Icon::Check } else { Icon::Linux }), d, "").clicked() {
                                         st.linux_distro = d.clone();
                                         ui.close();
                                     }

@@ -70,6 +70,23 @@ pub enum Icon {
     Preview,
     /// The editor and its preview side by side.
     Columns,
+    FilePlus,
+    FolderPlus,
+    /// A folder under version control (getting a project from it).
+    FolderGit,
+    /// This computer (its own system, as opposed to Linux in WSL).
+    Monitor,
+    ArrowLeft,
+    Copy,
+    Cut,
+    Paste,
+    Redo,
+    Exit,
+    FolderSearch,
+    Sun,
+    Moon,
+    /// A file of no particular kind.
+    Blank,
 }
 
 pub fn glyph(icon: Icon) -> Option<char> {
@@ -101,7 +118,7 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::ArrowDown => l::ARROW_DOWN,
         Icon::Commit => l::GIT_COMMIT_HORIZONTAL,
         Icon::Refresh => l::REFRESH_CW,
-        Icon::Plus => '+',
+        Icon::Plus => l::PLUS,
         Icon::History => l::HISTORY,
         Icon::More => l::ELLIPSIS,
         Icon::Repl => l::SQUARE_TERMINAL,
@@ -129,6 +146,20 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::Repo => l::BOOK_MARKED,
         Icon::Preview => l::EYE,
         Icon::Columns => l::COLUMNS_2,
+        Icon::FilePlus => l::FILE_PLUS,
+        Icon::FolderPlus => l::FOLDER_PLUS,
+        Icon::FolderGit => l::FOLDER_GIT_2,
+        Icon::Monitor => l::MONITOR,
+        Icon::ArrowLeft => l::ARROW_LEFT,
+        Icon::Copy => l::COPY,
+        Icon::Cut => l::SCISSORS,
+        Icon::Paste => l::CLIPBOARD,
+        Icon::Redo => l::REDO_2,
+        Icon::Exit => l::LOG_OUT,
+        Icon::FolderSearch => l::FOLDER_SEARCH,
+        Icon::Sun => l::SUN,
+        Icon::Moon => l::MOON,
+        Icon::Blank => l::FILE,
     })
 }
 
@@ -161,7 +192,7 @@ mod tests {
     #[test]
     fn every_icon_has_a_glyph_or_is_custom() {
         use Icon::*;
-        for i in [Folder, FolderOpen, File, Play, Stop, Restart, Search, Warning, Error, Check, ChevronRight, ChevronDown, ChevronUp, Close, Gear, List, Terminal, Trash, Project, Branch, Clear, Info, ArrowUp, ArrowDown, Commit, Refresh, History, More, Repl, Download, Palette, Keyboard, Code, Pencil, Package, Puzzle, Hammer, Globe, Eye, ChevronLeft, Undo, FileDiff, Script, Linux, Install, Ok, Spinner, Key, User, Lock, Repo, Preview, Columns] {
+        for i in [Folder, FolderOpen, File, Play, Stop, Restart, Search, Warning, Error, Check, ChevronRight, ChevronDown, ChevronUp, Close, Gear, List, Terminal, Trash, Project, Branch, Clear, Info, ArrowUp, ArrowDown, Commit, Refresh, History, More, Repl, Download, Palette, Keyboard, Code, Pencil, Package, Puzzle, Hammer, Globe, Eye, ChevronLeft, Undo, FileDiff, Script, Linux, Install, Ok, Spinner, Key, User, Lock, Repo, Preview, Columns, FilePlus, FolderPlus, FolderGit, Monitor, ArrowLeft, Copy, Cut, Paste, Redo, Exit, FolderSearch, Sun, Moon, Blank] {
             assert!(glyph(i).is_some(), "{i:?}");
         }
         assert!(glyph(Lisp).is_none());

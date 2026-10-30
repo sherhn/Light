@@ -21,11 +21,8 @@ impl App {
             return;
         }
         let sc = c.shortcuts.first().map(|s| commands::display_shortcut(s)).unwrap_or_default();
-        let mut btn = egui::Button::new(tr(c.title));
-        if !sc.is_empty() {
-            btn = btn.shortcut_text(RichText::new(sc).color(self.pal.text_dim));
-        }
-        if ui.add(btn).clicked() {
+        let icon = if id == "view.toggle_theme" { Some(if self.pal.dark { Icon::Sun } else { Icon::Moon }) } else { command_icon(id) };
+        if widgets::menu_row(ui, &self.pal, icon, tr(c.title), &sc).clicked() {
             ui.close();
             self.run_command(ctx, id);
         }
@@ -43,26 +40,30 @@ impl App {
 
     pub fn draw_menu_bar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let pal = self.pal;
-        egui::MenuBar::new().ui(ui, |ui| {
+        egui::MenuBar::new().config(widgets::menu_config(&pal)).ui(ui, |ui| {
             ui.set_min_height(widgets::MENU_H - 6.0);
             let v = ui.visuals_mut();
             v.override_text_color = Some(pal.text);
             for w in [&mut v.widgets.noninteractive, &mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open] {
                 w.fg_stroke = Stroke::new(1.0, pal.text);
+                w.corner_radius = CornerRadius::same(8);
             }
+            // the title of the open menu stays marked while its list is shown
+            v.widgets.open.weak_bg_fill = pal.selected;
             ui.spacing_mut().button_padding = Vec2::new(10.0, 6.0);
             ui.spacing_mut().item_spacing.x = 2.0;
             ui.menu_button(tr("File"), |ui| {
                 self.menu_items(ui, ctx, &["file.new", "file.new_project", "file.open_project", "file.clone", "file.open_file", "file.reopen_last"]);
                 let recent = self.settings.recent_projects.clone();
-                ui.menu_button(tr("Recent Projects"), |ui| {
+                widgets::submenu_row(ui, &pal, Some(Icon::History), tr("Recent Projects"), |ui| {
                     if recent.is_empty() {
-                        ui.label(RichText::new(tr("No recent projects")).color(pal.text_dim));
+                        widgets::menu_caption(ui, &pal, tr("No recent projects"));
                     }
-                    for p in recent {
-                        if ui.button(&p).clicked() {
+                    for p in recent.iter().take(15) {
+                        let name = std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| p.clone());
+                        if widgets::menu_row(ui, &pal, Some(Icon::Folder), &name, "").on_hover_text(p).clicked() {
                             ui.close();
-                            self.request_open_project(std::path::Path::new(&p));
+                            self.request_open_project(std::path::Path::new(p));
                         }
                     }
                 });
@@ -93,7 +94,7 @@ impl App {
                 self.menu_items(ui, ctx, &["code.complete", "code.quick_doc", "code.param_info", "code.expand_macro", "-", "code.reformat", "code.auto_indent"]);
                 if self.lisp_enabled() {
                     ui.separator();
-                    ui.menu_button(tr("Structural Editing"), |ui| {
+                    widgets::submenu_row(ui, &pal, Some(Icon::Code), tr("Structural Editing"), |ui| {
                         for c in commands::COMMANDS.iter().filter(|c| c.id.starts_with("lisp.")) {
                             self.menu_item(ui, ctx, c.id);
                         }
@@ -136,32 +137,36 @@ impl App {
             let recents = self.settings.recent_projects.clone();
             let mut open_other: Option<String> = None;
             let mut cmd: Option<&str> = None;
-            egui::Popup::menu(&resp).width(260.0).show(|ui| {
-                ui.label(RichText::new(tr("Recent projects")).color(pal.text_dim).size(11.5));
-                egui::ScrollArea::vertical().id_salt("recent_projects_list").max_height((ctx.content_rect().height() * 0.4).max(100.0)).show_fading(ui, |ui| {
-                for p in &recents {
-                    let n = std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| p.clone());
-                    if ui.button(n).on_hover_text(p).clicked() {
-                        open_other = Some(p.clone());
-                        ui.close();
-                    }
+            widgets::menu_popup(&resp, &pal).width(300.0).show(|ui| {
+                // the ways to another project come first, so they are there however long the list below is
+                if widgets::menu_row(ui, &pal, Some(Icon::FolderPlus), tr("New Project..."), "").clicked() {
+                    cmd = Some("file.new_project");
+                    ui.close();
                 }
-                });
-                ui.separator();
-                let clone_button = ui.button(tr("Get from Version Control..."));
+                if widgets::menu_row(ui, &pal, Some(Icon::FolderOpen), tr("Open Project..."), "").clicked() {
+                    cmd = Some("file.open_project");
+                    ui.close();
+                }
+                let clone_button = widgets::menu_row(ui, &pal, Some(Icon::FolderGit), tr("Get from Version Control..."), "");
                 ui.data_mut(|data| data.insert_temp(egui::Id::unique("recent_clone_button"), clone_button.rect));
                 if clone_button.clicked() {
                     cmd = Some("file.clone");
                     ui.close();
                 }
-                if ui.button(tr("Open Project...")).clicked() {
-                    cmd = Some("file.open_project");
-                    ui.close();
-                }
-                if ui.button(tr("New Project...")).clicked() {
-                    cmd = Some("file.new_project");
-                    ui.close();
-                }
+                ui.separator();
+                widgets::menu_caption(ui, &pal, if recents.is_empty() { tr("No recent projects") } else { tr("Recent projects") });
+                let list_h = (ctx.content_rect().height() * 0.45).max(100.0);
+                egui::ScrollArea::vertical().id_salt("recent_projects_list").max_height(list_h).min_scrolled_height(list_h).show_fading(ui, |ui| {
+                    for p in &recents {
+                        let n = std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| p.clone());
+                        let current = self.project.as_ref().is_some_and(|proj| proj.root == std::path::Path::new(p));
+                        let icon = if ide_core::wsl::wsl_path(std::path::Path::new(p)).is_some() { Icon::Linux } else { Icon::Folder };
+                        if widgets::menu_row(ui, &pal, Some(icon), &n, if current { tr("opened") } else { "" }).on_hover_text(p).clicked() {
+                            open_other = Some(p.clone());
+                            ui.close();
+                        }
+                    }
+                });
             });
             if let Some(p) = open_other {
                 self.request_open_project(std::path::Path::new(&p));
@@ -183,25 +188,25 @@ impl App {
                 let branches = self.git.branches.clone();
                 let mut checkout: Option<String> = None;
                 let mut new_branch = false;
-                egui::Popup::menu(&resp).width(280.0).show(|ui| {
-                    if ui.button(tr("New Branch...")).clicked() {
+                widgets::menu_popup(&resp, &pal).width(280.0).show(|ui| {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Plus), tr("New Branch..."), "").clicked() {
                         new_branch = true;
                         ui.close();
                     }
                     ui.separator();
-                    ui.label(RichText::new(tr("Local")).color(pal.text_dim).size(11.5));
+                    widgets::menu_caption(ui, &pal, tr("Local"));
                     for b in branches.iter().filter(|b| !b.remote) {
-                        let label = if b.current { i18n::fmt("{}   (current)", &[&b.name]) } else { b.name.clone() };
-                        if ui.add_enabled(!b.current, egui::Button::new(label)).clicked() {
+                        let resp = ui.add_enabled_ui(!b.current, |ui| widgets::menu_row(ui, &pal, Some(if b.current { Icon::Check } else { Icon::Branch }), &b.name, if b.current { tr("current") } else { "" })).inner;
+                        if resp.clicked() {
                             checkout = Some(b.name.clone());
                             ui.close();
                         }
                     }
                     if branches.iter().any(|b| b.remote) {
                         ui.separator();
-                        ui.label(RichText::new(tr("Remote")).color(pal.text_dim).size(11.5));
+                        widgets::menu_caption(ui, &pal, tr("Remote"));
                         for b in branches.iter().filter(|b| b.remote) {
-                            if ui.button(&b.name).clicked() {
+                            if widgets::menu_row(ui, &pal, Some(Icon::Globe), &b.name, "").clicked() {
                                 checkout = Some(b.name.clone());
                                 ui.close();
                             }
@@ -296,66 +301,61 @@ impl App {
                 let mut env_choice: Option<Option<String>> = None;
                 let mut chosen: Option<RunConfig> = None;
                 let module_runs = self.available_module_runs();
-                egui::Popup::menu(&resp).width(240.0).show(|ui| {
-                    egui::ScrollArea::vertical().id_salt("run_configuration_menu").max_height((ctx.content_rect().height() - 120.0).max(100.0)).show_fading(ui, |ui| {
-                    if ui.button(tr("Current File")).clicked() {
-                        chosen = Some(RunConfig::CurrentFile);
-                        ui.close();
-                    }
+                let current_config = self.run_config.clone();
+                widgets::menu_popup(&resp, &pal).width(260.0).show(|ui| {
+                    // as tall as the list (up to the window): a popup's first frame would otherwise fix a smaller height
+                    let list_h = (ctx.content_rect().height() - 120.0).max(100.0);
+                    egui::ScrollArea::vertical().id_salt("run_configuration_menu").max_height(list_h).min_scrolled_height(list_h).show_fading(ui, |ui| {
+                    // the configuration in use carries a check mark instead of its icon
+                    let mut pick = |ui: &mut egui::Ui, icon: Icon, label: &str, config: RunConfig| {
+                        let icon = if current_config == config { Icon::Check } else { icon };
+                        if widgets::menu_row(ui, &pal, Some(icon), label, "").clicked() {
+                            chosen = Some(config);
+                            ui.close();
+                        }
+                    };
+                    pick(ui, Icon::Blank, tr("Current File"), RunConfig::CurrentFile);
                     if !module_runs.is_empty() {
                         ui.separator();
                         for (module, def) in &module_runs {
-                            if ui.button(&def.name).clicked() {
-                                chosen = Some(RunConfig::Module(module.clone(), def.name.clone()));
-                                ui.close();
-                            }
+                            pick(ui, Icon::Play, &def.name, RunConfig::Module(module.clone(), def.name.clone()));
                         }
                     }
                     if !targets.is_empty() {
                         ui.separator();
-                        ui.label(RichText::new(if self.wsl_target().is_some() { tr("make (in Linux)") } else { tr("make") }).color(pal.text_dim).size(11.5));
+                        widgets::menu_caption(ui, &pal, if self.wsl_target().is_some() { tr("make (in Linux)") } else { tr("make") });
                         for t in &targets {
-                            if ui.button(format!("make {t}")).clicked() {
-                                chosen = Some(RunConfig::Make(t.clone()));
-                                ui.close();
-                            }
-                        }
-                        if !systems.is_empty() {
-                            ui.separator();
+                            pick(ui, Icon::Hammer, &format!("make {t}"), RunConfig::Make(t.clone()));
                         }
                     }
+                    if !systems.is_empty() {
+                        ui.separator();
+                    }
                     for s in &systems {
-                        if ui.button(i18n::fmt("Load system '{}'", &[&s])).clicked() {
-                            chosen = Some(RunConfig::Load(s.clone()));
-                            ui.close();
-                        }
-                        if ui.button(i18n::fmt("Test system '{}'", &[&s])).clicked() {
-                            chosen = Some(RunConfig::Test(s.clone()));
-                            ui.close();
-                        }
+                        pick(ui, Icon::Package, &i18n::fmt("Load system '{}'", &[&s]), RunConfig::Load(s.clone()));
+                        pick(ui, Icon::Ok, &i18n::fmt("Test system '{}'", &[&s]), RunConfig::Test(s.clone()));
                     }
                     // console commands one after another
                     ui.separator();
-                    ui.label(RichText::new(tr("Scenarios")).color(pal.text_dim).size(11.5));
+                    widgets::menu_caption(ui, &pal, tr("Scenarios"));
                     for n in &scenarios {
-                        if ui.button(n).clicked() {
-                            chosen = Some(RunConfig::Scenario(n.clone()));
-                            ui.close();
-                        }
+                        pick(ui, Icon::Script, n, RunConfig::Scenario(n.clone()));
                     }
-                    if ui.button(if scenarios.is_empty() { tr("Add a scenario...") } else { tr("Edit scenarios...") }).clicked() {
+                    if widgets::menu_row(ui, &pal, Some(if scenarios.is_empty() { Icon::Plus } else { Icon::Pencil }), if scenarios.is_empty() { tr("Add a scenario...") } else { tr("Edit scenarios...") }, "").clicked() {
                         edit_scenarios = true;
                         ui.close();
                     }
                     if self.project.is_some() && !linux_fs {
                         ui.separator();
-                        ui.label(RichText::new(tr("Run in")).color(pal.text_dim).size(11.5));
-                        if ui.selectable_label(current_env.is_none(), tr("On Windows")).clicked() {
+                        widgets::menu_caption(ui, &pal, tr("Run in"));
+                        let on_windows = current_env.is_none();
+                        if widgets::menu_row(ui, &pal, Some(if on_windows { Icon::Check } else { Icon::Monitor }), tr("On Windows"), "").clicked() {
                             env_choice = Some(None);
                             ui.close();
                         }
                         for d in &distros {
-                            if ui.selectable_label(current_env.as_deref() == Some(d.as_str()), i18n::fmt("In Linux: {}", &[d])).clicked() {
+                            let here = current_env.as_deref() == Some(d.as_str());
+                            if widgets::menu_row(ui, &pal, Some(if here { Icon::Check } else { Icon::Linux }), &i18n::fmt("In Linux: {}", &[d]), "").clicked() {
                                 env_choice = Some(Some(d.clone()));
                                 ui.close();
                             }
@@ -502,37 +502,37 @@ impl App {
             } else if resp.clicked() {
                 to_activate = Some(i);
             }
-            resp.context_menu(|ui| {
-                if ui.button(tr("Close")).clicked() {
+            widgets::context_popup(&resp, &pal).show(|ui| {
+                if widgets::menu_row(ui, &pal, Some(Icon::Close), tr("Close"), "Ctrl+F4").clicked() {
                     to_close = Some(i);
                     ui.close();
                 }
-                if ui.button(tr("Close Other Tabs")).clicked() {
+                if widgets::menu_row(ui, &pal, None, tr("Close Other Tabs"), "").clicked() {
                     to_activate = Some(i);
                     self.pending_close_others = true;
                     ui.close();
                 }
                 ui.separator();
-                if ui.button(tr("Split Right")).clicked() {
+                if widgets::menu_row(ui, &pal, Some(Icon::Columns), tr("Split Right"), "").clicked() {
                     split_request = Some((i, Some(true)));
                     ui.close();
                 }
-                if ui.button(tr("Split Down")).clicked() {
+                if widgets::menu_row(ui, &pal, None, tr("Split Down"), "").clicked() {
                     split_request = Some((i, Some(false)));
                     ui.close();
                 }
-                if is_split && ui.button(tr("Unsplit")).clicked() {
+                if is_split && widgets::menu_row(ui, &pal, None, tr("Unsplit"), "").clicked() {
                     split_request = Some((i, None));
                     ui.close();
                 }
                 ui.separator();
-                if ui.button(tr("Copy Path")).clicked() {
+                if widgets::menu_row(ui, &pal, Some(Icon::Copy), tr("Copy Path"), "").clicked() {
                     if let Some(p) = &self.docs[i].path {
                         ctx.copy_text(p.to_string_lossy().into_owned());
                     }
                     ui.close();
                 }
-                if ui.button(tr("Reveal in File Manager")).clicked() {
+                if widgets::menu_row(ui, &pal, Some(Icon::FolderSearch), tr("Reveal in File Manager"), "").clicked() {
                     if let Some(p) = self.docs[i].path.clone() {
                         crate::input::reveal_in_file_manager(&p);
                     }
@@ -654,9 +654,10 @@ impl App {
                     // the line endings the file is written with, with a menu to change them (as in VS Code)
                     let resp = ui.add(egui::Label::new(small(eol.label().into())).sense(Sense::click())).on_hover_text(tr("Line endings of the file (LF or CRLF) - click to change"));
                     let mut pick = None;
-                    egui::Popup::menu(&resp).show(|ui| {
+                    widgets::menu_popup(&resp, &pal).show(|ui| {
+                        widgets::menu_caption(ui, &pal, tr("Line endings"));
                         for (le, id) in [(LineEnding::Lf, "edit.eol_lf"), (LineEnding::CrLf, "edit.eol_crlf")] {
-                            if ui.selectable_label(eol == le, le.label()).clicked() {
+                            if widgets::menu_row(ui, &pal, (eol == le).then_some(Icon::Check), le.label(), "").clicked() {
                                 pick = Some(id);
                                 ui.close();
                             }
@@ -722,6 +723,62 @@ impl App {
             ctx.request_repaint_after(std::time::Duration::from_millis(200));
         }
     }
+}
+
+/// The icon a command shows in the menus, if it has one.
+fn command_icon(id: &str) -> Option<Icon> {
+    Some(match id {
+        "file.new" => Icon::FilePlus,
+        "file.new_project" => Icon::FolderPlus,
+        "file.open_project" => Icon::FolderOpen,
+        "file.clone" => Icon::FolderGit,
+        "file.open_file" => Icon::Blank,
+        "file.reopen_last" | "nav.recent_files" => Icon::History,
+        "file.reload" | "git.refresh" => Icon::Refresh,
+        "file.close_tab" => Icon::Close,
+        "file.copy_path" | "edit.copy" => Icon::Copy,
+        "file.reveal" | "find.in_files" => Icon::FolderSearch,
+        "app.modules" => Icon::Puzzle,
+        "app.settings" => Icon::Gear,
+        "app.exit" => Icon::Exit,
+        "edit.undo" | "git.rollback" => Icon::Undo,
+        "edit.redo" => Icon::Redo,
+        "edit.cut" => Icon::Cut,
+        "edit.paste" => Icon::Paste,
+        "find.find" | "nav.search_everywhere" | "nav.find_action" | "find.usages" => Icon::Search,
+        "find.replace" | "find.replace_in_files" | "refactor.rename" => Icon::Pencil,
+        "view.project" => Icon::Project,
+        "view.commit" | "git.commit" => Icon::Commit,
+        "view.structure" | "nav.file_structure" => Icon::List,
+        "view.git" | "git.local_commit" => Icon::History,
+        "view.repl" | "repl.focus" | "repl.eval" | "repl.eval_last" | "repl.load_file" => Icon::Repl,
+        "view.run" | "run.run_file" => Icon::Play,
+        "view.problems" | "nav.next_problem" | "nav.prev_problem" => Icon::Warning,
+        "view.terminal" => Icon::Terminal,
+        "view.split_right" | "view.split_down" | "view.preview_split" => Icon::Columns,
+        "view.preview_only" => Icon::Preview,
+        "view.preview_code" | "code.reformat" | "code.auto_indent" => Icon::Code,
+        "view.hide_all" => Icon::Eye,
+        "nav.goto_file" => Icon::Blank,
+        "nav.back" => Icon::ArrowLeft,
+        "nav.declaration" => Icon::ChevronRight,
+        "code.quick_doc" | "code.param_info" => Icon::Info,
+        "git.push" => Icon::ArrowUp,
+        "git.pull" => Icon::ArrowDown,
+        "git.branches" | "git.new_branch" => Icon::Branch,
+        "git.diff" => Icon::FileDiff,
+        "git.stage_file" => Icon::Plus,
+        "git.init" => Icon::FolderGit,
+        "run.compile_file" | "run.test_system" => Icon::Check,
+        "run.stop" => Icon::Stop,
+        "run.load_system" => Icon::Package,
+        "run.scenarios" => Icon::Script,
+        "repl.restart" => Icon::Restart,
+        "repl.clear" => Icon::Clear,
+        "help.keymap" => Icon::Keyboard,
+        "help.about" => Icon::Info,
+        _ => return None,
+    })
 }
 
 pub fn elide(s: &str, max: usize) -> String {

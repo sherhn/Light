@@ -2,6 +2,7 @@
 
 use crate::{
     i18n::tr,
+    icons::Icon,
     theme::Palette,
     widgets::{self, TextField},
 };
@@ -54,13 +55,17 @@ impl ProjectLocation {
                 {
                     self.distro = distro.clone();
                 }
-                egui::ComboBox::from_id_salt("new_project_distro")
-                    .selected_text(&self.distro)
-                    .show_ui(ui, |ui| {
-                        for distro in distros {
-                            ui.selectable_value(&mut self.distro, distro.clone(), distro);
+                let shown = self.distro.clone();
+                widgets::dropdown(ui, pal, "new_project_distro", 260.0, &shown, |ui| {
+                    for distro in distros {
+                        let icon = if *distro == self.distro { Icon::Check } else { Icon::Linux };
+                        if widgets::menu_row(ui, pal, Some(icon), distro, "").clicked() {
+                            self.distro = distro.clone();
+                            ui.close();
                         }
-                    });
+                    }
+                });
+                ui.add_space(6.0);
                 TextField::new(&mut self.parent)
                     .hint("~/projects")
                     .show(ui, pal);
