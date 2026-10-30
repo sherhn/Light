@@ -1351,6 +1351,7 @@ dependencies = [
 name = "light"
 version = "1.0.0"
 dependencies = [
+ "dirs",
  "eframe",
  "embed-resource",
  "ide-core",

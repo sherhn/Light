@@ -386,6 +386,8 @@ pub struct CloneState {
     /// Modules to connect to the project once it is here (downloaded first if they are not installed).
     pub modules: Vec<String>,
     pub show_modules: bool,
+    /// The explorer choosing the folder in Linux, while it is open.
+    pub browse: Option<Box<crate::ui_project_browser::Explorer>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

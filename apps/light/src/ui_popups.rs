@@ -514,7 +514,9 @@ impl App {
                     return;
                 }
                 let working = location.job.is_some();
-                let (mut ok, mut cancel) = (enter && !creating && !working, esc && !working);
+                // the keys belong to the explorer of Linux while it is open over the dialog
+                let picking = location.browse.is_some();
+                let (mut ok, mut cancel) = (enter && !creating && !working && !picking, esc && !working && !picking);
                 let data = self.picker_data(ctx);
                 let installed_ids: Vec<String> = self.mods.installed.iter().map(|m| m.manifest.id.clone()).collect();
                 let missing: Vec<String> = modules.iter().filter(|id| !installed_ids.contains(id)).cloned().collect();

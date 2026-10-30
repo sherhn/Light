@@ -74,6 +74,9 @@ pub enum Icon {
     FolderPlus,
     /// A folder under version control (getting a project from it).
     FolderGit,
+    Home,
+    /// A drive of this computer.
+    Drive,
     /// This computer (its own system, as opposed to Linux in WSL).
     Monitor,
     ArrowLeft,
@@ -149,6 +152,8 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::FilePlus => l::FILE_PLUS,
         Icon::FolderPlus => l::FOLDER_PLUS,
         Icon::FolderGit => l::FOLDER_GIT_2,
+        Icon::Home => l::HOUSE,
+        Icon::Drive => l::HARD_DRIVE,
         Icon::Monitor => l::MONITOR,
         Icon::ArrowLeft => l::ARROW_LEFT,
         Icon::Copy => l::COPY,
@@ -192,7 +197,7 @@ mod tests {
     #[test]
     fn every_icon_has_a_glyph_or_is_custom() {
         use Icon::*;
-        for i in [Folder, FolderOpen, File, Play, Stop, Restart, Search, Warning, Error, Check, ChevronRight, ChevronDown, ChevronUp, Close, Gear, List, Terminal, Trash, Project, Branch, Clear, Info, ArrowUp, ArrowDown, Commit, Refresh, History, More, Repl, Download, Palette, Keyboard, Code, Pencil, Package, Puzzle, Hammer, Globe, Eye, ChevronLeft, Undo, FileDiff, Script, Linux, Install, Ok, Spinner, Key, User, Lock, Repo, Preview, Columns, FilePlus, FolderPlus, FolderGit, Monitor, ArrowLeft, Copy, Cut, Paste, Redo, Exit, FolderSearch, Sun, Moon, Blank] {
+        for i in [Folder, FolderOpen, File, Play, Stop, Restart, Search, Warning, Error, Check, ChevronRight, ChevronDown, ChevronUp, Close, Gear, List, Terminal, Trash, Project, Branch, Clear, Info, ArrowUp, ArrowDown, Commit, Refresh, History, More, Repl, Download, Palette, Keyboard, Code, Pencil, Package, Puzzle, Hammer, Globe, Eye, ChevronLeft, Undo, FileDiff, Script, Linux, Install, Ok, Spinner, Key, User, Lock, Repo, Preview, Columns, FilePlus, FolderPlus, FolderGit, Home, Drive, Monitor, ArrowLeft, Copy, Cut, Paste, Redo, Exit, FolderSearch, Sun, Moon, Blank] {
             assert!(glyph(i).is_some(), "{i:?}");
         }
         assert!(glyph(Lisp).is_none());

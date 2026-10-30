@@ -389,6 +389,12 @@ impl App {
                     }
                     if let Some(value) = step["distro"].as_str() { c.linux_distro = value.into(); }
                     if let Some(value) = step["linux_dir"].as_str() { c.linux_dir = value.into(); }
+                    // `browse`: open the explorer of the folder in Linux, as its Browse button does
+                    if step["browse"].as_bool() == Some(true) {
+                        let mut explorer = crate::ui_project_browser::Explorer::new(crate::ui_project_browser::Side::Linux, crate::ui_project_browser::Purpose::Pick, c.linux_distro.clone(), c.linux_dir.clone());
+                        explorer.start();
+                        c.browse = Some(Box::new(explorer));
+                    }
                     if let Some(v) = step["modules"].as_array() {
                         c.modules = v.iter().filter_map(|x| x.as_str().map(String::from)).collect();
                         c.show_modules = true;
@@ -466,9 +472,64 @@ impl App {
                 self.editor_focus = true;
             }
             "focus_editor" => self.editor_focus = true,
-            "project_browser_focus" => {
-                let id = if sval == "path" { "project_browser_address" } else { "project_browser_search" };
-                ctx.memory_mut(|memory| memory.request_focus(egui::Id::unique(id)));
+            // the Open Project dialog: `side` shows this computer (`local`) or Linux; `go` goes to a folder (as typed in
+            // the address); `select` picks a folder of the listing by name; `open`: Ctrl+Enter
+            "project_browser" => {
+                let mut missing = None;
+                if let Popup::ProjectBrowser(browser) = &mut self.popup {
+                    match step["side"].as_str() {
+                        Some("linux") => browser.switch(crate::ui_project_browser::Side::Linux),
+                        Some(_) => browser.switch(crate::ui_project_browser::Side::Local),
+                        None => {}
+                    }
+                    let ex = browser.shown_mut();
+                    if let Some(path) = step["go"].as_str() {
+                        ex.navigate(path.to_string());
+                    }
+                    if let Some(name) = step["select"].as_str() {
+                        let found = ex.items().iter().find(|i| i.name == name && i.is_dir).map(|i| i.path.clone());
+                        if found.is_none() {
+                            missing = Some(format!("project_browser: no folder {name:?} listed"));
+                        }
+                        ex.select(found);
+                    }
+                } else {
+                    missing = Some("project_browser: the Open Project dialog is not open".into());
+                }
+                if let Some(error) = missing {
+                    self.fail(error);
+                }
+            }
+            // what the Open Project dialog shows: `side`, the folder (`current` ends with it), and names listed
+            // (`contains`), with `projects` among them marked as projects
+            "assert_project_browser" => {
+                let Popup::ProjectBrowser(browser) = &self.popup else {
+                    self.fail("assert_project_browser: the Open Project dialog is not open".into());
+                    return;
+                };
+                let ex = browser.shown();
+                let side = if browser.side == crate::ui_project_browser::Side::Linux { "linux" } else { "local" };
+                let mut errors = vec![];
+                if let Some(want) = step["side"].as_str() && want != side {
+                    errors.push(format!("side {side}, expected {want}"));
+                }
+                let current = ex.current_path().map(|p| p.display().to_string().replace('\\', "/")).unwrap_or_default();
+                if let Some(want) = step["current"].as_str() && !current.ends_with(&want.replace('\\', "/")) {
+                    errors.push(format!("folder {current}, expected one ending with {want}"));
+                }
+                for name in step["contains"].as_array().into_iter().flatten().filter_map(|v| v.as_str()) {
+                    if !ex.items().iter().any(|i| i.name == name) {
+                        errors.push(format!("{name} is not listed"));
+                    }
+                }
+                for name in step["projects"].as_array().into_iter().flatten().filter_map(|v| v.as_str()) {
+                    if !ex.items().iter().any(|i| i.name == name && i.project) {
+                        errors.push(format!("{name} is not marked as a project"));
+                    }
+                }
+                if !errors.is_empty() {
+                    self.fail(format!("assert_project_browser: {}", errors.join("; ")));
+                }
             }
             "double_click" => {
                 let s = self.script.as_mut().unwrap();

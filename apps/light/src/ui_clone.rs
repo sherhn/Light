@@ -38,6 +38,7 @@ impl App {
             build_in_linux: false,
             modules: vec![],
             show_modules: false,
+            browse: None,
         }));
         // which Linux distributions there are, for "Clone into Linux"
         if cfg!(windows) && self.wsl.probe.is_none() && !self.wsl.probing() {
@@ -118,8 +119,9 @@ impl App {
         }
         let Popup::Clone(mut st) = std::mem::replace(&mut self.popup, Popup::None) else { return };
         let pal = self.pal;
-        let esc = ctx.input(|i| i.key_pressed(Key::Escape));
-        let enter = ctx.input(|i| i.key_pressed(Key::Enter));
+        // the keys belong to the explorer of Linux while it is open over the dialog
+        let esc = ctx.input(|i| i.key_pressed(Key::Escape)) && st.browse.is_none();
+        let enter = ctx.input(|i| i.key_pressed(Key::Enter)) && st.browse.is_none();
         let picker = if st.show_modules { Some(self.picker_data(ctx)) } else { None };
 
         // progress from the background thread
@@ -206,6 +208,11 @@ impl App {
                     widgets::caption(ui, &pal, &tr("Folder in Linux").to_uppercase());
                     ui.add_space(6.0);
                     widgets::right_row(ui, widgets::FIELD_H, |ui| {
+                        if !running && widgets::secondary_button(ui, &pal, tr("Browse...")).clicked() {
+                            let mut explorer = crate::ui_project_browser::Explorer::new(crate::ui_project_browser::Side::Linux, crate::ui_project_browser::Purpose::Pick, st.linux_distro.clone(), st.linux_dir.clone());
+                            explorer.start();
+                            st.browse = Some(Box::new(explorer));
+                        }
                         if distros.len() > 1 {
                             let resp = widgets::Pill::new(&st.linux_distro).icon(Icon::Linux, pal.text_dim).chevron().bordered().height(widgets::FIELD_H).show(ui, &pal);
                             widgets::menu_popup(&resp, &pal).width(220.0).show(|ui| {
@@ -326,6 +333,19 @@ impl App {
             });
             widgets::sheen(ui.painter(), r.response.rect, &pal);
         });
+        // the folder in Linux, chosen in an explorer over the dialog
+        if let Some(explorer) = st.browse.as_mut() {
+            let distros = self.wsl.distros();
+            match crate::ui_project_browser::explorer_window(ctx, &pal, "clone_destination", tr("Where to clone the repository"), explorer, &distros, self.wsl.probing()) {
+                crate::ui_project_browser::Outcome::Choose(path) => {
+                    st.linux_dir = crate::ui_project_browser::display_path(&path);
+                    st.linux_distro = explorer.distro.clone();
+                    st.browse = None;
+                }
+                crate::ui_project_browser::Outcome::Close => st.browse = None,
+                _ => {}
+            }
+        }
 
         if enter && !running {
             start = true;

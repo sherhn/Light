@@ -8,7 +8,7 @@ NAMES = """folder folder-open play square rotate-cw search triangle-alert circle
 settings list-tree terminal trash-2 folder-tree git-branch info arrow-up arrow-down git-commit-horizontal refresh-cw
 history ellipsis square-terminal palette keyboard code-xml pencil package cloud-download hammer file-text scroll-text
 eraser globe chevron-left undo-2 file-diff container hard-drive-download circle-check-big loader-circle key-round user
-lock book-marked puzzle eye columns-2 plus file-plus folder-plus folder-git-2 monitor arrow-left copy
+lock book-marked puzzle eye columns-2 plus file-plus folder-plus folder-git-2 house hard-drive monitor arrow-left copy
 scissors clipboard redo-2 log-out folder-search sun moon file""".split()
 
 info = json.loads((ROOT / "assets" / "icons" / "info.json").read_text(encoding="utf-8"))

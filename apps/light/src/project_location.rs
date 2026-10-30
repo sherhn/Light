@@ -1,5 +1,6 @@
 //! Creation destinations: local folders or a regular WSL user's ~/projects.
 
+use crate::ui_project_browser::{Explorer, Outcome, Purpose, Side, display_path};
 use crate::{
     i18n::tr,
     icons::Icon,
@@ -15,6 +16,8 @@ pub struct ProjectLocation {
     pub parent: String,
     pub job: Option<mpsc::Receiver<Result<PathBuf, String>>>,
     pub error: Option<String>,
+    /// The explorer choosing the folder in Linux, while it is open.
+    pub browse: Option<Box<Explorer>>,
 }
 
 impl ProjectLocation {
@@ -25,6 +28,7 @@ impl ProjectLocation {
             parent: "~/projects".into(),
             job: None,
             error: None,
+            browse: None,
         }
     }
 
@@ -66,9 +70,14 @@ impl ProjectLocation {
                     }
                 });
                 ui.add_space(6.0);
-                TextField::new(&mut self.parent)
-                    .hint("~/projects")
-                    .show(ui, pal);
+                widgets::right_row(ui, widgets::FIELD_H, |ui| {
+                    if widgets::secondary_button(ui, pal, tr("Browse...")).clicked() && !self.distro.is_empty() {
+                        let mut explorer = Explorer::new(Side::Linux, Purpose::Pick, self.distro.clone(), self.parent.clone());
+                        explorer.start();
+                        self.browse = Some(Box::new(explorer));
+                    }
+                    TextField::new(&mut self.parent).hint("~/projects").icon(crate::icons::Icon::Linux).show(ui, pal);
+                });
                 ui.label(
                     RichText::new(tr(
                         "Projects belong to your regular WSL user. ~ is their home folder.",
@@ -98,6 +107,18 @@ impl ProjectLocation {
         }
         if let Some(error) = &self.error {
             ui.colored_label(pal.error, crate::i18n::tr_dyn(error));
+        }
+        // the folder in Linux, chosen in an explorer over the dialog
+        if let Some(explorer) = self.browse.as_mut() {
+            match crate::ui_project_browser::explorer_window(ui.ctx(), pal, "new_project_location", tr("Where to create the project"), explorer, distros, false) {
+                Outcome::Choose(path) => {
+                    self.parent = display_path(&path);
+                    self.distro = explorer.distro.clone();
+                    self.browse = None;
+                }
+                Outcome::Close => self.browse = None,
+                _ => {}
+            }
         }
     }
 

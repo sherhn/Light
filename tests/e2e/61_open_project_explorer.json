@@ -1,0 +1,32 @@
+[
+  {"op": "log", "value": "Open Project starts on this computer, in the folder around the open project"},
+  {"op": "open_project", "path": "${PROJ}"},
+  {"op": "wait", "what": "index"},
+  {"op": "command", "value": "file.open_project"},
+  {"op": "assert_popup", "value": "project_browser"},
+  {"op": "wait", "what": "project_browser_idle", "timeout": 20},
+  {"op": "assert_project_browser", "side": "local", "contains": ["demo"], "projects": ["demo"]},
+  {"op": "screenshot", "path": "${SHOTS}/${NAME}_start.png"},
+
+  {"op": "log", "value": "into a folder and back up with Backspace"},
+  {"op": "project_browser", "go": "${PROJ}"},
+  {"op": "wait", "what": "project_browser_idle", "timeout": 20},
+  {"op": "assert_project_browser", "current": "/demo", "contains": ["src", "scripts", "README.md"]},
+  {"op": "key", "value": "Backspace"},
+  {"op": "wait", "what": "project_browser_idle", "timeout": 20},
+  {"op": "assert_project_browser", "contains": ["demo"]},
+  {"op": "key", "value": "Escape"},
+  {"op": "assert_popup", "value": "none"},
+
+  {"op": "log", "value": "a folder chosen with the keyboard opens as the project"},
+  {"op": "close_project"},
+  {"op": "command", "value": "file.open_project"},
+  {"op": "project_browser", "side": "local", "go": "${PROJ}"},
+  {"op": "wait", "what": "project_browser_idle", "timeout": 20},
+  {"op": "project_browser", "select": "src"},
+  {"op": "key", "value": "Ctrl+Enter"},
+  {"op": "assert_popup", "value": "none"},
+  {"op": "wait", "what": "index"},
+  {"op": "assert_project_file", "value": "main.lisp"},
+  {"op": "quit"}
+]
