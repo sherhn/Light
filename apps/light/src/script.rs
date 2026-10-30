@@ -82,6 +82,7 @@ impl App {
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             "git_settled" => self.git.rx.is_none(),
             "shell_ended" => self.term.shell.as_ref().is_some_and(|sh| sh.exited.is_some()),
+            "no_shell" => self.term.shell.is_none(),
             // the shell of Linux shows `value` on its screen
             "shell_contains" => self.term.shell.as_ref().is_some_and(|sh| sh.text().contains(cond["value"].as_str().unwrap_or(""))),
             // the commits of the remote branch not here yet, as of the last fetch: `value` of them, with no git work going on

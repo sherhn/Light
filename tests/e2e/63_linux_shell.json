@@ -44,5 +44,12 @@
   {"op": "key", "value": "Enter"},
   {"op": "frames", "value": 3},
   {"op": "wait", "what": "shell_contains", "value": "user@Ubuntu-24.04:", "timeout": 30},
+
+  {"op": "log", "value": "back on Windows the shell goes and the line terminal is there"},
+  {"op": "project_env", "value": "windows"},
+  {"op": "wait", "what": "no_shell", "timeout": 10},
+  {"op": "text", "value": "echo on-windows-again"},
+  {"op": "key", "value": "Enter"},
+  {"op": "wait", "what": "term_contains", "value": "on-windows-again", "timeout": 30},
   {"op": "quit"}
 ]

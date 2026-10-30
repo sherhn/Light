@@ -1033,6 +1033,12 @@ impl App {
             return;
         }
         self.term.shell_focused = false;
+        // the project runs on Windows now: its shell of Linux has nothing more to do
+        if self.term.shell.is_some() && self.wsl_target().is_none() {
+            self.shell_close();
+            // the keyboard was the shell's: it goes to the command line that takes its place
+            self.term.focus_input = true;
+        }
         let pal = self.pal;
         let copy_requested = ctx.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy)));
         self.terminal_start_dir();
