@@ -146,6 +146,10 @@ impl App {
                     }
 
                     let Some(cmd) = self.keymap.lookup(&sc) else { continue };
+                    // the shell of Linux takes every key (Escape for vim, Ctrl+R for its history...) but these
+                    if self.term.shell_focused && !matches!(cmd.id, "view.terminal" | "app.exit" | "app.settings") {
+                        continue;
+                    }
                     if cmd.id == "app.escape" {
                         if self.popup.is_open() {
                             // popups close themselves; keep Escape for them

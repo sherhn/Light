@@ -1114,4 +1114,16 @@ pub const RU: &[(&str, &str)] = &[
     ("Remote changes", "Изменения на сервере"),
     ("Check for new commits", "Проверять новые коммиты"),
     ("Every few minutes, ask the remotes of the project whether there are new commits to pull (a git fetch that never asks for a password)", "Раз в несколько минут спрашивать удалённые репозитории проекта о новых коммитах (git fetch, который никогда не запрашивает пароль)"),
+    // ---- the shell of Linux
+    ("Cannot start the shell of {0}: {1}", "Не удалось запустить оболочку {0}: {1}"),
+    ("{} lines back - type or scroll down to return", "{} строк назад — начните печатать или прокрутите вниз, чтобы вернуться"),
+    ("Shell", "Оболочка"),
+    ("Commands", "Команды"),
+    ("Try again", "Повторить"),
+    ("Use Commands instead", "Использовать «Команды»"),
+    ("The shell ended (exit code {}). Press Enter for a new one.", "Оболочка завершилась (код выхода {}). Нажмите Enter, чтобы открыть новую."),
+    ("The shell ended. Press Enter for a new one.", "Оболочка завершилась. Нажмите Enter, чтобы открыть новую."),
+    ("Clear (Ctrl+L)", "Очистить (Ctrl+L)"),
+    ("Stop running command (Ctrl+C)", "Остановить команду (Ctrl+C)"),
+    ("New shell", "Новая оболочка"),
 ];

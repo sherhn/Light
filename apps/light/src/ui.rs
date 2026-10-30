@@ -56,6 +56,8 @@ impl eframe::App for App {
         self.handle_input(&ctx);
         self.script_step(&ctx);
         self.handle_dropped_files(&ctx);
+        // the shell of Linux says again, when it is drawn, whether it has the keyboard
+        self.term.shell_focused = false;
 
         let pal = self.pal;
         // window title

@@ -46,11 +46,19 @@ pub struct TerminalState {
     /// Variables set with `set NAME=value`, passed to every command.
     pub env: Vec<(String, String)>,
     pub script: Option<ScriptRun>,
+    /// The shell of a project that runs in Linux: the distribution's own, in a real terminal.
+    pub shell: Option<crate::shell::Shell>,
+    /// Why the shell could not start.
+    pub shell_error: Option<String>,
+    /// A project in Linux shows the line terminal ("Commands": scripts, saved history) instead of its shell.
+    pub commands_in_linux: bool,
+    /// The shell had the keyboard in the last frame: the keys are all its own.
+    pub shell_focused: bool,
 }
 
 impl Default for TerminalState {
     fn default() -> Self {
-        TerminalState { cwd: PathBuf::from("."), log: vec![], input: String::new(), history: CommandHistory::in_memory(), hist_pos: None, draft: String::new(), commands: vec![], commands_at: None, handle: None, focus_input: false, env: vec![], script: None }
+        TerminalState { cwd: PathBuf::from("."), log: vec![], input: String::new(), history: CommandHistory::in_memory(), hist_pos: None, draft: String::new(), commands: vec![], commands_at: None, handle: None, focus_input: false, env: vec![], script: None, shell: None, shell_error: None, commands_in_linux: false, shell_focused: false }
     }
 }
 
@@ -96,6 +104,37 @@ impl App {
     /// Is a command or a script running?
     pub fn term_busy(&self) -> bool {
         self.term.handle.is_some() || self.term.script.is_some()
+    }
+
+    /// Does the Terminal window show the shell of Linux (a project that runs there, on Windows)?
+    pub fn shows_linux_shell(&self) -> bool {
+        cfg!(windows) && !self.term.commands_in_linux && self.wsl_target().is_some()
+    }
+
+    /// The shell of Linux, started (or started again) in the distribution and folder of the project, `cols` x `rows` big.
+    pub fn ensure_linux_shell(&mut self, ctx: &egui::Context, cols: u16, rows: u16) {
+        let Some(t) = self.wsl_target() else { return };
+        self.terminal_start_dir();
+        let cwd = wsl::to_linux(&self.term.cwd, &t);
+        // another distribution, or another project: a new shell
+        if self.term.shell.as_ref().is_some_and(|s| s.distro != t.distro) {
+            self.term.shell = None;
+        }
+        if self.term.shell.is_some() || self.term.shell_error.is_some() {
+            return;
+        }
+        match crate::shell::Shell::start(&t.distro, &cwd, cols, rows, ctx) {
+            Ok(shell) => self.term.shell = Some(shell),
+            Err(e) => self.term.shell_error = Some(i18n::fmt("Cannot start the shell of {0}: {1}", &[&t.distro, &e])),
+        }
+    }
+
+    /// Run a script file in the shell of Linux, as if its command were typed.
+    pub fn shell_run_script(&mut self, path: &Path) {
+        let (Some(t), Some(shell)) = (self.wsl_target(), self.term.shell.as_ref()) else { return };
+        let linux = wsl::to_linux(path, &t);
+        let runner = if path.extension().is_some_and(|x| x.eq_ignore_ascii_case("sh")) { "bash" } else { "sh" };
+        shell.write(format!("{runner} {}\r", wsl::sh_quote(&linux)).as_bytes());
     }
 
     // ------------------------------------------------------------------ history and completion
@@ -449,6 +488,13 @@ impl App {
         }
     }
 
+    /// Close the shell of Linux (leaving the project, or another place to run it).
+    pub fn shell_close(&mut self) {
+        self.term.shell = None;
+        self.term.shell_error = None;
+        self.term.shell_focused = false;
+    }
+
     pub fn terminal_stop(&mut self) {
         let had = self.term.handle.is_some();
         if let Some(h) = self.term.handle.take() {
@@ -462,6 +508,12 @@ impl App {
     }
 
     pub fn poll_terminal(&mut self) {
+        if let Some(shell) = self.term.shell.as_mut()
+            && shell.poll()
+        {
+            // a command typed in the shell may have changed the repository
+            self.git.last_refresh = self.git.last_refresh.min(self.now - 3.0);
+        }
         let mut exited: Option<Option<i32>> = None;
         let mut lines: Vec<(String, bool)> = vec![];
         if let Some(h) = &self.term.handle {

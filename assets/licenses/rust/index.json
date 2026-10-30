@@ -6043,6 +6043,45 @@
       "archive_sha256": "fb067e4cbd1ff067d1df46c9194b5de0e98efd2810bbc95c5d5e5f25a3231150"
     },
     {
+      "name": "vt100",
+      "version": "0.16.2",
+      "expression": "MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/doy/vt100-rust",
+      "files": [
+        {
+          "path": "vt100-0.16.2/LICENSE",
+          "sha256": "53a04b0a11073f3d0183c31a4b7bdf9a3f68d453adeec136e59e5a9d9a554370",
+          "source": "https://crates.io/crates/vt100/0.16.2"
+        }
+      ],
+      "archive_sha256": "054ff75fb8fa83e609e685106df4faeffdf3a735d3c74ebce97ec557d5d36fd9"
+    },
+    {
+      "name": "vte",
+      "version": "0.15.0",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/alacritty/vte",
+      "files": [
+        {
+          "path": "vte-0.15.0/LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "source": "https://crates.io/crates/vte/0.15.0"
+        },
+        {
+          "path": "vte-0.15.0/LICENSE-MIT",
+          "sha256": "e4c9b06fa850cb9b540a5e400e9f6394cf15efcf4098144de477d1d3dae10150",
+          "source": "https://crates.io/crates/vte/0.15.0"
+        }
+      ],
+      "archive_sha256": "a5924018406ce0063cd67f8e008104968b74b563ee1b85dde3ed1f7cb87d3dbd"
+    },
+    {
       "name": "walkdir",
       "version": "2.5.0",
       "expression": "Unlicense/MIT",

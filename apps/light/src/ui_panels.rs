@@ -470,6 +470,20 @@ impl App {
                     self.rerun_tab();
                 }
             }
+            BottomTool::Terminal if self.shows_linux_shell() => {
+                // the shell's own keys: Ctrl+L clears its screen, Ctrl+C stops what runs
+                if self.header_action(ui, hr, slot, Icon::Clear, "Clear (Ctrl+L)") && let Some(s) = &self.term.shell {
+                    s.write(b"\x0c");
+                }
+                slot += 1;
+                if self.header_action(ui, hr, slot, Icon::Stop, "Stop running command (Ctrl+C)") && let Some(s) = &self.term.shell {
+                    s.write(b"\x03");
+                }
+                slot += 1;
+                if self.header_action(ui, hr, slot, Icon::Restart, "New shell") {
+                    self.shell_close();
+                }
+            }
             BottomTool::Terminal => {
                 if self.header_action(ui, hr, slot, Icon::Clear, "Clear") {
                     self.term.log.clear();
@@ -912,7 +926,113 @@ impl App {
         }
     }
 
+    /// The switch between the shell of Linux and the line terminal, for a project that runs in Linux.
+    fn terminal_mode_switch(&mut self, ui: &mut egui::Ui) {
+        if !cfg!(windows) || self.wsl_target().is_none() {
+            return;
+        }
+        let pal = self.pal;
+        if let Some(i) = widgets::segmented(ui, &pal, &[tr("Shell"), tr("Commands")], usize::from(self.term.commands_in_linux)) {
+            self.term.commands_in_linux = i == 1;
+            self.term.focus_input = true;
+        }
+        ui.add_space(6.0);
+    }
+
+    /// The shell of the distribution the project runs in, in a real terminal.
+    fn draw_linux_shell(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        let pal = self.pal;
+        ui.add_space(6.0);
+        let scripts = self.project_scripts();
+        let mut run = None::<std::path::PathBuf>;
+        ui.horizontal(|ui| {
+            ui.add_space(14.0);
+            self.terminal_mode_switch(ui);
+            let shown = match (&self.term.shell, self.wsl_target()) {
+                (Some(s), _) => format!("{}:{}", s.distro, s.cwd),
+                (None, Some(t)) => t.distro.clone(),
+                _ => String::new(),
+            };
+            ui.label(RichText::new(shown).color(pal.text_dim).font(fonts::ui(12.0)));
+            widgets::right_row(ui, 30.0, |ui| {
+                ui.add_space(8.0);
+                let resp = widgets::Pill::new(tr("Scripts")).icon(Icon::Script, pal.text_dim).chevron().bordered().height(28.0).show(ui, &pal);
+                widgets::menu_popup(&resp, &pal).width(320.0).show(|ui| {
+                    if scripts.is_empty() {
+                        widgets::menu_caption(ui, &pal, tr("No scripts in the project (.als, .bat, .cmd, .ps1, .sh)"));
+                    }
+                    for (rel, abs) in scripts.iter().filter(|(_, p)| p.extension().is_some_and(|x| x.eq_ignore_ascii_case("sh"))) {
+                        if widgets::menu_row(ui, &pal, Some(Icon::Script), rel, "").clicked() {
+                            run = Some(abs.clone());
+                            ui.close();
+                        }
+                    }
+                });
+            });
+        });
+        ui.add_space(4.0);
+        let rect = ui.available_rect_before_wrap();
+        let font_size = (self.settings.font_size - 1.0).clamp(10.0, 24.0);
+        // the shell is as big as the window gives it; it starts when it is first shown
+        let (cell_w, line_h) = ui.fonts_mut(|f| (f.glyph_width(&egui::FontId::monospace(font_size), 'M'), f.row_height(&egui::FontId::monospace(font_size))));
+        let cols = ((rect.width() - 20.0) / cell_w).floor().max(10.0) as u16;
+        let rows = ((rect.height() - 12.0) / line_h).floor().max(3.0) as u16;
+        self.ensure_linux_shell(ctx, cols, rows);
+        if let Some(p) = run {
+            self.shell_run_script(&p);
+        }
+        ui.painter().rect_filled(rect.shrink2(Vec2::new(8.0, 0.0)), CornerRadius::same(10), pal.editor_bg.gamma_multiply(0.6));
+        if let Some(error) = self.term.shell_error.clone() {
+            ui.horizontal_wrapped(|ui| {
+                ui.add_space(16.0);
+                ui.colored_label(pal.error, error);
+            });
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                if widgets::secondary_button(ui, &pal, tr("Try again")).clicked() {
+                    self.term.shell_error = None;
+                }
+                if widgets::secondary_button(ui, &pal, tr("Use Commands instead")).clicked() {
+                    self.term.commands_in_linux = true;
+                }
+            });
+            return;
+        }
+        let Some(shell) = self.term.shell.as_mut() else { return };
+        let out = crate::shell::view(ui, rect.shrink2(Vec2::new(8.0, 0.0)), shell, &pal, font_size);
+        if let Some(code) = shell.exited {
+            let text = match code {
+                Some(c) => i18n::fmt("The shell ended (exit code {}). Press Enter for a new one.", &[&c]),
+                None => tr("The shell ended. Press Enter for a new one.").to_string(),
+            };
+            let g = ui.painter().layout_no_wrap(text, fonts::ui(12.0), pal.text_on_accent);
+            let r = Rect::from_min_size(Pos2::new(rect.min.x + 18.0, rect.max.y - g.size().y - 16.0), g.size() + Vec2::new(16.0, 8.0));
+            ui.painter().rect_filled(r, CornerRadius::same(8), pal.accent);
+            ui.painter().galley(r.min + Vec2::new(8.0, 4.0), g, pal.text_on_accent);
+        }
+        if self.term.focus_input {
+            self.term.focus_input = false;
+            ui.memory_mut(|m| m.request_focus(egui::Id::unique("linux_shell_view")));
+        }
+        self.term.shell_focused = out.focused;
+        if out.focused {
+            self.editor_focus = false;
+        }
+        if let Some(text) = out.copied {
+            copy_log_text(ctx, text);
+        }
+        if out.restart {
+            self.term.shell = None;
+            self.term.focus_input = true;
+        }
+    }
+
     fn draw_terminal(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        if self.shows_linux_shell() {
+            self.draw_linux_shell(ui, ctx);
+            return;
+        }
+        self.term.shell_focused = false;
         let pal = self.pal;
         let copy_requested = ctx.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy)));
         self.terminal_start_dir();
@@ -921,6 +1041,7 @@ impl App {
         let (mut run, mut pick) = (None::<std::path::PathBuf>, false);
         ui.horizontal(|ui| {
             ui.add_space(14.0);
+            self.terminal_mode_switch(ui);
             let shown = match self.wsl_target() {
                 Some(t) => format!("{}:{}", t.distro, lisp_runtime::wsl::to_linux(&self.term.cwd, &t)),
                 None => self.term.cwd.display().to_string(),

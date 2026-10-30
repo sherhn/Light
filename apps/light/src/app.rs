@@ -394,6 +394,7 @@ impl App {
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder
         self.terminal_stop();
+        self.shell_close();
         self.term.log.clear();
         self.term.cwd = PathBuf::from(".");
         self.editor_focus = false;

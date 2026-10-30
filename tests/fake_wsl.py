@@ -218,6 +218,35 @@ def run_inside(s, name, cwd, prog, args):
     return 1
 
 
+def interactive(s, name, cwd):
+    """`wsl.exe -d NAME [--cd DIR]` with no program: the distribution's shell, as a terminal shows it. It keeps what a
+    shell keeps between commands (the folder, exported variables) and knows echo, cd, export, pwd and exit."""
+    if s["distros"].get(name) is None:
+        return no_distro(name)
+    env, cwd = {}, cwd or "/home/user"
+    while True:
+        sys.stdout.write(f"user@{name}:{cwd}$ ")
+        sys.stdout.flush()
+        line = sys.stdin.readline()
+        if not line:
+            return 0
+        word, _, rest = line.strip().partition(" ")
+        rest = re.sub(r"\$(\w+)", lambda m: env.get(m.group(1), ""), rest.strip())
+        if word in ("exit", "logout"):
+            return int(rest) if rest.isdigit() else 0
+        if word == "export" and "=" in rest:
+            key, value = rest.split("=", 1)
+            env[key] = value
+        elif word == "cd":
+            cwd = rest if rest.startswith("/") else (cwd.rstrip("/") + "/" + rest if rest else "/home/user")
+        elif word == "pwd":
+            out(cwd + "\n")
+        elif word == "echo":
+            out(rest + "\n")
+        elif word:
+            out(f"{word}: command not found\n")
+
+
 def main(argv):
     s = load()
     if not argv:
@@ -301,7 +330,7 @@ def main(argv):
         else:
             out(f"fake wsl: unexpected argument {a}\n")
             return 1
-    return 0
+    return interactive(s, name, cwd)
 
 
 if __name__ == "__main__":

@@ -81,6 +81,9 @@ impl App {
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             "git_settled" => self.git.rx.is_none(),
+            "shell_ended" => self.term.shell.as_ref().is_some_and(|sh| sh.exited.is_some()),
+            // the shell of Linux shows `value` on its screen
+            "shell_contains" => self.term.shell.as_ref().is_some_and(|sh| sh.text().contains(cond["value"].as_str().unwrap_or(""))),
             // the commits of the remote branch not here yet, as of the last fetch: `value` of them, with no git work going on
             "git_behind" => self.git.rx.is_none() && self.git.op_rx.is_none() && self.git.fetch_rx.is_none() && self.commits_to_pull() as u64 == cond["value"].as_u64().unwrap_or(1),
             "git_clean" => self.git.rx.is_none() && self.git.changes.is_empty(),
@@ -217,6 +220,29 @@ impl App {
                     Some(("make", t)) => crate::app_run::RunConfig::Make(t.to_string()),
                     _ => crate::app_run::RunConfig::CurrentFile,
                 };
+            }
+            // the Terminal window of a project in Linux: `shell` or `commands` (the line terminal)
+            "terminal_mode" => {
+                self.term.commands_in_linux = sval == "commands";
+                self.term.focus_input = true;
+            }
+            // give the keyboard to the shell of Linux (as a click on it does): `text` and `key` go to it then
+            "shell_focus" => ctx.memory_mut(|m| m.request_focus(egui::Id::unique("linux_shell_view"))),
+            // write `value` to the shell of Linux as it is (a carriage return is Enter)
+            "shell_write" => match &self.term.shell {
+                Some(sh) => sh.write(sval.as_bytes()),
+                None => self.fail("shell_write: no shell of Linux".into()),
+            },
+            "assert_shell_contains" => {
+                let text = self.term.shell.as_ref().map(|sh| sh.text()).unwrap_or_default();
+                if !text.contains(&sval) {
+                    self.fail(format!("assert_shell_contains: {sval:?} not on the screen: {text:?}"));
+                }
+            }
+            "assert_shell_focused" => {
+                if self.term.shell_focused != step["value"].as_bool().unwrap_or(true) {
+                    self.fail(format!("assert_shell_focused: {}", self.term.shell_focused));
+                }
             }
             // the logo: `logo` sets the version chosen in the settings (auto, light, dark); `taskbar` pretends the taskbar is
             // light or dark; `dark` asserts the version of the window's icon (put on the window itself on Windows)

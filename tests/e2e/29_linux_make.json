@@ -31,6 +31,7 @@
   {"op": "command", "value": "run.run_file"},
   {"op": "wait", "what": "run_done", "timeout": 60},
   {"op": "assert_run_contains", "value": "make is not installed in Linux (Ubuntu-24.04)"},
+  {"op": "terminal_mode", "value": "commands"},
   {"op": "key", "value": "Alt+F12"},
   {"op": "frames", "value": 4},
   {"op": "text", "value": "make"},

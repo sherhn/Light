@@ -72,7 +72,8 @@
   {"op": "wait", "what": "run_done", "timeout": 90},
   {"op": "assert_run_contains", "value": "Hi from run"},
 
-  {"op": "log", "value": "the terminal runs in the distribution and shows a Linux prompt"},
+  {"op": "log", "value": "the line terminal (Commands) runs in the distribution and shows a Linux prompt"},
+  {"op": "terminal_mode", "value": "commands"},
   {"op": "key", "value": "Alt+F12"},
   {"op": "frames", "value": 4},
   {"op": "text", "value": "echo hello-from-linux"},
