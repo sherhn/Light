@@ -20,6 +20,7 @@ rfd = "0.17"
 serde.workspace = true
 serde_json.workspace = true
 png = "0.18"
+raw-window-handle = "0.6"
 webbrowser = "1.2.5"
 
 [target.'cfg(windows)'.build-dependencies]

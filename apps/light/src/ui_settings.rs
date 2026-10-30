@@ -195,6 +195,18 @@ impl App {
                             if self.settings.theme == Theme::Custom && crate::ui_theme::theme_editor(ui, &pal, &mut self.settings.custom_theme) {
                                 changed_theme = true;
                             }
+                            group(ui, &pal, tr("Logo"), |ui, rows| {
+                                rows.row(ui, &pal, tr("Version of the logo"), tr("The light logo suits dark backgrounds, the dark one light ones. Automatic follows the theme inside the window and the colour of the taskbar for the window's icon."), 280.0, |ui| {
+                                    use ide_core::settings::LogoStyle;
+                                    let styles = [LogoStyle::Auto, LogoStyle::Light, LogoStyle::Dark];
+                                    let cur = styles.iter().position(|s| *s == self.settings.logo).unwrap_or(0);
+                                    if let Some(i) = widgets::segmented(ui, &pal, &[tr("Automatic"), tr("Light"), tr("Dark")], cur) {
+                                        self.settings.logo = styles[i];
+                                        // read the taskbar again at once
+                                        self.taskbar_read_at = -100.0;
+                                    }
+                                });
+                            });
                             group(ui, &pal, tr("Language"), |ui, rows| {
                                 rows.row(ui, &pal, tr("Interface language"), tr("Menus, dialogs and messages"), 220.0, |ui| {
                                     let labels: Vec<&str> = i18n::LANGUAGES.iter().map(|(_, n)| *n).collect();

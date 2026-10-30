@@ -656,7 +656,7 @@ impl App {
                         ui.vertical_centered(|ui| {
                             ui.add_space(10.0);
                             let (r, _) = ui.allocate_exact_size(Vec2::splat(96.0), Sense::hover());
-                            crate::brand::paint_logo(ui.painter(), r, self.logo.as_ref(), if pal.dark { egui::Color32::WHITE } else { pal.text });
+                            crate::brand::paint_logo(ui.painter(), r, self.logos.for_theme(self.settings.logo, pal.dark), pal.text);
                             ui.add_space(14.0);
                             ui.label(RichText::new("Light").font(fonts::semibold(24.0)));
                             ui.label(RichText::new(i18n::fmt("Version {}", &[&env!("CARGO_PKG_VERSION")])).color(pal.text_dim));
@@ -998,7 +998,7 @@ impl App {
             ui.add_space(top);
             ui.horizontal(|ui| {
                 let (r, _) = ui.allocate_exact_size(Vec2::splat(72.0), Sense::hover());
-                crate::brand::paint_logo(ui.painter(), r, self.logo.as_ref(), if pal.dark { egui::Color32::WHITE } else { pal.text });
+                crate::brand::paint_logo(ui.painter(), r, self.logos.for_theme(self.settings.logo, pal.dark), pal.text);
                 ui.add_space(8.0);
                 ui.vertical(|ui| {
                     ui.add_space(6.0);

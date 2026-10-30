@@ -1085,4 +1085,9 @@ pub const RU: &[(&str, &str)] = &[
     ("Project tree", "Дерево проекта"),
     ("File size and date", "Размер и дата файлов"),
     ("Show beside each file how big it is and when it was last changed", "Показывать рядом с каждым файлом его размер и время последнего изменения"),
+    // ---- logo
+    ("Logo", "Логотип"),
+    ("Version of the logo", "Вариант логотипа"),
+    ("The light logo suits dark backgrounds, the dark one light ones. Automatic follows the theme inside the window and the colour of the taskbar for the window's icon.", "Светлый логотип подходит для тёмного фона, тёмный — для светлого. Автоматически: внутри окна по теме, а значок окна — по цвету панели задач."),
+    ("Automatic", "Автоматически"),
 ];

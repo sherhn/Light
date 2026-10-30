@@ -114,6 +114,16 @@ impl LinuxTools {
 }
 
 /// Language of the user interface.
+/// Which version of the logo is shown: the light one suits dark backgrounds, the dark one light backgrounds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum LogoStyle {
+    /// Inside the window it follows the theme; the window's icon follows the colour of the system's taskbar.
+    #[default]
+    Auto,
+    Light,
+    Dark,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Language {
     #[default]
@@ -200,6 +210,7 @@ pub struct Settings {
     pub show_bottom_panel: bool,
     /// The project tree shows the size and the time of the last change beside each file.
     pub show_file_details: bool,
+    pub logo: LogoStyle,
 }
 
 impl Default for Settings {
@@ -234,6 +245,7 @@ impl Default for Settings {
             show_project_panel: true,
             show_bottom_panel: true,
             show_file_details: true,
+            logo: LogoStyle::Auto,
         }
     }
 }

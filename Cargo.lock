@@ -1359,6 +1359,7 @@ dependencies = [
  "lisp-runtime",
  "lisp-syntax",
  "png",
+ "raw-window-handle",
  "rfd",
  "serde",
  "serde_json",

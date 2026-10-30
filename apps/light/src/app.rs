@@ -94,7 +94,13 @@ pub struct App {
     pub commit_rects: Vec<(String, egui::Rect, egui::Rect)>,
     pub pending_close_others: bool,
     pub git: GitState,
-    pub logo: Option<eframe::egui::TextureHandle>,
+    pub logos: crate::brand::Logos,
+    /// The version of the logo the window's icon has (`true`: the dark one), and when the taskbar's colour was last read.
+    pub window_icon_dark: Option<bool>,
+    /// Windows: the icon was put on the window itself (big and small), not only through egui.
+    pub window_icon_native: bool,
+    pub taskbar_read_at: f64,
+    pub taskbar_light: Option<bool>,
     pub term: crate::app_terminal::TerminalState,
     /// The Linux (WSL) settings page: what is installed and what is being set up.
     pub wsl: crate::app_wsl::WslState,
@@ -195,7 +201,11 @@ impl App {
             commit_rects: vec![],
             pending_close_others: false,
             git: GitState::default(),
-            logo: None,
+            logos: Default::default(),
+            window_icon_dark: None,
+            window_icon_native: false,
+            taskbar_read_at: -100.0,
+            taskbar_light: None,
             term: Default::default(),
             wsl: Default::default(),
             github: Default::default(),

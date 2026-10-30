@@ -1,11 +1,38 @@
-//! The Light logo: window icon and the logo drawn in the title bar, welcome screen and About dialog.
+//! The Light logo: window icon and the logo drawn in the title bar, welcome screen and About dialog. It comes in two
+//! versions: the light ribbon for dark backgrounds and the dark one for light backgrounds.
 
 use std::io::Cursor;
 
 use eframe::egui::{self, Color32, Rect, TextureHandle, TextureOptions, pos2};
+use ide_core::settings::LogoStyle;
 
 const ICON_256: &[u8] = include_bytes!("../../../assets/icon/light-256.png");
 const LOGO_128: &[u8] = include_bytes!("../../../assets/icon/light-128.png");
+const DARK_ICON_256: &[u8] = include_bytes!("../../../assets/icon/light-dark-256.png");
+const DARK_LOGO_128: &[u8] = include_bytes!("../../../assets/icon/light-dark-128.png");
+
+/// The two versions of the logo, as textures.
+#[derive(Default)]
+pub struct Logos {
+    pub light: Option<TextureHandle>,
+    pub dark: Option<TextureHandle>,
+}
+
+impl Logos {
+    /// The logo to draw on the window's own surfaces: the dark one on a light theme unless a version is chosen.
+    pub fn for_theme(&self, style: LogoStyle, dark_theme: bool) -> Option<&TextureHandle> {
+        if use_dark_logo(style, !dark_theme) { self.dark.as_ref().or(self.light.as_ref()) } else { self.light.as_ref() }
+    }
+}
+
+/// Does a background (light or not) take the dark logo, given the version chosen in the settings?
+pub fn use_dark_logo(style: LogoStyle, light_background: bool) -> bool {
+    match style {
+        LogoStyle::Auto => light_background,
+        LogoStyle::Light => false,
+        LogoStyle::Dark => true,
+    }
+}
 
 /// Decode a PNG of any common kind (palette, grey, RGB, with or without alpha, 8 or 16 bits) to RGBA8.
 pub fn decode_png(bytes: &[u8]) -> Option<(u32, u32, Vec<u8>)> {
@@ -28,25 +55,110 @@ pub fn decode_png(bytes: &[u8]) -> Option<(u32, u32, Vec<u8>)> {
     Some((info.width, info.height, rgba))
 }
 
-pub fn window_icon() -> Option<egui::IconData> {
-    let (width, height, rgba) = decode_png(ICON_256)?;
+/// The window's icon: the dark logo for a light taskbar.
+pub fn window_icon(dark: bool) -> Option<egui::IconData> {
+    let (width, height, rgba) = decode_png(if dark { DARK_ICON_256 } else { ICON_256 })?;
     Some(egui::IconData { rgba, width, height })
 }
 
-pub fn load_logo(ctx: &egui::Context) -> Option<TextureHandle> {
-    let (w, h, rgba) = decode_png(LOGO_128)?;
-    let img = egui::ColorImage::from_rgba_unmultiplied([w as usize, h as usize], &rgba);
-    Some(ctx.load_texture("light-logo", img, TextureOptions::LINEAR))
+pub fn load_logos(ctx: &egui::Context) -> Logos {
+    let load = |name: &str, png: &[u8]| {
+        let (w, h, rgba) = decode_png(png)?;
+        let img = egui::ColorImage::from_rgba_unmultiplied([w as usize, h as usize], &rgba);
+        Some(ctx.load_texture(name, img, TextureOptions::LINEAR))
+    };
+    Logos { light: load("light-logo", LOGO_128), dark: load("light-logo-dark", DARK_LOGO_128) }
 }
 
-/// Paint the transparent logo into `rect`.
-pub fn paint_logo(painter: &egui::Painter, rect: Rect, tex: Option<&TextureHandle>, tint: Color32) {
+/// Is the system's taskbar light? Windows says so in the user's personalization ("Choose your default Windows mode");
+/// elsewhere (and when Windows does not say) nothing is known.
+pub fn taskbar_is_light() -> Option<bool> {
+    #[cfg(windows)]
+    {
+        windows::system_uses_light_theme()
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
+/// Give the window `hwnd` the logo of the exe's icon resources (1: light, 2: dark) as its big icon, the one the taskbar
+/// and Alt+Tab show, and as its small one. Returns whether both were set.
+#[cfg(windows)]
+pub fn set_window_icons(hwnd: isize, dark: bool, scale: f32) -> bool {
+    windows::set_icons(hwnd, if dark { 2 } else { 1 }, scale)
+}
+
+#[cfg(windows)]
+mod windows {
+    use std::ffi::c_void;
+
+    const HKEY_CURRENT_USER: isize = 0x8000_0001_u32 as i32 as isize;
+    const RRF_RT_REG_DWORD: u32 = 0x10;
+    const IMAGE_ICON: u32 = 1;
+    const WM_SETICON: u32 = 0x0080;
+    const ICON_SMALL: usize = 0;
+    const ICON_BIG: usize = 1;
+    const SM_CXICON: i32 = 11;
+    const SM_CXSMICON: i32 = 49;
+
+    #[link(name = "advapi32")]
+    unsafe extern "system" {
+        fn RegGetValueW(key: isize, sub_key: *const u16, value: *const u16, flags: u32, kind: *mut u32, data: *mut c_void, len: *mut u32) -> i32;
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetModuleHandleW(name: *const u16) -> isize;
+    }
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn LoadImageW(instance: isize, name: *const u16, kind: u32, cx: i32, cy: i32, flags: u32) -> isize;
+        fn SendMessageW(hwnd: isize, msg: u32, wparam: usize, lparam: isize) -> isize;
+        fn GetSystemMetrics(index: i32) -> i32;
+    }
+
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(Some(0)).collect()
+    }
+
+    pub fn system_uses_light_theme() -> Option<bool> {
+        let key = wide(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+        let value = wide("SystemUsesLightTheme");
+        let mut data: u32 = 0;
+        let mut len = std::mem::size_of::<u32>() as u32;
+        // SAFETY: the strings end in NUL, and `data` is a DWORD whose size `len` gives
+        let status = unsafe { RegGetValueW(HKEY_CURRENT_USER, key.as_ptr(), value.as_ptr(), RRF_RT_REG_DWORD, std::ptr::null_mut(), (&mut data as *mut u32).cast(), &mut len) };
+        (status == 0).then_some(data != 0)
+    }
+
+    pub fn set_icons(hwnd: isize, resource: u16, scale: f32) -> bool {
+        // SAFETY: a null name gives this exe's own module; the icon is looked up by its resource number
+        // (MAKEINTRESOURCE), sized for the screen's scale; WM_SETICON takes an HICON, which the window keeps
+        unsafe {
+            let instance = GetModuleHandleW(std::ptr::null());
+            let mut done = 0;
+            for (which, metric) in [(ICON_BIG, SM_CXICON), (ICON_SMALL, SM_CXSMICON)] {
+                let size = (GetSystemMetrics(metric) as f32 * scale.max(1.0)).round() as i32;
+                let icon = LoadImageW(instance, resource as usize as *const u16, IMAGE_ICON, size, size, 0);
+                if icon != 0 {
+                    SendMessageW(hwnd, WM_SETICON, which, icon);
+                    done += 1;
+                }
+            }
+            done == 2
+        }
+    }
+}
+
+/// Paint the transparent logo into `rect`; without its picture, a chevron of `fallback` colour stands in.
+pub fn paint_logo(painter: &egui::Painter, rect: Rect, tex: Option<&TextureHandle>, fallback: Color32) {
     match tex {
         Some(t) => {
-            painter.image(t.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), tint);
+            painter.image(t.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
         }
         None => {
-            painter.add(egui::Shape::line(vec![rect.right_top(), rect.left_center(), rect.right_bottom()], egui::Stroke::new(rect.width() * 0.16, tint)));
+            painter.add(egui::Shape::line(vec![rect.right_top(), rect.left_center(), rect.right_bottom()], egui::Stroke::new(rect.width() * 0.16, fallback)));
         }
     }
 }
@@ -70,7 +182,28 @@ mod tests {
 
     #[test]
     fn window_icon_is_available() {
-        assert!(window_icon().is_some());
+        assert!(window_icon(false).is_some());
+        assert!(window_icon(true).is_some());
+    }
+
+    #[test]
+    fn the_dark_logo_is_the_dark_one() {
+        // the ribbon's planes: light pixels in one, dark in the other
+        let lightness = |png: &[u8]| {
+            let (_, _, px) = decode_png(png).unwrap();
+            let opaque: Vec<_> = px.as_chunks::<4>().0.iter().filter(|p| p[3] == 255).map(|p| (p[0] as u32 + p[1] as u32 + p[2] as u32) / 3).collect();
+            opaque.iter().sum::<u32>() / opaque.len() as u32
+        };
+        assert!(lightness(LOGO_128) > 200);
+        assert!(lightness(DARK_LOGO_128) < 90);
+    }
+
+    #[test]
+    fn the_version_follows_the_background_unless_one_is_chosen() {
+        assert!(use_dark_logo(LogoStyle::Auto, true));
+        assert!(!use_dark_logo(LogoStyle::Auto, false));
+        assert!(!use_dark_logo(LogoStyle::Light, true));
+        assert!(use_dark_logo(LogoStyle::Dark, false));
     }
 
     #[test]

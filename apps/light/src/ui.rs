@@ -8,17 +8,50 @@ use crate::preview::PreviewMode;
 use crate::state::*;
 use crate::widgets::{self, STATUS_H, STRIP_W, TOOLBAR_H};
 
+impl App {
+    /// Keep the window's icon (the one the taskbar shows) in the version of the logo that suits: the dark one on a light
+    /// taskbar unless the settings choose one. The taskbar's colour is read again every few seconds.
+    fn update_window_icon(&mut self, ctx: &egui::Context, frame: &eframe::Frame) {
+        if self.settings.logo == ide_core::settings::LogoStyle::Auto && self.now - self.taskbar_read_at > 3.0 {
+            self.taskbar_read_at = self.now;
+            self.taskbar_light = crate::brand::taskbar_is_light();
+        }
+        let dark = crate::brand::use_dark_logo(self.settings.logo, self.taskbar_light.unwrap_or(false));
+        if self.window_icon_dark == Some(dark) {
+            return;
+        }
+        self.window_icon_dark = Some(dark);
+        self.window_icon_native = false;
+        #[cfg(windows)]
+        {
+            use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+            if let Ok(handle) = frame.window_handle()
+                && let RawWindowHandle::Win32(window) = handle.as_raw()
+                && crate::brand::set_window_icons(window.hwnd.get(), dark, ctx.pixels_per_point())
+            {
+                self.window_icon_native = true;
+                return;
+            }
+        }
+        let _ = frame;
+        if let Some(icon) = crate::brand::window_icon(dark) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Icon(Some(std::sync::Arc::new(icon))));
+        }
+    }
+}
+
 impl eframe::App for App {
     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         self.script_inject(raw_input);
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         if self.exit_now {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
+        self.update_window_icon(&ctx, frame);
         self.tick(&ctx);
         self.handle_input(&ctx);
         self.script_step(&ctx);

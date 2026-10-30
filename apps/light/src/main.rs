@@ -105,7 +105,7 @@ fn main() -> eframe::Result {
     let settings = Settings::load();
     let (w, h) = args.size.unwrap_or((1280.0, 800.0));
     let mut viewport = egui::ViewportBuilder::default().with_inner_size([w, h]).with_min_inner_size([640.0, 400.0]).with_title("Light").with_decorations(false).with_app_id("light");
-    if let Some(icon) = brand::window_icon() {
+    if let Some(icon) = brand::window_icon(brand::use_dark_logo(settings.logo, brand::taskbar_is_light().unwrap_or(false))) {
         viewport = viewport.with_icon(std::sync::Arc::new(icon));
     }
     let options = eframe::NativeOptions { viewport, ..Default::default() };
@@ -114,9 +114,9 @@ fn main() -> eframe::Result {
         options,
         Box::new(move |cc| {
             fonts::install(&cc.egui_ctx);
-            let logo = brand::load_logo(&cc.egui_ctx);
+            let logos = brand::load_logos(&cc.egui_ctx);
             let mut app = app::App::new(settings);
-            app.logo = logo;
+            app.logos = logos;
             app.use_saved_history();
             app.pal.apply(&cc.egui_ctx);
             // what to open: explicit paths win, otherwise restore the last session

@@ -15,11 +15,15 @@ fn windows_resources() {
         return;
     }
     let icon = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../assets/icon/light.ico");
+    // the logo for light backgrounds (a light taskbar): the window takes it when it should, and shortcuts can too
+    let dark_icon = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../assets/icon/light-dark.ico");
     println!("cargo:rerun-if-changed={}", icon.display());
+    println!("cargo:rerun-if-changed={}", dark_icon.display());
     let part = |name: &str| env::var(name).unwrap_or_else(|_| "0".into());
     let (major, minor, patch) = (part("CARGO_PKG_VERSION_MAJOR"), part("CARGO_PKG_VERSION_MINOR"), part("CARGO_PKG_VERSION_PATCH"));
     let rc = format!(
         r#"1 ICON "{icon}"
+2 ICON "{dark_icon}"
 
 1 VERSIONINFO
 FILEVERSION {major},{minor},{patch},0
@@ -43,6 +47,7 @@ BEGIN
 END
 "#,
         icon = icon.display().to_string().replace('\\', "/"),
+        dark_icon = dark_icon.display().to_string().replace('\\', "/"),
         version = env::var("CARGO_PKG_VERSION").unwrap_or_default(),
         description = env::var("CARGO_PKG_DESCRIPTION").unwrap(),
     );

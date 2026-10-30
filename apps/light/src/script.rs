@@ -216,6 +216,27 @@ impl App {
                     _ => crate::app_run::RunConfig::CurrentFile,
                 };
             }
+            // the logo: `logo` sets the version chosen in the settings (auto, light, dark); `taskbar` pretends the taskbar is
+            // light or dark; `dark` asserts the version of the window's icon (put on the window itself on Windows)
+            "logo" => {
+                use ide_core::settings::LogoStyle;
+                if let Some(style) = step["logo"].as_str() {
+                    self.settings.logo = match style { "light" => LogoStyle::Light, "dark" => LogoStyle::Dark, _ => LogoStyle::Auto };
+                }
+                if let Some(light) = step["taskbar_light"].as_bool() {
+                    self.taskbar_light = Some(light);
+                    // keep what the script says instead of reading the real taskbar again
+                    self.taskbar_read_at = f64::INFINITY;
+                }
+            }
+            "assert_window_icon" => {
+                let want = step["dark"].as_bool().unwrap_or(false);
+                if self.window_icon_dark != Some(want) {
+                    self.fail(format!("assert_window_icon: dark={:?}, expected {want}", self.window_icon_dark));
+                } else if cfg!(windows) && !self.window_icon_native {
+                    self.fail("assert_window_icon: the icon was not put on the window".into());
+                }
+            }
             // the tabs of the Run window: `value` is the list of their titles in order; `active` the one shown
             "assert_run_tabs" => {
                 let tabs = self.run_tabs();
