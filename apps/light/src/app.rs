@@ -57,6 +57,8 @@ pub struct App {
     pub run_key: String,
     pub run_request: Option<crate::app_run::RunRequest>,
     pub other_runs: Vec<crate::app_run::RunTab>,
+    /// The keys of the run tabs in the order they were opened: the tab strip keeps it, whichever tab is shown.
+    pub run_order: Vec<String>,
     pub compile: Option<CompileJob>,
     pub compiler_problems: Vec<ProblemRow>,
     pub find_results: FindResults,
@@ -161,6 +163,7 @@ impl App {
             run_key: String::new(),
             run_request: None,
             other_runs: Vec::new(),
+            run_order: Vec::new(),
             compile: None,
             compiler_problems: vec![],
             find_results: FindResults::default(),
@@ -349,6 +352,7 @@ impl App {
         }
         self.stop_other_runs();
         self.run_key.clear();
+        self.run_order.clear();
         self.run_request = None;
         self.run = RunState::default();
         if let Some(c) = self.compile.take() {

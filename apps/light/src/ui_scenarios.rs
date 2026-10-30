@@ -40,7 +40,14 @@ impl App {
                     ui.set_width(200.0);
                     for (i, s) in st.list.iter().enumerate() {
                         let name = if s.name.trim().is_empty() { tr("(no name)").to_string() } else { s.name.clone() };
-                        if ui.selectable_label(i == st.selected, name).clicked() {
+                        let (r, resp) = ui.allocate_exact_size(egui::vec2(200.0, 32.0), egui::Sense::click());
+                        let chosen = i == st.selected;
+                        if chosen || resp.hovered() {
+                            ui.painter().rect_filled(r, egui::CornerRadius::same(9), if chosen { pal.selected } else { pal.hover });
+                        }
+                        crate::icons::paint(ui.painter(), egui::Rect::from_center_size(egui::pos2(r.min.x + 18.0, r.center().y), egui::Vec2::splat(15.0)), crate::icons::Icon::Script, if chosen { pal.accent } else { pal.text_dim });
+                        ui.painter().with_clip_rect(r.shrink(2.0)).text(egui::pos2(r.min.x + 36.0, r.center().y), egui::Align2::LEFT_CENTER, &name, crate::fonts::ui(13.5), if chosen { pal.text } else { pal.text_dim });
+                        if resp.clicked() {
                             st.selected = i;
                         }
                     }

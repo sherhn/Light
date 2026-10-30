@@ -216,6 +216,34 @@ impl App {
                     _ => crate::app_run::RunConfig::CurrentFile,
                 };
             }
+            // the tabs of the Run window: `value` is the list of their titles in order; `active` the one shown
+            "assert_run_tabs" => {
+                let tabs = self.run_tabs();
+                let titles: Vec<String> = tabs.iter().map(|(_, title, _)| title.clone()).collect();
+                let want: Vec<String> = step["value"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(String::from)).collect();
+                if titles != want {
+                    self.fail(format!("assert_run_tabs: {titles:?}, expected {want:?}"));
+                } else if let Some(active) = step["active"].as_str()
+                    && self.run.title != active
+                {
+                    self.fail(format!("assert_run_tabs: {:?} is shown, expected {active:?}", self.run.title));
+                }
+            }
+            // click a tab of the Run window by its title: on the tab, or (`close`: true) on its cross
+            "run_tab_click" => {
+                let rects = ctx.data(|d| d.get_temp::<Vec<(String, egui::Rect, egui::Rect)>>(egui::Id::unique("run_tab_rects"))).unwrap_or_default();
+                let tabs = self.run_tabs();
+                let hit = tabs.iter().find(|(_, title, _)| *title == sval).and_then(|(key, _, _)| rects.iter().find(|(k, _, _)| k == key)).map(|(_, tab, cross)| if step["close"].as_bool().unwrap_or(false) { cross.center() } else { egui::pos2(tab.min.x + 34.0, tab.center().y) });
+                match hit {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("run_tab_click: no visible run tab {sval:?}")),
+                }
+            }
             "select_module_run" => {
                 if let Some((module, def)) = self.available_module_runs().into_iter().find(|(_, def)| def.name == sval) {
                     self.run_config = crate::app_run::RunConfig::Module(module, def.name);

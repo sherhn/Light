@@ -997,25 +997,19 @@ impl App {
     }
 
     fn draw_run(&mut self, ui: &mut egui::Ui) {
-        let pal = self.pal;
-        ui.add_space(6.0);
-        let mut selected = None;
-        egui::ScrollArea::horizontal().id_salt("run_tabs").show_fading(ui, |ui| {
-            ui.horizontal(|ui| {
-                if !self.run_key.is_empty() { let _ = ui.selectable_label(true, &self.run.title); }
-                for (index, tab) in self.other_runs.iter().enumerate() {
-                    let label = if tab.run.running { format!("{} *", tab.run.title) } else { tab.run.title.clone() };
-                    if ui.selectable_label(false, label).clicked() { selected = Some(index); }
-                }
-            });
-        });
-        if let Some(index) = selected { self.select_run_tab(index); }
-        ui.horizontal(|ui| {
-            ui.add_space(14.0);
-            let (txt, color) = if self.run.running { (tr("running...").to_string(), pal.warning) } else if self.run.exit_code.is_some() { (self.run.title.clone(), pal.text_dim) } else { (tr("Nothing has been run yet. Press Shift+F10 to run the selected configuration.").to_string(), pal.text_dim) };
-            ui.label(RichText::new(txt).color(color).font(fonts::ui(12.0)));
-        });
+        let tabs = self.run_tabs();
+        if tabs.is_empty() {
+            self.empty_state(ui, Icon::Play, self.pal.text_dim, tr("Nothing has been run yet. Press Shift+F10 to run the selected configuration."));
+            return;
+        }
+        ui.add_space(2.0);
+        self.draw_run_tabs(ui, &tabs);
+        ui.add_space(4.0);
         if self.run.log.is_empty() && self.run.handle.is_none() {
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(RichText::new(tr("No output. Press Shift+F10 to run it again.")).color(self.pal.text_dim).font(fonts::ui(12.0)));
+            });
             return;
         }
         let out = self.draw_log(ui, "run_log", &self.run.log, true, "$");
@@ -1025,6 +1019,117 @@ impl App {
         // Ctrl+C in the output of a running program (after a click in it) stops the program, as in a terminal
         if self.run.running && !out.copied && out.keys_here && ui.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy))) {
             self.stop_run();
+        }
+    }
+
+    /// The tabs of the Run window, one per file, configuration or scenario that was run, in the order they were opened:
+    /// a dot tells how its program is doing (running, done, failed); a tab closes with its cross, a middle click or its
+    /// menu, which also reruns or stops it.
+    fn draw_run_tabs(&mut self, ui: &mut egui::Ui, tabs: &[(String, String, crate::app_run::RunStatus)]) {
+        use crate::app_run::RunStatus;
+        let pal = self.pal;
+        let font = fonts::ui(12.5);
+        let (mut show, mut close, mut rerun, mut stop, mut close_others) = (None, None, false, false, None);
+        let mut rects: Vec<(String, Rect, Rect)> = Vec::new();
+        let now = ui.input(|i| i.time);
+        egui::ScrollArea::horizontal().id_salt("run_tabs").scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).show_fading(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.add_space(12.0);
+                ui.spacing_mut().item_spacing.x = 4.0;
+                for (key, title, status) in tabs {
+                    let active = *key == self.run_key;
+                    let title = crate::ui_chrome::elide(title, 40);
+                    let g = ui.painter().layout_no_wrap(title.clone(), font.clone(), pal.text);
+                    let (r, resp) = ui.allocate_exact_size(Vec2::new(12.0 + 8.0 + 8.0 + g.size().x + 6.0 + 20.0 + 6.0, 30.0), Sense::click());
+                    let resp = resp.on_hover_text(match status {
+                        RunStatus::Running => tr("Running"),
+                        RunStatus::Succeeded => tr("Finished successfully"),
+                        RunStatus::Failed => tr("Finished with an error"),
+                        RunStatus::Idle => tr("Stopped"),
+                    });
+                    if active {
+                        ui.painter().rect_filled(r, CornerRadius::same(10), pal.tab_active_bg);
+                    } else if resp.hovered() {
+                        ui.painter().rect_filled(r, CornerRadius::same(10), pal.hover);
+                    }
+                    let dot = Pos2::new(r.min.x + 16.0, r.center().y);
+                    match status {
+                        RunStatus::Running => {
+                            // a pulsing dot while the program runs
+                            let t = ((now * 3.0).sin() * 0.5 + 0.5) as f32;
+                            ui.painter().circle_filled(dot, 3.5 + t, pal.warning.gamma_multiply(0.35 + 0.65 * t));
+                            ui.ctx().request_repaint_after(std::time::Duration::from_millis(50));
+                        }
+                        RunStatus::Succeeded => {
+                            ui.painter().circle_filled(dot, 3.5, pal.ok);
+                        }
+                        RunStatus::Failed => {
+                            ui.painter().circle_filled(dot, 3.5, pal.error);
+                        }
+                        RunStatus::Idle => {
+                            ui.painter().circle_stroke(dot, 3.0, Stroke::new(1.2, pal.text_dim));
+                        }
+                    }
+                    ui.painter().text(Pos2::new(r.min.x + 28.0, r.center().y), egui::Align2::LEFT_CENTER, &title, font.clone(), if active { pal.text } else { pal.text_dim });
+                    let cr = Rect::from_center_size(Pos2::new(r.max.x - 16.0, r.center().y), Vec2::splat(18.0));
+                    let close_resp = ui.interact(cr, ui.scope_id().with(("run_tab_close", key)), Sense::click()).on_hover_text(tr("Close (stops the program)"));
+                    if active || resp.hovered() || close_resp.hovered() {
+                        if close_resp.hovered() {
+                            ui.painter().rect_filled(cr, CornerRadius::same(5), pal.selected);
+                        }
+                        icons::paint(ui.painter(), cr.shrink(4.5), Icon::Close, if close_resp.hovered() { pal.text } else { pal.text_dim });
+                    }
+                    rects.push((key.clone(), r, cr));
+                    if close_resp.clicked() || resp.middle_clicked() {
+                        close = Some(key.clone());
+                    } else if resp.clicked() && !active {
+                        show = Some(key.clone());
+                    }
+                    widgets::context_popup(&resp, &pal).show(|ui| {
+                        if widgets::menu_row(ui, &pal, Some(Icon::Play), tr("Rerun"), "Shift+F10").clicked() {
+                            show = Some(key.clone());
+                            rerun = true;
+                            ui.close();
+                        }
+                        if *status == RunStatus::Running && widgets::menu_row(ui, &pal, Some(Icon::Stop), tr("Stop"), "Ctrl+F2").clicked() {
+                            show = Some(key.clone());
+                            stop = true;
+                            ui.close();
+                        }
+                        ui.separator();
+                        if widgets::menu_row(ui, &pal, Some(Icon::Close), tr("Close"), "").clicked() {
+                            close = Some(key.clone());
+                            ui.close();
+                        }
+                        if tabs.len() > 1 && widgets::menu_row(ui, &pal, None, tr("Close Other Tabs"), "").clicked() {
+                            close_others = Some(key.clone());
+                            ui.close();
+                        }
+                    });
+                }
+                ui.add_space(12.0);
+            });
+        });
+        ui.data_mut(|d| d.insert_temp(egui::Id::unique("run_tab_rects"), rects));
+        if let Some(key) = show {
+            self.show_run_tab(&key);
+            self.editor_focus = false;
+        }
+        if rerun {
+            self.rerun_tab();
+        }
+        if stop {
+            self.stop_run();
+        }
+        if let Some(key) = close {
+            self.close_run_tab(&key);
+        }
+        if let Some(keep) = close_others {
+            for (key, _, _) in tabs {
+                if *key != keep {
+                    self.close_run_tab(key);
+                }
+            }
         }
     }
 

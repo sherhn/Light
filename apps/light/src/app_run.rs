@@ -451,6 +451,9 @@ impl App {
                 self.run_key = key;
             }
         }
+        if !self.run_order.contains(&self.run_key) {
+            self.run_order.push(self.run_key.clone());
+        }
         if let Some(handle) = self.run.handle.take() { handle.kill(); }
         self.make_run = None;
         self.scenario = None;
@@ -471,6 +474,70 @@ impl App {
     pub fn stop_other_runs(&mut self) {
         for tab in self.other_runs.drain(..) {
             if let Some(handle) = tab.run.handle { handle.kill(); }
+        }
+        let shown = self.run_key.clone();
+        self.run_order.retain(|key| *key == shown);
+    }
+
+    /// Show the run tab `key` (its output, and what Stop and Rerun act on).
+    pub fn show_run_tab(&mut self, key: &str) {
+        if let Some(index) = self.other_runs.iter().position(|tab| tab.key == key) {
+            self.select_run_tab(index);
+        }
+    }
+
+    /// Close the run tab `key`: its program is stopped and its output goes. Closing the tab that is shown shows its
+    /// neighbour (the one after it, or before it when it was the last).
+    pub fn close_run_tab(&mut self, key: &str) {
+        let Some(pos) = self.run_order.iter().position(|k| k == key) else { return };
+        self.run_order.remove(pos);
+        if self.run_key == key {
+            if let Some(handle) = self.run.handle.take() { handle.kill(); }
+            self.run_key.clear();
+            self.run = RunState::default();
+            self.run_request = None;
+            self.make_run = None;
+            self.scenario = None;
+            let next = self.run_order.get(pos.min(self.run_order.len().saturating_sub(1))).cloned();
+            if let Some(next) = next
+                && let Some(index) = self.other_runs.iter().position(|tab| tab.key == next)
+            {
+                // the emptied tab takes the neighbour's place in the list, then leaves it
+                self.select_run_tab(index);
+                self.other_runs.remove(index);
+            }
+        } else if let Some(index) = self.other_runs.iter().position(|tab| tab.key == key) {
+            let tab = self.other_runs.remove(index);
+            if let Some(handle) = tab.run.handle { handle.kill(); }
+        }
+    }
+
+    /// The run tabs in their order: key, title, and how its program is doing.
+    pub fn run_tabs(&self) -> Vec<(String, String, RunStatus)> {
+        self.run_order.iter().filter_map(|key| {
+            let run = if *key == self.run_key { &self.run } else { &self.other_runs.iter().find(|tab| tab.key == *key)?.run };
+            Some((key.clone(), run.title.clone(), RunStatus::of(run)))
+        }).collect()
+    }
+}
+
+/// How the program of a run tab is doing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RunStatus {
+    Running,
+    Succeeded,
+    Failed,
+    /// Nothing has finished in it yet, or it was stopped.
+    Idle,
+}
+
+impl RunStatus {
+    fn of(run: &RunState) -> RunStatus {
+        match (run.running, run.exit_code) {
+            (true, _) => RunStatus::Running,
+            (false, Some(0)) => RunStatus::Succeeded,
+            (false, Some(_)) => RunStatus::Failed,
+            (false, None) => RunStatus::Idle,
         }
     }
 }
@@ -523,5 +590,33 @@ mod concurrent_run_tests {
         app.stop_run();
         assert!(app.other_runs[0].run.running);
         app.stop_other_runs();
+    }
+
+    #[test]
+    fn tabs_keep_their_order_and_closing_one_shows_its_neighbour() {
+        let mut app = App::new(ide_core::settings::Settings::default());
+        for key in ["file:a", "file:b", "file:c"] {
+            app.prepare_run(key.into());
+            app.run.title = key.trim_start_matches("file:").into();
+        }
+        let keys = |app: &App| app.run_tabs().into_iter().map(|(key, _, _)| key).collect::<Vec<_>>();
+        assert_eq!(keys(&app), ["file:a", "file:b", "file:c"]);
+        // showing another tab or running one again does not move the tabs
+        app.show_run_tab("file:a");
+        assert_eq!(app.run.title, "a");
+        app.prepare_run("file:b".into());
+        assert_eq!(keys(&app), ["file:a", "file:b", "file:c"]);
+        assert_eq!(app.run_key, "file:b");
+        // the shown tab closes: the one after it is shown
+        app.close_run_tab("file:b");
+        assert_eq!(keys(&app), ["file:a", "file:c"]);
+        assert_eq!((app.run_key.as_str(), app.run.title.as_str()), ("file:c", "c"));
+        assert_eq!(app.other_runs.len(), 1);
+        // a tab in the background closes without changing what is shown
+        app.close_run_tab("file:a");
+        assert_eq!(keys(&app), ["file:c"]);
+        assert!(app.other_runs.is_empty());
+        app.close_run_tab("file:c");
+        assert!(app.run_tabs().is_empty() && app.run_key.is_empty());
     }
 }

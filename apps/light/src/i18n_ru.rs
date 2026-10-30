@@ -1050,4 +1050,12 @@ pub const RU: &[(&str, &str)] = &[
     ("Line endings", "Окончания строк"),
     ("opened", "открыт"),
     ("Clone a repository from GitHub or any Git URL", "Клонировать репозиторий с GitHub или по любому адресу Git"),
+    // ---- run tabs
+    ("No output. Press Shift+F10 to run it again.", "Вывода нет. Нажмите Shift+F10, чтобы запустить снова."),
+    ("Running", "Выполняется"),
+    ("Finished successfully", "Завершено успешно"),
+    ("Finished with an error", "Завершено с ошибкой"),
+    ("Stopped", "Остановлено"),
+    ("Close (stops the program)", "Закрыть (программа будет остановлена)"),
+    ("Rerun", "Перезапустить"),
 ];
