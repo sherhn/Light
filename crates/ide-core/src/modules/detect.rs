@@ -13,7 +13,11 @@ const MAX_FILES: usize = 20_000;
 /// The extensions and file names found in `root` (lower case), without what `.gitignore` hides.
 pub fn scan(root: &Path) -> (HashSet<String>, HashSet<String>) {
     let (mut exts, mut names) = (HashSet::new(), HashSet::new());
-    let walker = WalkBuilder::new(root).max_depth(Some(8)).hidden(true).git_ignore(true).git_global(false).build();
+    // Dotfiles such as .env.example and .editorconfig identify languages too.
+    // Keep skipping hidden directories so caches and VCS internals are not scanned.
+    let walker = WalkBuilder::new(root).max_depth(Some(8)).hidden(false).git_ignore(true).git_global(false)
+        .filter_entry(|e| e.depth() == 0 || !e.file_type().is_some_and(|t| t.is_dir()) || !e.file_name().to_string_lossy().starts_with('.'))
+        .build();
     for (n, e) in walker.flatten().filter(|e| e.file_type().is_some_and(|t| t.is_file())).enumerate() {
         if n >= MAX_FILES {
             break;
@@ -83,6 +87,17 @@ mod tests {
         ];
         assert_eq!(needed(d.path(), &mods), ["python", "c-cpp", "markdown"], "any case, any depth, in the order given");
         assert!(needed(&d.path().join("empty"), &mods).is_empty());
+    }
+
+    #[test]
+    fn dotfiles_identify_modules_without_scanning_hidden_directories() {
+        let d = TempDir::new("detect-dotfiles");
+        std::fs::write(d.path().join(".env.example"), "PORT=8080\n").unwrap();
+        std::fs::write(d.path().join(".editorconfig"), "root = true\n").unwrap();
+        std::fs::create_dir(d.path().join(".cache")).unwrap();
+        std::fs::write(d.path().join(".cache/generated.py"), "").unwrap();
+        let mods = vec![("dotenv".to_string(), detect(&["env"], &[".env", ".env.*"])), ("ini".to_string(), detect(&["ini"], &[".editorconfig"])), ("python".to_string(), detect(&["py"], &[]))];
+        assert_eq!(needed(d.path(), &mods), ["dotenv", "ini"]);
     }
 
     #[test]
