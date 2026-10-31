@@ -407,16 +407,16 @@
     {
       "id": "javascript",
       "name": "JavaScript",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "category": "Languages",
-      "summary": "JavaScript/JSX, Node.js, JSON and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
+      "summary": "JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
       "cover": "cover.png",
       "path": "modules/javascript",
       "files": [
         {
           "name": "module.json",
-          "size": 14247,
-          "sha256": "ea8bdce650fe085b10ce3d038d9b67a0dcd6937300ae6d4f95c2662d53d612f4"
+          "size": 13681,
+          "sha256": "e8f08cb61d8ef8c0d85ee3f8d772b05c7bb5e4333a49f0708444a514a8e0e883"
         },
         {
           "name": "LICENSE",
@@ -452,7 +452,7 @@
     {
       "id": "shell-make",
       "name": "Shell and Make",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "category": "Languages",
       "summary": "Shell scripts, makefiles and the usual configuration files: highlighting, comments and an outline of functions and targets.",
       "cover": "cover.png",
@@ -460,8 +460,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 9360,
-          "sha256": "849cca71f9aa20ab9e7f176e5a575c2cb66a900367f9f28e22f7f3da0c04c19e"
+          "size": 9294,
+          "sha256": "760c7f4f7cd10d845160ae9b4450f845463bf443c993a326db5a2261396db03c"
         },
         {
           "name": "LICENSE",
@@ -489,6 +489,205 @@
           "makefile",
           "GNUmakefile",
           "Dockerfile"
+        ]
+      }
+    },
+    {
+      "id": "json",
+      "name": "JSON",
+      "version": "1.0.1",
+      "category": "Languages",
+      "summary": "JSON, JSON Lines and JSON with comments: highlighting, key outline, indentation and folding.",
+      "cover": "cover.png",
+      "path": "modules/json",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 3010,
+          "sha256": "5ef9a6b6f4f557112ea92c6a56f24915f154e9fdf1d76d0840609af641d09963"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 21505,
+          "sha256": "fa78dc2379716145fbf4269155b171a22d476deaf4b1a3ad2a837e6b074f25fb"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "json",
+          "jsonl",
+          "ndjson",
+          "jsonc"
+        ],
+        "files": []
+      }
+    },
+    {
+      "id": "toml",
+      "name": "TOML",
+      "version": "1.0.1",
+      "category": "Languages",
+      "summary": "TOML configuration: tables, dotted keys, multiline strings, dates and numeric literals.",
+      "cover": "cover.png",
+      "path": "modules/toml",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 2498,
+          "sha256": "8987a2e0a43ab2ced8623ec90e74b7ad5ac81946ce557a2f1b6da93fa6c857e3"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 16926,
+          "sha256": "75cbb4cfe69e5a260a77d8989c64880b435e67b226f2f6655c1b50e5c910a984"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "toml"
+        ],
+        "files": []
+      }
+    },
+    {
+      "id": "yaml",
+      "name": "YAML",
+      "version": "1.0.1",
+      "category": "Languages",
+      "summary": "YAML mappings and sequences: keys, anchors, aliases, block scalars, indentation and folding.",
+      "cover": "cover.png",
+      "path": "modules/yaml",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 2553,
+          "sha256": "62837c8ba6f579101acb95c0c72f009a033816b764243857005691a8771de2de"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 19135,
+          "sha256": "6ebce63317c3d667d58261eb5f38529c8923c0d20e63d006dba118bb13aa2bf2"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "yaml",
+          "yml"
+        ],
+        "files": []
+      }
+    },
+    {
+      "id": "ini",
+      "name": "INI",
+      "version": "1.0.1",
+      "category": "Languages",
+      "summary": "INI and EditorConfig: sections, properties, quoted values, comments and section navigation.",
+      "cover": "cover.png",
+      "path": "modules/ini",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 1832,
+          "sha256": "b2070c5e0482a7756f0edc8d0a6249addddadc661a688df8675c04abedd8b244"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 17441,
+          "sha256": "eec686ffcb43788cf8ea793af1f2d241f5e94be0abf4effac1e0f39532b908db"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "ini",
+          "cfg"
+        ],
+        "files": [
+          ".editorconfig",
+          ".gitconfig",
+          ".gitmodules"
+        ]
+      }
+    },
+    {
+      "id": "dotenv",
+      "name": "Environment",
+      "version": "1.0.1",
+      "category": "Languages",
+      "summary": "Environment files: .env variants, assignments, export, quoted values and variable references.",
+      "cover": "cover.png",
+      "path": "modules/dotenv",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 1859,
+          "sha256": "8d1a8636e287955eac8000a22224d19c6177ab76d5a2669f18fedb6ea20f97fd"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 20296,
+          "sha256": "8f79bf16f78841ceb96cc51b453852fe3ff4d7aca1032b7f2dae5a31b44e6ed6"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "env"
+        ],
+        "files": [
+          ".env",
+          ".env.*",
+          "*.env",
+          "*.env.*"
         ]
       }
     }

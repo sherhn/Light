@@ -9,12 +9,12 @@ cut tr diff patch gzip gunzip zip unzip which whoami uname date sleep touch base
 MAKE_DIRECTIVES = r"^[ \t]*(?:-?include|sinclude|ifeq|ifneq|ifdef|ifndef|else|endif|define|endef|export|unexport|override|private|vpath|undefine)\b"
 
 MODULE = module(
-    version="1.1.1",
+    version="1.1.2",
     id="shell-make",
     name="Shell and Make",
     category="Languages",
     summary="Shell scripts, makefiles and the usual configuration files: highlighting, comments and an outline of functions and targets.",
-    description="Shell scripts (sh, bash, zsh), makefiles and configuration files (YAML, TOML, INI, CMake, Dockerfile, .gitignore) for Light: comments, strings, variables, keywords and builtins, make targets and recipes, the outline of functions and targets, and Comment Line with #. Make targets also appear as run configurations.",
+    description="Shell scripts (sh, bash, zsh), makefiles and configuration files (CMake, Dockerfile, .gitignore) for Light: comments, strings, variables, keywords and builtins, make targets and recipes, the outline of functions and targets, and Comment Line with #. Make targets also appear as run configurations. JSON, TOML, YAML, INI and environment files have dedicated modules.",
     languages=[
         dict(
             id="shell", name="Shell", extensions=["sh", "bash", "zsh", "ksh", "bashrc", "profile", "bash_profile", "zshrc"], filenames=[".bashrc", ".profile", ".bash_profile", ".zshrc"],
@@ -52,8 +52,8 @@ MODULE = module(
             outline=[outline(r"^([A-Za-z0-9_/-][A-Za-z0-9_./-]*)[ \t]*:(?:[ \t]|$)", "function")],
         ),
         dict(
-            id="config", name="Config", extensions=["yml", "yaml", "toml", "ini", "cfg", "conf", "cmake", "gitignore", "dockerfile", "env", "properties"],
-            filenames=["Dockerfile", ".gitignore", ".gitattributes", ".editorconfig", "CMakeLists.txt"],
+            id="config", name="Config", extensions=["conf", "cmake", "gitignore", "dockerfile", "properties"],
+            filenames=["Dockerfile", ".gitignore", ".gitattributes", "CMakeLists.txt"],
             line_comment="#", brackets=["()", "[]", "{}"], indent={"mode": "keep", "size": 2}, fold="indent",
             grammar=[
                 match(r"(?:^|[ \t])(#.*)$", captures={1: "comment"}),

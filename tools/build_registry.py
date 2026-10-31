@@ -19,7 +19,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "tools" / "registry_src"
 OUT = ROOT / "registry"
-ORDER = ["lisp", "c_cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "javascript", "shell_make"]
+ORDER = ["lisp", "c_cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "javascript", "shell_make", "json_lang", "toml", "yaml", "ini", "dotenv"]
 
 
 def load_modules():

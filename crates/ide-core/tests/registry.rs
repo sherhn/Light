@@ -75,11 +75,59 @@ fn has(got: &[(Class, String)], c: Class, t: &str) -> bool {
 }
 
 #[test]
+fn standalone_config_modules_work_without_shell_or_javascript() {
+    for module in manifests().into_iter().filter(|m| ["json", "toml", "yaml", "ini", "dotenv"].contains(&m.id.as_str())) {
+        let mut set = LanguageSet::new();
+        for def in module.languages { set.add(def).unwrap(); }
+        let path = match module.id.as_str() {
+            "json" => "settings.json", "toml" => "Cargo.toml", "yaml" => "ci.yml", "ini" => ".editorconfig", _ => ".env.local",
+        };
+        assert_ne!(set.for_path(std::path::Path::new(path), None).id(), "plain");
+    }
+    let strict = language("json");
+    let text = "{\n  \"name\": \"a#b\",\n  \"enabled\": true,\n  \"count\": -1.2e3\n}";
+    assert!(has(&hl("json", text), Class::Keyword, "\"name\""));
+    assert!(has(&hl("json", text), Class::Number, "-1.2e3"));
+    assert_eq!(strict.outline(text).iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), ["name", "enabled", "count"]);
+    assert_eq!(strict.indent_for("{", ""), "  ");
+    assert!(!strict.fold_regions(text, &strict.highlight(text)).is_empty());
+    assert!(strict.def.line_comment.is_empty());
+    assert!(has(&hl("jsonc", "/* note */\n// comment\n{}"), Class::Comment, "/* note */"));
+    assert!(!hl("json", "// comment").iter().any(|(c, _)| *c == Class::Comment));
+
+    let text = "[package]\nname = \"a#b\" # note\nreleased = 2026-10-31\n[[bin]]\nscript = '''\n[fake]\n'''\n";
+    let spans = hl("toml", text);
+    assert!(has(&spans, Class::String, "\"a#b\""));
+    assert!(has(&spans, Class::Comment, "# note"));
+    assert!(has(&spans, Class::Constant, "2026-10-31"));
+    assert_eq!(language("toml").outline(text).iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), ["package", "bin"]);
+
+    let text = "---\nserver: &main\n  port: 8080\n  url: \"https://host/#path\" # note\ncopy: *main\n";
+    assert!(has(&hl("yaml", text), Class::SpecialVar, "&main"));
+    assert!(has(&hl("yaml", text), Class::SpecialVar, "*main"));
+    assert!(has(&hl("yaml", text), Class::String, "\"https://host/#path\""));
+    assert_eq!(language("yaml").indent_for("server:", ""), "  ");
+    assert_eq!(language("yaml").outline(text).len(), 4);
+    assert!(!language("yaml").fold_regions(text, &language("yaml").highlight(text)).is_empty());
+
+    let text = "; note\n[core]\nname = \"a#b\"\n";
+    assert!(has(&hl("ini", text), Class::Comment, "; note"));
+    assert_eq!(language("ini").outline(text).iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), ["core", "name"]);
+    let text = "# note\nexport PORT=8080\nURL=\"https://host/#path\"\nCOPY=${PORT}\nLITERAL='$PORT'\n";
+    let spans = hl("dotenv", text);
+    assert!(has(&spans, Class::SpecialForm, "export"));
+    assert!(has(&spans, Class::String, "\"https://host/#path\""));
+    assert!(has(&spans, Class::String, "'$PORT'"));
+    assert!(has(&spans, Class::SpecialVar, "${PORT}"));
+    assert_eq!(language("dotenv").outline(text).iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), ["PORT", "URL", "COPY", "LITERAL"]);
+}
+
+#[test]
 fn the_index_is_current_and_every_module_is_valid() {
     let src = Source::Dir(registry_dir());
     let index: Index = src.fetch_index().expect("index.json");
     let ids: Vec<&str> = index.modules.iter().map(|m| m.id.as_str()).collect();
-    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "javascript", "shell-make"]);
+    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "javascript", "shell-make", "json", "toml", "yaml", "ini", "dotenv"]);
     for e in &index.modules {
         assert!(e.files.iter().any(|f| f.name == "module.json"), "{}", e.id);
         for f in &e.files {
@@ -123,6 +171,9 @@ fn every_language_is_claimed_by_the_files_it_should() {
     assert_eq!(id("package.json", None), "javascript-package");
     assert_eq!(id("index.mjs", None), "javascript");
     assert_eq!(id("Component.jsx", None), "jsx");
+    for (path, expected) in [("settings.json", "json"), ("events.ndjson", "json"), ("events.jsonl", "json"), ("settings.jsonc", "jsonc"), ("Cargo.toml", "toml"), ("config.YAML", "yaml"), ("config.yml", "yaml"), ("config.ini", "ini"), ("config.cfg", "ini"), (".editorconfig", "ini"), (".gitconfig", "ini"), (".env", "dotenv"), (".env.local", "dotenv"), (".env.example", "dotenv"), ("production.env", "dotenv"), ("app.env.local", "dotenv")] {
+        assert_eq!(id(path, None), expected, "{path}");
+    }
     assert_eq!(id("link.ld", None), "c");
     assert_eq!(id("notes.xyz", None), "plain");
     assert_eq!(id("web/INDEX.HTML", None), "html");

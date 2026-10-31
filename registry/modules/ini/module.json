@@ -1,0 +1,74 @@
+{
+  "version": "1.0.1",
+  "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
+  "id": "ini",
+  "name": "INI",
+  "category": "Languages",
+  "summary": "INI and EditorConfig: sections, properties, quoted values, comments and section navigation.",
+  "description": "INI and CFG configuration files plus .editorconfig, .gitconfig and .gitmodules. Highlights sections, property names, quoted values and full-line semicolon/hash comments; section and property outline. Values remain literal unless quoted. No external tools required.",
+  "languages": [
+    {
+      "id": "ini",
+      "name": "INI",
+      "extensions": [
+        "ini",
+        "cfg"
+      ],
+      "filenames": [
+        ".editorconfig",
+        ".gitconfig",
+        ".gitmodules"
+      ],
+      "line_comment": ";",
+      "indent": {
+        "mode": "keep",
+        "size": 2
+      },
+      "grammar": [
+        {
+          "match": "^[ \\t]*[;#].*$",
+          "class": "comment"
+        },
+        {
+          "match": "^[ \\t]*\\[[^\\n]+\\][ \\t]*(?:[;#].*)?$",
+          "class": "heading"
+        },
+        {
+          "match": "^[ \\t]*([^\\s=:#][^=:\\n]*?)[ \\t]*[=:]",
+          "captures": {
+            "1": "variable"
+          }
+        },
+        {
+          "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?|\\'[^\\'\\n]*\\'?",
+          "class": "string"
+        }
+      ],
+      "outline": [
+        {
+          "pattern": "^[ \\t]*\\[([^\\n]+)\\][ \\t]*(?:[;#].*)?$",
+          "kind": "module",
+          "name": 1
+        },
+        {
+          "pattern": "^[ \\t]*([^\\s=:#;][^=:\\n]*?)[ \\t]*[=:]",
+          "kind": "variable",
+          "name": 1
+        }
+      ]
+    }
+  ],
+  "detect": {
+    "extensions": [
+      "ini",
+      "cfg"
+    ],
+    "files": [
+      ".editorconfig",
+      ".gitconfig",
+      ".gitmodules"
+    ]
+  }
+}

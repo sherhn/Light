@@ -1,0 +1,74 @@
+{
+  "version": "1.0.1",
+  "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
+  "id": "dotenv",
+  "name": "Environment",
+  "category": "Languages",
+  "summary": "Environment files: .env variants, assignments, export, quoted values and variable references.",
+  "description": "Dedicated dotenv editing for .env, .env.local, .env.example and named environment files. Highlights assignment names, export, quoted values, comments and unquoted variable references, with a variable outline. Files are edited as text; no environment variables are loaded or commands executed.",
+  "languages": [
+    {
+      "id": "dotenv",
+      "name": "Environment",
+      "extensions": [
+        "env"
+      ],
+      "filenames": [
+        ".env",
+        ".env.*",
+        "*.env",
+        "*.env.*"
+      ],
+      "line_comment": "#",
+      "indent": {
+        "mode": "keep",
+        "size": 2
+      },
+      "grammar": [
+        {
+          "match": "^[ \\t]*#.*$",
+          "class": "comment"
+        },
+        {
+          "match": "^[ \\t]*(?:(export)[ \\t]+)?([A-Za-z_][A-Za-z0-9_]*)[ \\t]*=",
+          "captures": {
+            "1": "keyword",
+            "2": "variable"
+          }
+        },
+        {
+          "match": "\"(?:[^\"\\\\]|\\\\.)*\"?|\\'[^\\']*\\'?",
+          "class": "string"
+        },
+        {
+          "match": "#[^\\n]*",
+          "class": "comment"
+        },
+        {
+          "match": "\\$\\{[^}\\n]+\\}|\\$[A-Za-z_][A-Za-z0-9_]*",
+          "class": "variable"
+        }
+      ],
+      "outline": [
+        {
+          "pattern": "^[ \\t]*(?:export[ \\t]+)?([A-Za-z_][A-Za-z0-9_]*)[ \\t]*=",
+          "kind": "variable",
+          "name": 1
+        }
+      ]
+    }
+  ],
+  "detect": {
+    "extensions": [
+      "env"
+    ],
+    "files": [
+      ".env",
+      ".env.*",
+      "*.env",
+      "*.env.*"
+    ]
+  }
+}

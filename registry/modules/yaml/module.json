@@ -1,0 +1,100 @@
+{
+  "version": "1.0.1",
+  "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
+  "id": "yaml",
+  "name": "YAML",
+  "category": "Languages",
+  "summary": "YAML mappings and sequences: keys, anchors, aliases, block scalars, indentation and folding.",
+  "description": "YAML and YML configuration with mapping-key outline, comments, quoted strings, booleans, nulls, numbers, anchors, aliases, tags, block-scalar indicators and document markers. Two-space indentation and indentation folding. Docker Compose retains its dedicated language when installed. No external tools required.",
+  "languages": [
+    {
+      "id": "yaml",
+      "name": "YAML",
+      "extensions": [
+        "yaml",
+        "yml"
+      ],
+      "line_comment": "#",
+      "brackets": [
+        "[]",
+        "{}"
+      ],
+      "indent": {
+        "mode": "python",
+        "size": 2
+      },
+      "fold": "indent",
+      "grammar": [
+        {
+          "match": "(?:^|[ \\t])(#.*)$",
+          "captures": {
+            "1": "comment"
+          }
+        },
+        {
+          "match": "^[ \\t]*(?:-[ \\t]+)?((?:[\\w.-]+|\"(?:[^\"\\\\\\n]|\\\\.)*\"|\\'[^\\'\\n]*\\'))[ \\t]*:(?:[ \\t]|$)",
+          "captures": {
+            "1": "variable"
+          }
+        },
+        {
+          "match": "[|>][1-9+-]{0,2}[ \\t]*(?:#[^\\n]*)?$",
+          "class": "constant"
+        },
+        {
+          "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?|\\'(?:[^\\'\\n]|\\'\\')*\\'?",
+          "class": "string"
+        },
+        {
+          "match": "[&*][A-Za-z_][\\w.-]*",
+          "class": "variable"
+        },
+        {
+          "match": "![^\\s,\\[\\]{}]+",
+          "class": "type"
+        },
+        {
+          "match": "^(?:---|\\.\\.\\.)[ \\t]*$",
+          "class": "preproc"
+        },
+        {
+          "words": [
+            "true",
+            "false",
+            "null",
+            "yes",
+            "no",
+            "on",
+            "off"
+          ],
+          "class": "constant",
+          "ignore_case": true
+        },
+        {
+          "match": "~",
+          "class": "constant"
+        },
+        {
+          "match": "[+-]?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b",
+          "class": "number"
+        }
+      ],
+      "outline": [
+        {
+          "pattern": "^[ \\t]*(?:-[ \\t]+)?((?:[\\w.-]+|\"(?:[^\"\\\\\\n]|\\\\.)*\"|\\'[^\\'\\n]*\\'))[ \\t]*:(?:[ \\t]|$)",
+          "kind": "variable",
+          "name": 1
+        }
+      ]
+    }
+  ],
+  "detect": {
+    "extensions": [
+      "yaml",
+      "yml"
+    ],
+    "files": []
+  }
+}

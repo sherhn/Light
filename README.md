@@ -7,7 +7,7 @@ Add the languages and tools your project needs.
 
 ## Features
 
-- Language modules: JavaScript/JSX/JSON, Python, C/C++, Lisp, Assembler, HTML, CSS, Markdown, reStructuredText, Shell and Make; Dockerfile and Compose tools.
+- Language modules: JavaScript/JSX, JSON/JSONC, TOML, YAML, INI, Environment (.env), Python, C/C++, Lisp, Assembler, HTML, CSS, Markdown, reStructuredText, Shell and Make; Dockerfile and Compose tools.
 - Code highlighting, completion, navigation and project search.
 - Integrated Git, terminal and run scenarios.
 - Linux through WSL on Windows.
@@ -28,7 +28,7 @@ Light — открытая модульная IDE на Rust и egui для Windo
 
 ### Возможности
 
-- Языковые модули: JavaScript/JSX/JSON, Python, C/C++, Lisp, Assembler, HTML, CSS, Markdown, reStructuredText, Shell и Make; инструменты Dockerfile и Compose.
+- Языковые модули: JavaScript/JSX, JSON/JSONC, TOML, YAML, INI, Environment (.env), Python, C/C++, Lisp, Assembler, HTML, CSS, Markdown, reStructuredText, Shell и Make; инструменты Dockerfile и Compose.
 - Подсветка кода, автодополнение, навигация и поиск по проекту.
 - Встроенные Git, терминал и сценарии запуска.
 - Linux через WSL при работе в Windows.

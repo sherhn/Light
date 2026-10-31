@@ -1,13 +1,13 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
   "id": "javascript",
   "name": "JavaScript",
   "category": "Languages",
-  "summary": "JavaScript/JSX, Node.js, JSON and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
-  "description": "JavaScript ES modules and CommonJS, JSX, JSON and package.json. Syntax coloring includes comments, strings, template literals, regular expressions, keywords and browser/Node builtins. Brace indentation and folding, function/class outline and completion. Node.js syntax checks, Run, Watch and node:test; package.json exposes npm install, start, dev, build, test and lint. Uses your Node.js/npm on Windows, macOS or Linux (including WSL). No files or dependencies are created until you explicitly run a command.",
+  "summary": "JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
+  "description": "JavaScript ES modules and CommonJS, JSX and package.json. Syntax coloring includes comments, strings, template literals, regular expressions, keywords and browser/Node builtins. Brace indentation and folding, function/class outline and completion. Node.js syntax checks, Run, Watch and node:test; package.json exposes npm install, start, dev, build, test and lint. Uses your Node.js/npm on Windows, macOS or Linux (including WSL). No files or dependencies are created until you explicitly run a command.",
   "languages": [
     {
       "id": "javascript",
@@ -469,6 +469,12 @@
       ],
       "grammar": [
         {
+          "match": "(\"(?:[^\"\\\\\\n]|\\\\.)*\")[ \\t]*:",
+          "captures": {
+            "1": "argument"
+          }
+        },
+        {
           "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?",
           "class": "string"
         },
@@ -490,44 +496,6 @@
           "pattern": "^[ \\t]*\"([^\"\\n]+)\"[ \\t]*:",
           "kind": "variable",
           "name": 1
-        }
-      ]
-    },
-    {
-      "id": "json",
-      "name": "JSON",
-      "extensions": [
-        "json",
-        "jsonl"
-      ],
-      "brackets": [
-        "[]",
-        "{}"
-      ],
-      "indent": {
-        "mode": "braces",
-        "size": 2
-      },
-      "fold": "braces",
-      "check": [
-        "brackets"
-      ],
-      "grammar": [
-        {
-          "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?",
-          "class": "string"
-        },
-        {
-          "words": [
-            "true",
-            "false",
-            "null"
-          ],
-          "class": "constant"
-        },
-        {
-          "match": "-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b",
-          "class": "number"
         }
       ]
     }

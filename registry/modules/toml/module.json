@@ -1,0 +1,93 @@
+{
+  "version": "1.0.1",
+  "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
+  "id": "toml",
+  "name": "TOML",
+  "category": "Languages",
+  "summary": "TOML configuration: tables, dotted keys, multiline strings, dates and numeric literals.",
+  "description": "Highlight TOML tables and arrays of tables, bare and quoted dotted keys, basic and literal strings (including multiline strings), comments, booleans, dates and numbers. Table outline, brace indentation and array folding. No external tools required.",
+  "languages": [
+    {
+      "id": "toml",
+      "name": "TOML",
+      "extensions": [
+        "toml"
+      ],
+      "line_comment": "#",
+      "brackets": [
+        "[]",
+        "{}"
+      ],
+      "indent": {
+        "mode": "braces",
+        "size": 2
+      },
+      "fold": "braces",
+      "check": [
+        "brackets"
+      ],
+      "grammar": [
+        {
+          "match": "#[^\\n]*",
+          "class": "comment"
+        },
+        {
+          "match": "^[ \\t]*\\[\\[?[^\\]\\n]+\\]\\]?",
+          "class": "heading"
+        },
+        {
+          "match": "^[ \\t]*((?:[A-Za-z0-9_-]+|\"(?:[^\"\\\\\\n]|\\\\.)*\"|\\'[^\\'\\n]*\\')(?:[ \\t]*\\.[ \\t]*(?:[A-Za-z0-9_-]+|\"(?:[^\"\\\\\\n]|\\\\.)*\"|\\'[^\\'\\n]*\\'))*)[ \\t]*=",
+          "captures": {
+            "1": "variable"
+          }
+        },
+        {
+          "begin": "\"\"\"",
+          "end": "(?:\\\\.|[^\"\\\\]|\"{1,2}[^\"\\\\])*\"\"\"",
+          "class": "string"
+        },
+        {
+          "begin": "'''",
+          "end": "'''",
+          "class": "string"
+        },
+        {
+          "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?|\\'[^\\'\\n]*\\'?",
+          "class": "string"
+        },
+        {
+          "match": "\\b\\d{4}-\\d{2}-\\d{2}(?:[Tt ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:[Zz]|[+-]\\d{2}:\\d{2})?)?|\\b\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?",
+          "class": "constant"
+        },
+        {
+          "words": [
+            "true",
+            "false",
+            "inf",
+            "nan"
+          ],
+          "class": "constant"
+        },
+        {
+          "match": "[+-]?\\b(?:0x[\\da-fA-F_]+|0o[0-7_]+|0b[01_]+|\\d[\\d_]*(?:\\.[\\d_]+)?(?:[eE][+-]?[\\d_]+)?)\\b",
+          "class": "number"
+        }
+      ],
+      "outline": [
+        {
+          "pattern": "^[ \\t]*\\[\\[?[ \\t]*([^\\]\\n]+?)\\]\\]?",
+          "kind": "module",
+          "name": 1
+        }
+      ]
+    }
+  ],
+  "detect": {
+    "extensions": [
+      "toml"
+    ],
+    "files": []
+  }
+}

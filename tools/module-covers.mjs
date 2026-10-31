@@ -6,6 +6,11 @@ const scenes={python:[null,'#b3c9a4','py'],'c-cpp':[null,'#9ab9cf','C++'],lisp:[
 const [id,destination]=process.argv.slice(2);
 scenes.javascript=[null,'#e4cf83','JS'];
 scenes.docker=[null,'#9abed5','▤'];
+scenes.json=[null,'#c9c0a3','{}'];
+scenes.toml=[null,'#cba890','T'];
+scenes.yaml=[null,'#b4c8bb','Y'];
+scenes.ini=[null,'#9cb9d5','[ ]'];
+scenes.dotenv=[null,'#e4cf83','$'];
 if(!Object.hasOwn(scenes,id)||!destination)throw new Error('Usage: node module-covers.mjs <module id> <output PNG>');
 const [source,color,glyph]=scenes[id];
 let mark;
