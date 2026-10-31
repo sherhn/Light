@@ -3,8 +3,13 @@
 //! way Windows Terminal hosts WSL: `wsl.exe` inside it gives the Linux shell a real terminal (colours, prompts,
 //! full-screen programs, Ctrl+C, the window's size).
 
+// elsewhere there is no pseudo console to make (a Linux shell is a project of Windows): the types stay for the code that
+// is the same everywhere, and what only the console of Windows uses is not compiled
+#![cfg_attr(not(windows), allow(dead_code))]
+
 use std::ffi::OsStr;
 use std::path::Path;
+#[cfg(windows)]
 use std::sync::mpsc::{self, Receiver, Sender};
 
 /// What a pseudo console reports.
