@@ -39,6 +39,7 @@ mod script;
 mod scrollbars;
 mod shell;
 mod state;
+mod system_theme;
 mod theme;
 mod ui;
 mod ui_chrome;
@@ -107,7 +108,9 @@ fn main() -> eframe::Result {
     let settings = Settings::load();
     let (w, h) = args.size.unwrap_or((1280.0, 800.0));
     let mut viewport = egui::ViewportBuilder::default().with_inner_size([w, h]).with_min_inner_size([640.0, 400.0]).with_title("Light").with_decorations(false).with_app_id("light");
-    if let Some(icon) = brand::window_icon(brand::use_dark_logo(settings.logo, brand::taskbar_is_light().unwrap_or(false))) {
+    // what the window starts with: Windows tells at once, the other systems are asked once the window is up
+    let startup_dark = brand::use_dark_logo(settings.logo, brand::taskbar_is_light().unwrap_or(false));
+    if let Some(icon) = brand::window_icon(startup_dark) {
         viewport = viewport.with_icon(std::sync::Arc::new(icon));
     }
     let options = eframe::NativeOptions { viewport, ..Default::default() };
@@ -119,6 +122,11 @@ fn main() -> eframe::Result {
             let logos = brand::load_logos(&cc.egui_ctx);
             let mut app = app::App::new(settings);
             app.logos = logos;
+            // the icon the window was made with is there already: only a change of it is to be applied
+            #[cfg(not(windows))]
+            {
+                app.window_icon_dark = Some(startup_dark);
+            }
             app.use_saved_history();
             app.pal.apply(&cc.egui_ctx);
             // what to open: explicit paths win, otherwise restore the last session

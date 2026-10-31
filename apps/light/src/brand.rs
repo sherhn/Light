@@ -70,8 +70,8 @@ pub fn load_logos(ctx: &egui::Context) -> Logos {
     Logos { light: load("light-logo", LOGO_128), dark: load("light-logo-dark", DARK_LOGO_128) }
 }
 
-/// Is the system's taskbar light? Windows says so in the user's personalization ("Choose your default Windows mode");
-/// elsewhere (and when Windows does not say) nothing is known.
+/// Is the system's taskbar light? Windows says so in the user's personalization ("Choose your default Windows mode"),
+/// at once. The other systems are asked in the background (see `system_theme`), so here nothing is known of them.
 pub fn taskbar_is_light() -> Option<bool> {
     #[cfg(windows)]
     {
@@ -81,6 +81,58 @@ pub fn taskbar_is_light() -> Option<bool> {
     {
         None
     }
+}
+
+/// macOS: put the logo (the dark one for a light Dock) in the Dock as the application's icon. Returns false, having
+/// changed nothing, when it cannot be done: not on the main thread, no application yet, the picture cannot be made.
+#[cfg(target_os = "macos")]
+pub fn set_dock_icon(dark: bool) -> bool {
+    use objc2::MainThreadMarker;
+    use objc2::AnyThread as _;
+    use objc2_app_kit::{NSApplication, NSBitmapImageRep, NSDeviceRGBColorSpace, NSImage};
+    use objc2_foundation::NSSize;
+
+    let Some((width, height, mut rgba)) = decode_png(if dark { DARK_ICON_256 } else { ICON_256 }) else { return false };
+    // the bitmap of AppKit takes its colours with the alpha multiplied in
+    for pixel in rgba.as_chunks_mut::<4>().0 {
+        let alpha = pixel[3] as u32;
+        for channel in &mut pixel[..3] {
+            *channel = ((*channel as u32 * alpha + 127) / 255) as u8;
+        }
+    }
+    // a failure of any kind leaves the Dock as it is
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let Some(main_thread) = MainThreadMarker::new() else { return false };
+        // SAFETY: AppKit is used on the main thread (the marker says so); the bitmap makes and owns its own memory,
+        // which is filled only after its size, row length and pointer have been checked to hold the picture
+        unsafe {
+            let Some(rep) = NSBitmapImageRep::initWithBitmapDataPlanes_pixelsWide_pixelsHigh_bitsPerSample_samplesPerPixel_hasAlpha_isPlanar_colorSpaceName_bytesPerRow_bitsPerPixel(
+                NSBitmapImageRep::alloc(),
+                std::ptr::null_mut(),
+                width as isize,
+                height as isize,
+                8,
+                4,
+                true,
+                false,
+                NSDeviceRGBColorSpace,
+                (width * 4) as isize,
+                32,
+            ) else {
+                return false;
+            };
+            let data = rep.bitmapData();
+            if data.is_null() || rep.bytesPerRow() != (width * 4) as isize || rgba.len() != (width * height * 4) as usize {
+                return false;
+            }
+            std::ptr::copy_nonoverlapping(rgba.as_ptr(), data, rgba.len());
+            let image = NSImage::initWithSize(NSImage::alloc(), NSSize::new(width as f64, height as f64));
+            image.addRepresentation(&rep);
+            NSApplication::sharedApplication(main_thread).setApplicationIconImage(Some(&image));
+        }
+        true
+    }))
+    .unwrap_or(false)
 }
 
 /// Give the window `hwnd` the logo of the exe's icon resources (1: light, 2: dark) as its big icon, the one the taskbar

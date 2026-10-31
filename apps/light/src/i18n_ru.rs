@@ -1081,7 +1081,7 @@ pub const RU: &[(&str, &str)] = &[
     // ---- logo
     ("Logo", "Логотип"),
     ("Version of the logo", "Вариант логотипа"),
-    ("The light logo suits dark backgrounds, the dark one light ones. Automatic follows the theme inside the window and the colour of the taskbar for the window's icon.", "Светлый логотип подходит для тёмного фона, тёмный — для светлого. Автоматически: внутри окна по теме, а значок окна — по цвету панели задач."),
+    ("The light logo suits dark backgrounds, the dark one light ones. Automatic follows the theme inside the window and the system's light or dark setting for the window's icon (taskbar, Dock). Light and Dark never ask the system.", "Светлый логотип подходит для тёмного фона, тёмный — для светлого. Автоматически: внутри окна по теме, а значок окна — по светлой или тёмной теме системы (панель задач, Dock). «Светлый» и «Тёмный» систему не опрашивают."),
     ("Automatic", "Автоматически"),
     // ---- the explorer of Open Project and of folders in Linux
     ("Where to create the project", "Где создать проект"),

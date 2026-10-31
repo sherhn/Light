@@ -25,5 +25,12 @@ raw-window-handle = "0.6"
 vt100 = "0.16"
 webbrowser = "1.2.5"
 
+# macOS: the Dock's icon follows the system's light or dark mode (the same versions and features eframe uses, so nothing
+# new is downloaded)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSBitmapImageRep", "NSGraphics", "NSImage", "NSImageRep", "NSResponder"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std"] }
+
 [target.'cfg(windows)'.build-dependencies]
 embed-resource = "3"

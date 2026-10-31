@@ -254,8 +254,8 @@ impl App {
                 }
                 if let Some(light) = step["taskbar_light"].as_bool() {
                     self.taskbar_light = Some(light);
-                    // keep what the script says instead of reading the real taskbar again
-                    self.taskbar_read_at = f64::INFINITY;
+                    // keep what the script says instead of asking the system again
+                    self.taskbar_frozen = true;
                 }
             }
             "assert_window_icon" => {

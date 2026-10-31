@@ -196,14 +196,14 @@ impl App {
                                 changed_theme = true;
                             }
                             group(ui, &pal, tr("Logo"), |ui, rows| {
-                                rows.row(ui, &pal, tr("Version of the logo"), tr("The light logo suits dark backgrounds, the dark one light ones. Automatic follows the theme inside the window and the colour of the taskbar for the window's icon."), 280.0, |ui| {
+                                rows.row(ui, &pal, tr("Version of the logo"), tr("The light logo suits dark backgrounds, the dark one light ones. Automatic follows the theme inside the window and the system's light or dark setting for the window's icon (taskbar, Dock). Light and Dark never ask the system."), 280.0, |ui| {
                                     use ide_core::settings::LogoStyle;
                                     let styles = [LogoStyle::Auto, LogoStyle::Light, LogoStyle::Dark];
                                     let cur = styles.iter().position(|s| *s == self.settings.logo).unwrap_or(0);
                                     if let Some(i) = widgets::segmented(ui, &pal, &[tr("Automatic"), tr("Light"), tr("Dark")], cur) {
                                         self.settings.logo = styles[i];
-                                        // read the taskbar again at once
-                                        self.taskbar_read_at = -100.0;
+                                        // ask the system again at once
+                                        self.taskbar_probe.read_now();
                                     }
                                 });
                             });

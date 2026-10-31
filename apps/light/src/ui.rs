@@ -9,12 +9,15 @@ use crate::state::*;
 use crate::widgets::{self, STATUS_H, STRIP_W, TOOLBAR_H};
 
 impl App {
-    /// Keep the window's icon (the one the taskbar shows) in the version of the logo that suits: the dark one on a light
-    /// taskbar unless the settings choose one. The taskbar's colour is read again every few seconds.
+    /// Keep the window's icon (the one the taskbar or the Dock shows) in the version of the logo that suits: the dark one
+    /// on a light system unless the settings choose one. The system is asked in the background every few seconds, and
+    /// only while the choice is Automatic; when it does not say, the icon stays as it is.
     fn update_window_icon(&mut self, ctx: &egui::Context, frame: &eframe::Frame) {
-        if self.settings.logo == ide_core::settings::LogoStyle::Auto && self.now - self.taskbar_read_at > 3.0 {
-            self.taskbar_read_at = self.now;
-            self.taskbar_light = crate::brand::taskbar_is_light();
+        if self.settings.logo == ide_core::settings::LogoStyle::Auto && !self.taskbar_frozen {
+            let waker = ctx.clone();
+            if let Some(light) = self.taskbar_probe.refresh(move || waker.request_repaint()) {
+                self.taskbar_light = Some(light);
+            }
         }
         let dark = crate::brand::use_dark_logo(self.settings.logo, self.taskbar_light.unwrap_or(false));
         if self.window_icon_dark == Some(dark) {
@@ -34,6 +37,16 @@ impl App {
             }
         }
         let _ = frame;
+        // macOS: the Dock's icon is the application's own, which the window's icon does not reach; when it cannot be set
+        // the Dock keeps the icon of the bundle
+        #[cfg(target_os = "macos")]
+        {
+            if crate::brand::set_dock_icon(dark) {
+                self.window_icon_native = true;
+                return;
+            }
+        }
+        // elsewhere the window's icon (X11 shows it; Wayland takes the icon of the desktop file and ignores this)
         if let Some(icon) = crate::brand::window_icon(dark) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Icon(Some(std::sync::Arc::new(icon))));
         }

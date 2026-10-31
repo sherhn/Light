@@ -99,8 +99,11 @@ pub struct App {
     pub window_icon_dark: Option<bool>,
     /// Windows: the icon was put on the window itself (big and small), not only through egui.
     pub window_icon_native: bool,
-    pub taskbar_read_at: f64,
+    /// Asks the system whether it is light or dark (in the background), and what it last said: `Some(true)`, light.
+    pub taskbar_probe: crate::system_theme::Probe,
     pub taskbar_light: Option<bool>,
+    /// The UI tests say what the taskbar is: the system is not asked.
+    pub taskbar_frozen: bool,
     pub term: crate::app_terminal::TerminalState,
     /// The Linux (WSL) settings page: what is installed and what is being set up.
     pub wsl: crate::app_wsl::WslState,
@@ -204,8 +207,9 @@ impl App {
             logos: Default::default(),
             window_icon_dark: None,
             window_icon_native: false,
-            taskbar_read_at: -100.0,
+            taskbar_probe: crate::system_theme::Probe::system(),
             taskbar_light: None,
+            taskbar_frozen: false,
             term: Default::default(),
             wsl: Default::default(),
             github: Default::default(),
