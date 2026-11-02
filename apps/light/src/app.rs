@@ -496,6 +496,10 @@ impl App {
             self.editor_focus = true;
             return true;
         }
+        // a raster image is shown, not read as text (an SVG is text: it opens as code with its drawing beside it)
+        if crate::imageview::kind_of(path) == Some(crate::imageview::Kind::Raster) {
+            return self.open_picture(path);
+        }
         match std::fs::metadata(path) {
             Ok(m) if m.len() > 8 * 1024 * 1024 => {
                 self.toast(i18n::fmt("{0} is too large to open ({1} MB)", &[&path.display(), &(m.len() / 1_048_576)]), Sev::Error);
@@ -525,6 +529,28 @@ impl App {
                 false
             }
         }
+    }
+
+    /// Open the raster image in `path` in a tab of its own.
+    fn open_picture(&mut self, path: &Path) -> bool {
+        match std::fs::metadata(path) {
+            Ok(m) if m.len() > crate::imageview::MAX_PICTURE_BYTES => {
+                self.toast(i18n::fmt("{0} is too large to open ({1} MB)", &[&path.display(), &(m.len() / 1_048_576)]), Sev::Error);
+                return false;
+            }
+            Err(e) => {
+                self.toast(i18n::fmt("Cannot open {0}: {1}", &[&path.display(), &e]), Sev::Error);
+                return false;
+            }
+            _ => {}
+        }
+        self.docs.push(Doc::picture_tab(path));
+        self.active = self.docs.len() - 1;
+        self.editor_focus = true;
+        self.recent_files.retain(|p| p != path);
+        self.recent_files.insert(0, path.to_path_buf());
+        self.recent_files.truncate(30);
+        true
     }
 
     /// Open a file and put the caret at `offset` (a byte offset).
@@ -1879,3 +1905,7 @@ pub struct DefinitionParts {
 #[cfg(test)]
 #[path = "app_session_tests.rs"]
 mod session_tests;
+
+#[cfg(test)]
+#[path = "app_picture_tests.rs"]
+mod picture_tests;

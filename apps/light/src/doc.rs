@@ -23,12 +23,15 @@ fn next_id() -> u64 {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Page {
     Modules,
+    /// A raster image (its file's name is the tab's title, and the file is what it shows).
+    Image,
 }
 
 impl Page {
     pub fn title(self) -> &'static str {
         match self {
             Page::Modules => "Modules",
+            Page::Image => "Image",
         }
     }
 }
@@ -59,11 +62,15 @@ pub struct Doc {
     pub git_base: Option<Option<String>>,
     pub git_marks: Vec<ide_core::diff::Mark>,
     pub git_marks_rev: u64,
+    /// A new file that `.gitignore` names: it has no changes to show, so no markers (whatever the base says).
+    pub git_ignored: bool,
     /// Folded forms, identified by (text of the form's first line, occurrence index).
     pub folds: std::collections::HashSet<(String, usize)>,
     pub outline_cache: Option<(u64, Vec<lisp_syntax::outline::Definition>)>,
     /// The rendered preview of a Markdown or reStructuredText document: its mode, scroll and caches.
     pub preview: crate::preview::PreviewState,
+    /// The picture of an image tab, or the drawing beside the code of an SVG document (made when first shown).
+    pub picture: Option<Box<crate::imageview::ImageView>>,
 }
 
 fn mtime(p: &Path) -> Option<SystemTime> {
@@ -99,9 +106,11 @@ impl Doc {
             git_base: None,
             git_marks: vec![],
             git_marks_rev: u64::MAX,
+            git_ignored: false,
             folds: Default::default(),
             outline_cache: None,
             preview: Default::default(),
+            picture: None,
         })
     }
 
@@ -127,10 +136,28 @@ impl Doc {
             git_base: None,
             git_marks: vec![],
             git_marks_rev: u64::MAX,
+            git_ignored: false,
             folds: Default::default(),
             outline_cache: None,
             preview: Default::default(),
+            picture: None,
         }
+    }
+
+    /// The tab of a raster image: a virtual document whose view is the picture in `path` (it has no text of its own, and
+    /// like every page it carries an empty `diff`, which keeps the editor commands off it).
+    pub fn picture_tab(path: &Path) -> Doc {
+        let mut d = Doc::diff_tab();
+        d.page = Some(Page::Image);
+        d.path = Some(path.to_path_buf());
+        d.disk_mtime = mtime(path);
+        d.picture = Some(Box::new(crate::imageview::ImageView::open(path)));
+        d
+    }
+
+    /// Does this tab show a picture file rather than text?
+    pub fn is_picture_tab(&self) -> bool {
+        self.page == Some(Page::Image)
     }
 
     /// The Modules tab.
@@ -162,10 +189,10 @@ impl Doc {
     }
 
     pub fn name(&self) -> String {
-        if let Some(p) = self.page {
-            return tr(p.title()).to_string();
+        if self.page == Some(Page::Modules) {
+            return tr(Page::Modules.title()).to_string();
         }
-        if let Some(t) = &self.diff {
+        if let Some(t) = self.diff.as_ref().filter(|_| !self.is_picture_tab()) {
             return format!("{} ({})", t.title(), tr("diff"));
         }
         match &self.path {
@@ -175,6 +202,10 @@ impl Doc {
     }
 
     pub fn save(&mut self) -> io::Result<()> {
+        // a picture tab has no text: writing it would empty the picture's file
+        if self.is_picture_tab() {
+            return Ok(());
+        }
         let Some(p) = self.path.clone() else {
             return Err(io::Error::other("file has no path"));
         };
@@ -203,6 +234,15 @@ impl Doc {
 
     pub fn reload(&mut self) -> io::Result<()> {
         let Some(p) = self.path.clone() else { return Ok(()) };
+        if self.is_picture_tab() {
+            // the picture is read again; where it was zoomed and dragged to stays
+            self.disk_mtime = mtime(&p);
+            match self.picture.as_mut() {
+                Some(v) => v.load(&p),
+                None => self.picture = Some(Box::new(crate::imageview::ImageView::open(&p))),
+            }
+            return Ok(());
+        }
         let text = String::from_utf8(std::fs::read(&p)?).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "file is not valid UTF-8 text"))?;
         self.ed.set_text(&text);
         self.disk_mtime = mtime(&p);

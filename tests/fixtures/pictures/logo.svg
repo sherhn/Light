@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">
+  <rect x="2" y="2" width="196" height="76" rx="12" fill="#1e1f22" stroke="#7aa2f7" stroke-width="3"/>
+  <circle cx="40" cy="40" r="18" fill="#f7768e"/>
+  <text x="70" y="48" font-family="sans-serif" font-size="26" fill="#c0caf5">Light</text>
+</svg>

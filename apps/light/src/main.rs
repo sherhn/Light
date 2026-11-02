@@ -8,6 +8,7 @@ mod app_scenario;
 mod ui_scenarios;
 mod app_env;
 mod hover;
+mod imageview;
 mod lang_completion;
 mod modules;
 mod preview;

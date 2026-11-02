@@ -202,6 +202,7 @@ impl App {
             }
             match self.docs[idx].page {
                 Some(crate::doc::Page::Modules) => self.draw_modules_page(ui, ctx),
+                Some(crate::doc::Page::Image) => self.draw_picture_tab(ui, idx),
                 None => self.draw_diff_view(ui, idx),
             }
             return false;
@@ -235,17 +236,17 @@ impl App {
             self.refresh_find();
         }
         // Markdown and reStructuredText: the code, the rendered document, or both side by side
-        match (self.doc_markup(idx), self.preview_mode(idx)) {
-            (Some(markup), PreviewMode::Preview) => {
+        match (self.doc_preview(idx), self.preview_mode(idx)) {
+            (Some(kind), PreviewMode::Preview) => {
                 if focused {
                     self.editor_rect = None;
                     self.gutter_rect = None;
                     self.caret_screen = None;
                 }
-                self.draw_preview(ui, ctx, idx, markup);
+                self.draw_preview(ui, ctx, idx, kind);
                 false
             }
-            (Some(markup), PreviewMode::Split) => self.draw_split_markup(ui, ctx, idx, focused, own_view, markup),
+            (Some(kind), PreviewMode::Split) => self.draw_split_markup(ui, ctx, idx, focused, own_view, kind),
             _ => self.draw_editor(ui, ctx, idx, focused, own_view),
         }
     }

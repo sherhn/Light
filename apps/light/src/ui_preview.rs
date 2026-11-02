@@ -1,5 +1,6 @@
-//! Markdown and reStructuredText tabs: the three buttons (code, code and preview, preview) and the panes they switch
-//! between, with the scrolling of both sides kept together.
+//! Markdown, reStructuredText and SVG tabs: the three buttons (code, code and preview, preview) and the panes they
+//! switch between, with the scrolling of both sides kept together (for a document; an SVG's drawing has no blocks to
+//! follow). Also the tab of a raster image.
 
 use std::path::{Path, PathBuf};
 
@@ -10,6 +11,7 @@ use lisp_syntax::highlight::Span;
 use crate::app::App;
 use crate::i18n::tr;
 use crate::icons::{self, Icon};
+use crate::imageview::{self, ImageView, SvgIn};
 use crate::preview::{self, Env, PreviewMode};
 use crate::widgets::CRUMB_H;
 
@@ -42,11 +44,23 @@ fn fence_language(langs: &light_lang::LanguageSet, name: &str) -> Option<std::sy
     langs.by_id(alias).or_else(|| langs.find(Path::new(&format!("x.{alias}")), None))
 }
 
+/// What the preview of a document is made of.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PreviewKind {
+    /// A Markdown or reStructuredText document, laid out as a page.
+    Markup(Markup),
+    /// An SVG drawing.
+    Svg,
+}
+
 impl App {
-    /// The markup of the document in tab `idx` when it has a preview.
-    pub fn doc_markup(&self, idx: usize) -> Option<Markup> {
+    /// What the document in tab `idx` has for a preview, if anything.
+    pub fn doc_preview(&self, idx: usize) -> Option<PreviewKind> {
         let d = self.docs.get(idx).filter(|d| d.diff.is_none())?;
-        d.ed.language().and_then(|l| preview::markup_of(l))
+        if let Some(markup) = d.ed.language().and_then(|l| preview::markup_of(l)) {
+            return Some(PreviewKind::Markup(markup));
+        }
+        (d.path.as_deref().and_then(imageview::kind_of) == Some(imageview::Kind::Svg)).then_some(PreviewKind::Svg)
     }
 
     pub fn default_preview_mode(&self) -> PreviewMode {
@@ -55,7 +69,7 @@ impl App {
 
     /// What tab `idx` shows: always the code for files without a preview.
     pub fn preview_mode(&self, idx: usize) -> PreviewMode {
-        if self.doc_markup(idx).is_none() {
+        if self.doc_preview(idx).is_none() {
             return PreviewMode::Code;
         }
         self.docs[idx].preview.mode.unwrap_or_else(|| self.default_preview_mode())
@@ -66,9 +80,9 @@ impl App {
         self.docs.get(self.active).is_some() && self.preview_mode(self.active) == PreviewMode::Preview
     }
 
-    /// Switch tab `idx` (and, as the new default, every Markdown and reStructuredText tab) to `mode`.
+    /// Switch tab `idx` (and, as the new default, every Markdown, reStructuredText and SVG tab) to `mode`.
     pub fn set_preview_mode(&mut self, idx: usize, mode: PreviewMode) {
-        if self.doc_markup(idx).is_none() {
+        if self.doc_preview(idx).is_none() {
             return;
         }
         let old = self.preview_mode(idx);
@@ -86,7 +100,7 @@ impl App {
 
     /// The three buttons at the right end of the breadcrumbs row `row`.
     pub fn draw_preview_switch(&mut self, ui: &mut egui::Ui, row: Rect, idx: usize) {
-        if self.doc_markup(idx).is_none() {
+        if self.doc_preview(idx).is_none() {
             return;
         }
         let pal = self.pal;
@@ -117,7 +131,11 @@ impl App {
     }
 
     /// Draw the rendered document of tab `idx` in the space left in `ui`.
-    pub fn draw_preview(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context, idx: usize, markup: Markup) {
+    pub fn draw_preview(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context, idx: usize, kind: PreviewKind) {
+        let markup = match kind {
+            PreviewKind::Markup(m) => m,
+            PreviewKind::Svg => return self.draw_svg_preview(ui, idx),
+        };
         let mut st = std::mem::take(&mut self.docs[idx].preview);
         let (rev, base): (u64, Option<PathBuf>) = {
             let d = &self.docs[idx];
@@ -172,8 +190,26 @@ impl App {
         }
     }
 
+    /// The drawing of the SVG in tab `idx`, made from the text as it is now (edits show at once).
+    fn draw_svg_preview(&mut self, ui: &mut egui::Ui, idx: usize) {
+        let mut view = self.docs[idx].picture.take().unwrap_or_else(|| Box::new(ImageView::new_svg()));
+        {
+            let d = &self.docs[idx];
+            let dir = d.path.as_ref().and_then(|p| p.parent());
+            view.show(ui, &self.pal, Some(SvgIn { text: d.ed.text(), rev: d.ed.revision(), dir }), false);
+        }
+        self.docs[idx].picture = Some(view);
+    }
+
+    /// The tab of a raster image.
+    pub fn draw_picture_tab(&mut self, ui: &mut egui::Ui, idx: usize) {
+        let Some(mut view) = self.docs[idx].picture.take() else { return };
+        view.show(ui, &self.pal, None, !self.popup.is_open());
+        self.docs[idx].picture = Some(view);
+    }
+
     /// The code on the left, the rendered document on the right.
-    pub fn draw_split_markup(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, idx: usize, focused: bool, own_view: bool, markup: Markup) -> bool {
+    pub fn draw_split_markup(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, idx: usize, focused: bool, own_view: bool, kind: PreviewKind) -> bool {
         let pal = self.pal;
         let full = ui.available_rect_before_wrap();
         ui.allocate_rect(full, Sense::hover());
@@ -186,8 +222,11 @@ impl App {
         let clicked = self.draw_editor(&mut pane, ctx, idx, focused, own_view);
         let mut view = ui.new_child(egui::UiBuilder::new().id_salt(("markup_view", idx)).max_rect(right).layout(egui::Layout::top_down(egui::Align::Min)));
         view.set_clip_rect(right);
-        self.draw_preview(&mut view, ctx, idx, markup);
-        self.sync_scroll(ctx, idx, right);
+        self.draw_preview(&mut view, ctx, idx, kind);
+        // an SVG's drawing is one picture: there is no place in it for the code to follow
+        if matches!(kind, PreviewKind::Markup(_)) {
+            self.sync_scroll(ctx, idx, right);
+        }
         clicked
     }
 

@@ -112,6 +112,10 @@ impl App {
         }
         let Some(root) = self.vcs_root() else { return };
         let abs = root.join(rel);
+        if self.git_ignores(&abs) {
+            self.toast(tr("This file is ignored by Git - it has no changes"), Sev::Weak);
+            return;
+        }
         let kind = self.git.changes.iter().find(|c| c.path == rel).map_or(ChangeKind::Modified, |c| c.kind);
         let idx = match self.diff_doc_index() {
             Some(i) => i,

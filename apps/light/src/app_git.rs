@@ -153,10 +153,12 @@ impl App {
                     self.git.checked.insert(c.path.clone());
                 }
             }
+            let changed_files = old != now;
             self.git.changes = snap.changes;
             self.git_rebuild_kinds();
-            if head_changed {
-                for d in self.docs.iter_mut() {
+            for d in self.docs.iter_mut() {
+                // a new file may have just been named in (or removed from) `.gitignore`, or been added to git
+                if head_changed || (changed_files && (d.git_ignored || matches!(d.git_base, Some(None)))) {
                     d.git_base = None;
                 }
             }
@@ -244,13 +246,32 @@ impl App {
         }
     }
 
+    /// Is `abs` a file the version control leaves out: absent from the diff base and named by `.gitignore` (or
+    /// `.git/info/exclude`)? Such a file has no changes to show. A file the base has stays a normal file even when an
+    /// ignore rule matches it (git goes on tracking what was added by force).
+    pub fn git_ignores(&self, abs: &Path) -> bool {
+        matches!(self.base_text_of(abs), Some(None)) && self.ignored_by_rules(abs, &mut self.vcs_root().map(|root| ide_core::workspace::IgnoreMatcher::new(&root)))
+    }
+
+    /// Do the ignore rules leave out the new file `abs`: those of the project (`ignore` reads them once for all the
+    /// files asked about), or git's own, which also include the user's global ignore file.
+    fn ignored_by_rules(&self, abs: &Path, ignore: &mut Option<ide_core::workspace::IgnoreMatcher>) -> bool {
+        ignore.as_mut().is_some_and(|m| m.is_ignored(abs, false)) || self.git.repo.as_ref().is_some_and(|r| r.rel(abs).is_some_and(|rel| r.check_ignored(&rel)))
+    }
+
     /// Make sure every open document knows its base content (for gutter markers).
     pub fn git_update_bases(&mut self) {
-        let todo: Vec<(usize, PathBuf)> = self.docs.iter().enumerate().filter(|(_, d)| d.git_base.is_none()).filter_map(|(i, d)| d.path.clone().map(|p| (i, p))).collect();
+        let todo: Vec<(usize, PathBuf)> = self.docs.iter().enumerate().filter(|(_, d)| d.git_base.is_none() && d.diff.is_none()).filter_map(|(i, d)| d.path.clone().map(|p| (i, p))).collect();
+        if todo.is_empty() {
+            return;
+        }
+        let mut ignore = self.vcs_root().map(|root| ide_core::workspace::IgnoreMatcher::new(&root));
         for (i, p) in todo {
             if let Some(base) = self.base_text_of(&p) {
+                let ignored = base.is_none() && self.ignored_by_rules(&p, &mut ignore);
                 let d = &mut self.docs[i];
                 d.git_base = Some(base);
+                d.git_ignored = ignored;
                 d.git_marks_rev = u64::MAX;
             }
         }
@@ -358,6 +379,7 @@ impl App {
     pub fn git_marks(doc: &mut crate::doc::Doc) -> &[diff::Mark] {
         if doc.git_marks_rev != doc.ed.revision() {
             doc.git_marks = match &doc.git_base {
+                _ if doc.git_ignored => vec![],
                 Some(Some(base)) => diff::gutter_marks(base, doc.ed.text()),
                 Some(None) => {
                     // untracked file: every line is new

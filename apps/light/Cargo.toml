@@ -20,6 +20,10 @@ rfd = "0.17"
 serde.workspace = true
 serde_json.workspace = true
 png = "0.18"
+# images and SVG in the editor: the common raster formats, and SVG drawn by resvg (text, system fonts and the pictures
+# an SVG embeds included)
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp", "ico"] }
+resvg = { version = "0.49", default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
 dirs.workspace = true
 raw-window-handle = "0.6"
 vt100 = "0.16"

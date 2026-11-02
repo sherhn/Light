@@ -132,6 +132,14 @@ def run_one(script_path):
                 shutil.copy2(f, site / f.name)
             subprocess.run(["git", "-c", "commit.gpgsign=false", "add", "-A"], cwd=proj, capture_output=True, check=True)
             subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "markup"], cwd=proj, capture_output=True, check=True)
+        if "@pictures" in text:
+            # pictures of every kind the IDE shows (and two that are not what their names say), committed with the project
+            media = proj / "media"
+            media.mkdir(exist_ok=True)
+            for f in (ROOT / "tests" / "fixtures" / "pictures").iterdir():
+                shutil.copy2(f, media / f.name)
+            subprocess.run(["git", "-c", "commit.gpgsign=false", "add", "-A"], cwd=proj, capture_output=True, check=True)
+            subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "pictures"], cwd=proj, capture_output=True, check=True)
         if "@untracked_files" in text:
             # new files after the initial commit: two that .gitignore names (`*.fasl`, `/build/`) and one it does not
             for rel, content in {"src/generated.fasl": "compiled", "build/output.bin": "generated", "src/fresh.lisp": "(print 1)\n"}.items():

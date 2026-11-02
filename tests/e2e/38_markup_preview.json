@@ -77,6 +77,6 @@
   {"op": "open", "path": "${PROJ}/src/main.lisp"},
   {"op": "assert_preview", "mode": "none"},
   {"op": "command", "value": "view.preview_only"},
-  {"op": "assert_toast", "value": "Only Markdown and reStructuredText"},
+  {"op": "assert_toast", "value": "Only Markdown, reStructuredText and SVG"},
   {"op": "quit"}
 ]

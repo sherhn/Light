@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use eframe::egui::{self, FontData, FontDefinitions, FontFamily, FontId, TextStyle};
 
-const MONO: &[u8] = include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf");
-const UI: &[u8] = include_bytes!("../../../assets/fonts/Inter-Regular.ttf");
-const UI_SEMIBOLD: &[u8] = include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf");
+pub(crate) const MONO: &[u8] = include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf");
+pub(crate) const UI: &[u8] = include_bytes!("../../../assets/fonts/Inter-Regular.ttf");
+pub(crate) const UI_SEMIBOLD: &[u8] = include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf");
 const ICONS: &[u8] = include_bytes!("../../../assets/icons/lucide.ttf");
 
 pub fn semibold_family() -> FontFamily {

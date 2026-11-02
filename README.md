@@ -11,7 +11,7 @@ Add the languages and tools your project needs.
 - Code highlighting, completion, navigation and project search.
 - Integrated Git, terminal and run scenarios.
 - Linux through WSL on Windows.
-- Local history, document previews and customizable themes.
+- Local history, document previews (Markdown, reStructuredText, SVG), an image viewer (PNG, JPEG, GIF, BMP, WebP, ICO) and customizable themes.
 
 Modules are installed inside the IDE. Compilers and interpreters are configured separately.
 
@@ -32,7 +32,7 @@ Light — открытая модульная IDE на Rust и egui для Windo
 - Подсветка кода, автодополнение, навигация и поиск по проекту.
 - Встроенные Git, терминал и сценарии запуска.
 - Linux через WSL при работе в Windows.
-- Локальная история, предпросмотр документов и настраиваемые темы.
+- Локальная история, предпросмотр документов (Markdown, reStructuredText, SVG), просмотр изображений (PNG, JPEG, GIF, BMP, WebP, ICO) и настраиваемые темы.
 
 Модули устанавливаются внутри IDE. Компиляторы и интерпретаторы настраиваются отдельно.
 

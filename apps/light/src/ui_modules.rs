@@ -328,7 +328,7 @@ impl App {
     /// The banner on top of the editor: the open project works with modules that are not on yet.
     pub fn draw_modules_banner(&mut self, ui: &mut egui::Ui) {
         // not on the Modules page itself: it says the same in its own words
-        if self.needed_modules.is_empty() || self.modules_banner_dismissed || self.env_banner || self.doc().is_some_and(|d| d.page.is_some()) {
+        if self.needed_modules.is_empty() || self.modules_banner_dismissed || self.env_banner || self.doc().is_some_and(|d| d.page == Some(crate::doc::Page::Modules)) {
             return;
         }
         let pal = self.pal;

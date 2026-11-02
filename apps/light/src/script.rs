@@ -80,6 +80,8 @@ impl App {
             "checks_idle" => self.checks.idle(),
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
+            // the picture of the active tab (a raster image, or the drawing beside the code of an SVG) is on screen
+            "picture" => self.doc().and_then(|d| d.picture.as_deref()).is_some_and(|v| v.settled()),
             "git_settled" => self.git.rx.is_none(),
             "shell_ended" => self.term.shell.as_ref().is_some_and(|sh| sh.exited.is_some()),
             "no_shell" => self.term.shell.is_none(),
@@ -719,7 +721,7 @@ impl App {
                     errors.push(format!("lisp: expected {b}, got {}", self.lisp_enabled()));
                 }
                 if let Some(b) = step["tab"].as_bool() {
-                    let open = self.docs.iter().any(|d| d.page.is_some());
+                    let open = self.docs.iter().any(|d| d.page == Some(crate::doc::Page::Modules));
                     if open != b {
                         errors.push(format!("tab: expected {b}, got {open}"));
                     }
@@ -1154,7 +1156,7 @@ impl App {
             "assert_preview" => {
                 let idx = self.active;
                 let mut errors = vec![];
-                let mode = if self.doc_markup(idx).is_some() { self.preview_mode(idx).name() } else { "none" };
+                let mode = if self.doc_preview(idx).is_some() { self.preview_mode(idx).name() } else { "none" };
                 if let Some(m) = step["mode"].as_str()
                     && m != mode
                 {
@@ -1184,6 +1186,59 @@ impl App {
                     self.fail(format!("assert_preview: {}", errors.join("; ")));
                 }
             }
+            // the picture of the active tab: `kind` (raster, svg), `width` and `height` (pixels at 100%), `shown` (a picture is
+            // on screen), `error` (true: there is a reason it cannot be shown; a text: the reason has it), `fitted` (it follows
+            // the size of the pane), `zoom` (what the zoom is now, within 1%)
+            "assert_picture" => {
+                let mut errors = vec![];
+                match self.doc().and_then(|d| d.picture.as_deref()) {
+                    None => errors.push("the active tab has no picture".to_string()),
+                    Some(v) => {
+                        let kind = if v.kind() == crate::imageview::Kind::Svg { "svg" } else { "raster" };
+                        if let Some(k) = step["kind"].as_str()
+                            && k != kind
+                        {
+                            errors.push(format!("kind: expected {k}, got {kind}"));
+                        }
+                        let [w, h] = v.natural().unwrap_or([0.0, 0.0]);
+                        for (key, got) in [("width", w), ("height", h)] {
+                            if let Some(want) = step[key].as_f64()
+                                && (want - got as f64).abs() > 0.5
+                            {
+                                errors.push(format!("{key}: expected {want}, got {got}"));
+                            }
+                        }
+                        if let Some(b) = step["shown"].as_bool()
+                            && b != v.has_picture()
+                        {
+                            errors.push(format!("shown: expected {b}, got {}", v.has_picture()));
+                        }
+                        match (&step["error"], &v.error) {
+                            (serde_json::Value::Bool(want), got) if *want != got.is_some() => errors.push(format!("error: expected {want}, got {got:?}")),
+                            (serde_json::Value::String(want), got) if !got.as_deref().is_some_and(|e| e.contains(want.as_str())) => errors.push(format!("error: expected one with {want:?}, got {got:?}")),
+                            _ => {}
+                        }
+                        if let Some(b) = step["fitted"].as_bool()
+                            && b != v.zoom.is_none()
+                        {
+                            errors.push(format!("fitted: expected {b}, zoom is {:?}", v.zoom));
+                        }
+                        if let Some(z) = step["zoom"].as_f64()
+                            && (z - v.shown_zoom as f64).abs() > z * 0.01
+                        {
+                            errors.push(format!("zoom: expected {z}, got {}", v.shown_zoom));
+                        }
+                    }
+                }
+                if !errors.is_empty() {
+                    self.fail(format!("assert_picture: {}", errors.join("; ")));
+                }
+            }
+            // set the zoom of the picture of the active tab: `value` a number (1 = actual size) or "fit"
+            "picture_zoom" => match self.doc_mut().and_then(|d| d.picture.as_deref_mut()) {
+                Some(v) => v.zoom = step["value"].as_f64().map(|z| z as f32),
+                None => self.fail("picture_zoom: the active tab has no picture".to_string()),
+            },
             // rest the pointer on the first occurrence of `value` in the active document (`occurrence`: which one, from 1)
             "hover_on" => {
                 let nth = step["occurrence"].as_u64().unwrap_or(1).max(1) as usize;

@@ -562,10 +562,10 @@ impl App {
                     "view.preview_split" => PreviewMode::Split,
                     _ => PreviewMode::Preview,
                 };
-                if self.doc_markup(self.active).is_some() {
+                if self.doc_preview(self.active).is_some() {
                     self.set_preview_mode(self.active, mode);
                 } else {
-                    self.toast(tr("Only Markdown and reStructuredText files have a preview"), Sev::Weak);
+                    self.toast(tr("Only Markdown, reStructuredText and SVG files have a preview"), Sev::Weak);
                 }
             }
             "view.toggle_theme" => {

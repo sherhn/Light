@@ -260,6 +260,13 @@ impl Repo {
         self.run(&["show", &format!("HEAD:{rel}")]).ok()
     }
 
+    /// Does git itself leave `rel` out of version control because of an ignore rule: `.gitignore` files, the
+    /// repository's `.git/info/exclude`, and the user's global ignore file (`core.excludesFile`), which the project's
+    /// own rules know nothing of? A file git tracks is never ignored, whatever the rules say.
+    pub fn check_ignored(&self, rel: &str) -> bool {
+        self.run(&["check-ignore", "-q", "--", rel]).is_ok()
+    }
+
     pub fn rel(&self, p: &Path) -> Option<String> {
         p.strip_prefix(&self.root).ok().map(|r| r.to_string_lossy().replace('\\', "/"))
     }
@@ -416,6 +423,31 @@ mod tests {
         assert_eq!(log[0].author, "Tester");
         assert!(r.head_hash().is_some());
         assert!(r.show(&log[0].hash).unwrap().contains("first"));
+    }
+
+    #[test]
+    fn git_says_which_files_it_ignores_global_rules_included() {
+        let Some((d, r)) = repo() else { return };
+        let w = |name: &str, text: &str| std::fs::write(d.path().join(name), text).unwrap();
+        w(".gitignore", "*.log\n");
+        w("kept.log", "tracked by force\n");
+        w("a.txt", "a\n");
+        r.run(&["add", "-f", "kept.log", "a.txt", ".gitignore"]).unwrap();
+        r.run(&["commit", "-q", "-m", "base"]).unwrap();
+        w("debug.log", "x\n");
+        w("new.txt", "x\n");
+        w("scratch.tmp", "x\n");
+        assert!(r.check_ignored("debug.log"));
+        assert!(!r.check_ignored("new.txt"));
+        assert!(!r.check_ignored("a.txt"));
+        assert!(!r.check_ignored("kept.log"), "a tracked file is not ignored");
+        assert!(!r.check_ignored("missing/nothing.txt"));
+        // the user's own ignore file is not the project's, but git obeys it all the same
+        assert!(!r.check_ignored("scratch.tmp"));
+        let global = d.path().join("global-ignore");
+        std::fs::write(&global, "*.tmp\n").unwrap();
+        r.run(&["config", "core.excludesFile", &global.to_string_lossy().replace('\\', "/")]).unwrap();
+        assert!(r.check_ignored("scratch.tmp"));
     }
 
     #[test]
