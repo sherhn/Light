@@ -82,6 +82,9 @@ impl App {
             "debug_idle" => self.debug.status == crate::app_debug::DebugStatus::Idle,
             "lisp_debugger" => !self.repl.debuggers.is_empty(),
             "coverage" => !self.coverage.files.is_empty(),
+            "services_listed" => self.services.idle(),
+            "services_logs" => cond["value"].as_str().is_some_and(|v| self.container_log_text().contains(v)),
+            "container_state" => cond["name"].as_str().is_some_and(|n| self.services.containers.iter().any(|c| c.name == n && c.state == cond["value"].as_str().unwrap_or_default())),
             "debug_disassembly" => !self.debug.disassembly.is_empty() || !self.debug.view_note.is_empty(),
             "debug_memory" => self.debug.memory.is_some() || !self.debug.view_note.is_empty(),
             "lisp_locals" => self.repl.debuggers.last().is_some_and(|d| !d.locals.is_empty()),
@@ -624,6 +627,27 @@ impl App {
                 match self.git.log.iter().find(|c| c.subject == sval).cloned() {
                     Some(c) => if op == "git_cherry_pick" { self.git_cherry_pick(&c.hash, &c.subject) } else { self.git_revert(&c.hash, &c.subject) },
                     None => self.fail(format!("{op}: no commit {sval:?}")),
+                }
+            }
+            "services_click" => {
+                // a row of the Services window (`container:NAME`) or a button of the container shown (`action:stop`)
+                match self.services.rows.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("services_click: no {sval:?} among {:?}", self.services.rows.iter().map(|(k, _)| k).collect::<Vec<_>>())),
+                }
+            }
+            "assert_container" => {
+                let name = step["name"].as_str().unwrap_or_default();
+                match self.services.containers.iter().find(|c| c.name == name) {
+                    Some(c) if sval == "gone" => self.fail(format!("assert_container: {name} is still there ({})", c.state)),
+                    Some(c) if c.state != sval => self.fail(format!("assert_container: {name} is {}, expected {sval}", c.state)),
+                    None if sval != "gone" => self.fail(format!("assert_container: no {name} among {:?}", self.services.containers.iter().map(|c| &c.name).collect::<Vec<_>>())),
+                    _ => {}
                 }
             }
             "assert_tasks" => {
@@ -1385,6 +1409,7 @@ impl App {
                     Some(BottomTool::Terminal) => "terminal",
                     Some(BottomTool::Debug) => "debug",
                     Some(BottomTool::Coverage) => "coverage",
+                    Some(BottomTool::Services) => "services",
                     None => "none",
                 };
                 if name != sval {

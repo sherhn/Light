@@ -746,8 +746,9 @@ impl App {
                                 ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) => tr("Restore"),
                                 ConfirmKind::DeleteLocal(_) => tr("Delete"),
                                 ConfirmKind::DownloadDebugger(_) => tr("Download"),
+                                ConfirmKind::RemoveContainer(_) => tr("Remove"),
                             };
-                            let danger = matches!(kind, ConfirmKind::Delete(_) | ConfirmKind::Rollback(_) | ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) | ConfirmKind::DeleteLocal(_));
+                            let danger = matches!(kind, ConfirmKind::RemoveContainer(_) | ConfirmKind::Delete(_) | ConfirmKind::Rollback(_) | ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) | ConfirmKind::DeleteLocal(_));
                             let galley = ui.painter().layout_no_wrap(main_label.to_string(), fonts::semibold(13.5), pal.text_on_accent);
                             let (r, resp) = ui.allocate_exact_size(Vec2::new(galley.size().x + 32.0, 34.0), Sense::click());
                             ui.data_mut(|data| data.insert_temp(egui::Id::unique("confirm_accept_button"), r));
@@ -793,6 +794,11 @@ impl App {
                             ConfirmKind::OpenProject(path) => self.finish_open_project(&path),
                             ConfirmKind::CloseProject => self.finish_close_project(),
                             ConfirmKind::DownloadDebugger(path) => self.download_debugger(&path),
+                            ConfirmKind::RemoveContainer(id) => {
+                                if let Some(c) = self.services.containers.iter().find(|c| c.id == id).cloned() {
+                                    self.container_action("rm", &c);
+                                }
+                            }
                             ConfirmKind::Delete(p) => match ide_core::workspace::delete(&p) {
                                 Ok(()) => {
                                     self.docs.retain(|d| d.path.as_ref().is_none_or(|dp| !dp.starts_with(&p)));

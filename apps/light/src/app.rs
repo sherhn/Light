@@ -83,6 +83,8 @@ pub struct App {
     pub coverage: crate::app_coverage::CoverageState,
     /// Blame, the history of a file, stashes, the comparison of branches.
     pub git_tools: crate::app_git_tools::GitTools,
+    /// The Services window: the containers of Docker.
+    pub services: crate::app_docker::ServicesState,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -202,6 +204,7 @@ impl App {
             debug: Default::default(),
             coverage: Default::default(),
             git_tools: Default::default(),
+            services: Default::default(),
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -419,6 +422,8 @@ impl App {
         self.debug = Default::default();
         self.coverage = Default::default();
         self.git_tools = Default::default();
+        self.stop_services();
+        self.services = Default::default();
         self.modules_banner_dismissed = false;
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder
@@ -891,6 +896,7 @@ impl App {
         self.poll_modules(ctx);
         self.poll_checks();
         self.poll_debug();
+        self.poll_services();
         self.poll_github();
         self.git_update_bases();
 
@@ -1905,6 +1911,7 @@ impl App {
 
     pub fn exit_clean(&mut self) {
         self.stop_debug();
+        self.stop_services();
         self.save_settings();
         if let Some(s) = self.repl.session.take() {
             s.kill();

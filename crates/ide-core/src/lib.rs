@@ -8,6 +8,7 @@ pub mod cmdhistory;
 pub mod cmdscript;
 pub mod commands;
 pub mod conflicts;
+pub mod containers;
 pub mod coverage;
 pub mod dap;
 pub mod defsearch;

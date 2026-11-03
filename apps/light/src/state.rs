@@ -37,6 +37,8 @@ pub enum BottomTool {
     Terminal,
     Debug,
     Coverage,
+    /// What runs: the Run tabs still going and the containers of Docker.
+    Services,
 }
 
 /// The editor area divided into two panes. The focused pane shows `docs[active]`; the other one shows the
@@ -376,6 +378,8 @@ pub enum ConfirmKind {
     DeleteLocal(u64),
     /// Download the adapter of a debugger, then debug this file.
     DownloadDebugger(PathBuf),
+    /// Remove a container of Docker (its id).
+    RemoveContainer(String),
 }
 
 /// Messages from the background clone thread.

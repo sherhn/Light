@@ -546,6 +546,10 @@ impl App {
             "view.structure" => self.toggle_left(LeftTool::Structure),
             "view.tasks" => self.toggle_left(LeftTool::Tasks),
             "view.debug" => self.toggle_bottom(BottomTool::Debug),
+            "view.services" => {
+                self.toggle_bottom(BottomTool::Services);
+                self.services.refreshed_at_reset();
+            }
             "run.coverage" => self.run_with_coverage(),
             "repl.inspect" => self.lisp_inspect(None),
             "repl.who_calls" => self.lisp_xref("who-calls"),

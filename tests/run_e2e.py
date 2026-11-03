@@ -273,6 +273,7 @@ def run_one(script_path):
                 wrapper.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(ROOT / "tests/fake_docker.py"))} "$@"\n', encoding="utf-8")
                 wrapper.chmod(0o755)
             env["PATH"] = str(commands) + os.pathsep + env.get("PATH", "")
+            env["LIGHT_FAKE_DOCKER_STATE"] = str(tmp / "fake-docker.json")
         # modules come from the registry of this repository; a script gets Lisp, plus what `@modules a,b` names (a kernel
         # project also C, assembler and make), and `@no_modules` starts with none
         env["LIGHT_REGISTRY"] = str(ROOT / "registry")

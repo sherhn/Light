@@ -196,6 +196,7 @@ cmds! {
     "debug.pause", "Pause Program", Run, [];
     "debug.stop", "Stop Debugging", Run, [];
     "view.debug", "Debug", View, ["Alt+5"];
+    "view.services", "Services", View, ["Alt+3"];
     "repl.eval", "Send Form to REPL", Run, ["Ctrl+Enter"];
     "repl.eval_last", "Send Last Expression to REPL", Run, ["Ctrl+Shift+Enter"];
     "repl.load_file", "Load File into REPL", Run, ["Ctrl+Shift+L"];
