@@ -48,11 +48,13 @@ pub struct ProjectConfig {
     pub hidden: Vec<String>,
     /// The breakpoints of the debugger: file (relative to the project, `/` separated) -> 1-based lines.
     pub breakpoints: std::collections::BTreeMap<String, Vec<usize>>,
+    /// What breakpoints stop on or log: `file:line` -> their condition, hit count and message.
+    pub breakpoint_options: std::collections::BTreeMap<String, crate::app_debug::BreakpointOptions>,
 }
 
 impl Default for ProjectConfig {
     fn default() -> Self {
-        ProjectConfig { linux: None, decided: false, modules: vec![], scenarios: vec![], hidden: default_hidden(), breakpoints: Default::default() }
+        ProjectConfig { linux: None, decided: false, modules: vec![], scenarios: vec![], hidden: default_hidden(), breakpoints: Default::default(), breakpoint_options: Default::default() }
     }
 }
 

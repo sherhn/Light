@@ -22,6 +22,89 @@ use crate::editor_view::Sev;
 use crate::i18n::{self, tr};
 use crate::state::{LogKind, LogLine};
 
+/// What a breakpoint waits for besides its line: an expression that must be true, how many hits (`3`, `>= 3`), and a
+/// message to log instead of stopping (`{expression}` in it is filled in).
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct BreakpointOptions {
+    pub condition: String,
+    pub hit: String,
+    pub log: String,
+}
+
+impl BreakpointOptions {
+    pub fn is_empty(&self) -> bool {
+        self.condition.trim().is_empty() && self.hit.trim().is_empty() && self.log.trim().is_empty()
+    }
+}
+
+/// The breakpoint being edited (its line's menu in the gutter).
+#[derive(Clone, Debug)]
+pub struct BreakpointEditor {
+    pub path: PathBuf,
+    /// 0-based.
+    pub line: usize,
+    pub anchor: eframe::egui::Pos2,
+    pub options: BreakpointOptions,
+    pub just_opened: bool,
+}
+
+/// What the middle of the Debug window shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DebugTab {
+    #[default]
+    Variables,
+    Disassembly,
+    Memory,
+}
+
+/// A machine instruction of the disassembly.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Instruction {
+    pub address: String,
+    pub text: String,
+    pub symbol: String,
+    /// 1-based source line, when the adapter says.
+    pub line: Option<usize>,
+}
+
+/// Bytes of the program's memory from an address.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct MemoryView {
+    pub address: u64,
+    pub bytes: Vec<u8>,
+}
+
+/// The first `0x...` address in the text of a value.
+pub fn address_in(text: &str) -> Option<String> {
+    let start = text.find("0x")?;
+    let digits: String = text[start + 2..].chars().take_while(char::is_ascii_hexdigit).collect();
+    (!digits.is_empty()).then(|| format!("0x{digits}"))
+}
+
+/// `data` of a `readMemory` response.
+pub fn base64_decode(text: &str) -> Vec<u8> {
+    let value = |c: u8| match c {
+        b'A'..=b'Z' => Some(c - b'A'),
+        b'a'..=b'z' => Some(c - b'a' + 26),
+        b'0'..=b'9' => Some(c - b'0' + 52),
+        b'+' | b'-' => Some(62),
+        b'/' | b'_' => Some(63),
+        _ => None,
+    };
+    let mut out = Vec::with_capacity(text.len() * 3 / 4);
+    let (mut acc, mut bits) = (0u32, 0);
+    for v in text.bytes().filter_map(value) {
+        acc = (acc << 6) | u32::from(v);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+        }
+    }
+    out
+}
+
 /// How the debugger is doing.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DebugStatus {
@@ -43,6 +126,8 @@ pub struct Frame {
     pub path: Option<PathBuf>,
     /// 1-based.
     pub line: usize,
+    /// Where the frame's code is in memory (`instructionPointerReference`), for the disassembly.
+    pub ip: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -78,6 +163,11 @@ enum Pending {
     Scopes,
     Variables(i64),
     Evaluate,
+    Initialize,
+    Disassemble,
+    ReadMemory,
+    /// An expression evaluated for the address of the memory to show.
+    MemoryAddress,
     Other,
 }
 
@@ -86,6 +176,8 @@ struct Session {
     id: u64,
     conn: Connection,
     pending: HashMap<i64, Pending>,
+    /// What the adapter said it can do (the body of its `initialize` response).
+    caps: Value,
 }
 
 /// A connection made in the background and the requests to send on it first.
@@ -112,6 +204,15 @@ pub struct DebugState {
     pub input: String,
     /// The 0-based lines of breakpoints of each file.
     pub breakpoints: HashMap<PathBuf, BTreeSet<usize>>,
+    /// The conditions, hit counts and log messages of breakpoints: (file, 0-based line).
+    pub options: HashMap<(PathBuf, usize), BreakpointOptions>,
+    pub editor: Option<BreakpointEditor>,
+    pub tab: DebugTab,
+    pub disassembly: Vec<Instruction>,
+    pub memory: Option<MemoryView>,
+    pub memory_input: String,
+    /// A message about the disassembly or the memory (nothing there, not supported).
+    pub view_note: String,
 }
 
 /// Where downloaded adapters are kept.
@@ -166,7 +267,7 @@ fn frames_of(body: &Value, t: Option<&wsl::Target>) -> Vec<Frame> {
             Some(t) if p.starts_with('/') => wsl::to_windows(p, t),
             _ => PathBuf::from(p),
         }).filter(|p| p.is_file());
-        Frame { id: f["id"].as_i64().unwrap_or(0), name: f["name"].as_str().unwrap_or("?").to_string(), path, line: f["line"].as_u64().unwrap_or(1) as usize }
+        Frame { id: f["id"].as_i64().unwrap_or(0), name: f["name"].as_str().unwrap_or("?").to_string(), path, line: f["line"].as_u64().unwrap_or(1) as usize, ip: f["instructionPointerReference"].as_str().map(String::from) }
     }).collect()
 }
 
@@ -191,6 +292,15 @@ impl App {
         for (rel, lines) in &self.project_cfg.breakpoints {
             self.debug.breakpoints.insert(root.join(rel), lines.iter().filter(|l| **l > 0).map(|l| l - 1).collect());
         }
+        self.debug.options.clear();
+        for (key, opts) in &self.project_cfg.breakpoint_options {
+            if let Some((rel, line)) = key.rsplit_once(':')
+                && let Ok(line) = line.parse::<usize>()
+                && line > 0
+            {
+                self.debug.options.insert((root.join(rel), line - 1), opts.clone());
+            }
+        }
     }
 
     fn save_breakpoints(&mut self) {
@@ -199,8 +309,109 @@ impl App {
             let rel = p.strip_prefix(&root).ok()?.to_string_lossy().replace('\\', "/");
             Some((rel, lines.iter().map(|l| l + 1).collect()))
         }).collect();
+        let breakpoints = &self.debug.breakpoints;
+        self.project_cfg.breakpoint_options = self.debug.options.iter().filter(|((p, l), o)| !o.is_empty() && breakpoints.get(p).is_some_and(|s| s.contains(l))).filter_map(|((p, l), o)| {
+            let rel = p.strip_prefix(&root).ok()?.to_string_lossy().replace('\\', "/");
+            Some((format!("{rel}:{}", l + 1), o.clone()))
+        }).collect();
         if let Err(e) = crate::app_env::save_config(&root, &self.project_cfg) {
             self.toast(i18n::fmt("Cannot save the project settings: {}", &[&e]), Sev::Error);
+        }
+    }
+
+    /// How the breakpoints of document `idx` look: plain, with a condition or hit count, or logging.
+    pub fn breakpoint_marks(&self, idx: usize) -> Vec<(usize, crate::editor_view::BreakpointLook)> {
+        use crate::editor_view::BreakpointLook;
+        let Some(path) = self.docs.get(idx).and_then(|d| d.path.clone()) else { return vec![] };
+        self.breakpoint_lines(idx).into_iter().map(|l| {
+            let look = match self.debug.options.get(&(path.clone(), l)) {
+                Some(o) if !o.log.trim().is_empty() => BreakpointLook::Log,
+                Some(o) if !o.is_empty() => BreakpointLook::Conditional,
+                _ => BreakpointLook::Plain,
+            };
+            (l, look)
+        }).collect()
+    }
+
+    /// Open the editor of the breakpoint on `line` of document `idx` (a right click on its number).
+    pub fn edit_breakpoint(&mut self, idx: usize, line: usize, anchor: eframe::egui::Pos2) {
+        let Some(path) = self.docs.get(idx).and_then(|d| d.path.clone()) else { return };
+        let options = self.debug.options.get(&(path.clone(), line)).cloned().unwrap_or_default();
+        self.debug.editor = Some(BreakpointEditor { path, line, anchor, options, just_opened: true });
+    }
+
+    /// Close the breakpoint editor: `Some(true)` keeps the breakpoint with what was typed (setting it when there was
+    /// none), `Some(false)` removes it, `None` changes nothing.
+    pub fn close_breakpoint_editor(&mut self, keep: Option<bool>) {
+        let Some(ed) = self.debug.editor.take() else { return };
+        let key = (ed.path.clone(), ed.line);
+        match keep {
+            Some(true) => {
+                self.debug.breakpoints.entry(ed.path.clone()).or_default().insert(ed.line);
+                if ed.options.is_empty() {
+                    self.debug.options.remove(&key);
+                } else {
+                    self.debug.options.insert(key, ed.options);
+                }
+            }
+            Some(false) => {
+                if let Some(s) = self.debug.breakpoints.get_mut(&ed.path) {
+                    s.remove(&ed.line);
+                }
+                self.debug.options.remove(&key);
+            }
+            None => return,
+        }
+        self.save_breakpoints();
+        for i in 0..self.debug.sessions.len() {
+            self.send_breakpoints(i, &ed.path);
+        }
+    }
+
+    /// Does the adapter of the stopped session support `capability` (`supportsDisassembleRequest`...)?
+    pub fn debug_supports(&self, capability: &str) -> bool {
+        let session = self.stopped_session().map(|(i, _)| i).or_else(|| self.debug.sessions.len().checked_sub(1));
+        session.and_then(|i| self.debug.sessions.get(i)).is_some_and(|s| s.caps[capability] == true)
+    }
+
+    /// The machine code around where the shown frame is.
+    pub fn request_disassembly(&mut self) {
+        self.debug.disassembly.clear();
+        let Some((i, _)) = self.stopped_session() else { return };
+        let Some(ip) = self.debug.stopped.as_ref().and_then(|s| s.frames.get(s.frame)).and_then(|f| f.ip.clone()) else {
+            self.debug.view_note = tr("This frame has no machine code to show").into();
+            return;
+        };
+        self.debug.view_note.clear();
+        let s = &mut self.debug.sessions[i];
+        // from the instruction the frame is at on (gdb's disassembly before an address starts somewhere else)
+        let seq = s.conn.request("disassemble", json!({"memoryReference": ip, "instructionOffset": 0, "instructionCount": 48, "resolveSymbols": true}));
+        s.pending.insert(seq, Pending::Disassemble);
+    }
+
+    /// Show the memory at an address (`0x...`) or where an expression points.
+    pub fn request_memory(&mut self, what: &str) {
+        let what = what.trim();
+        if what.is_empty() {
+            return;
+        }
+        let Some((i, _)) = self.stopped_session() else {
+            self.debug.view_note = tr("The program must be paused to read its memory").into();
+            return;
+        };
+        self.debug.view_note.clear();
+        let frame = self.debug.stopped.as_ref().and_then(|s| s.frames.get(s.frame)).map(|f| f.id);
+        let s = &mut self.debug.sessions[i];
+        if what.starts_with("0x") || what.chars().all(|c| c.is_ascii_digit()) {
+            let seq = s.conn.request("readMemory", json!({"memoryReference": what, "count": 256}));
+            s.pending.insert(seq, Pending::ReadMemory);
+        } else {
+            let mut args = json!({"expression": what, "context": "watch"});
+            if let Some(f) = frame {
+                args["frameId"] = json!(f);
+            }
+            let seq = s.conn.request("evaluate", args);
+            s.pending.insert(seq, Pending::MemoryAddress);
         }
     }
 
@@ -219,6 +430,8 @@ impl App {
         let set = self.debug.breakpoints.entry(path.clone()).or_default();
         if !set.remove(&line) {
             set.insert(line);
+        } else {
+            self.debug.options.remove(&(path.clone(), line));
         }
         self.save_breakpoints();
         for i in 0..self.debug.sessions.len() {
@@ -232,7 +445,19 @@ impl App {
         let source = crate::app_run::shell_path(path, t.as_ref());
         // the adapter on this computer wants the system's own separators
         let source = if t.is_none() { source.replace('/', std::path::MAIN_SEPARATOR_STR) } else { source };
-        let args = json!({"source": {"path": source, "name": path.file_name().map(|n| n.to_string_lossy().into_owned())}, "breakpoints": lines.iter().map(|l| json!({"line": l + 1})).collect::<Vec<_>>()});
+        let options = &self.debug.options;
+        let breakpoints: Vec<Value> = lines.iter().map(|l| {
+            let mut b = json!({"line": l + 1});
+            if let Some(o) = options.get(&(path.to_path_buf(), *l)) {
+                for (key, value) in [("condition", &o.condition), ("hitCondition", &o.hit), ("logMessage", &o.log)] {
+                    if !value.trim().is_empty() {
+                        b[key] = json!(value.trim());
+                    }
+                }
+            }
+            b
+        }).collect();
+        let args = json!({"source": {"path": source, "name": path.file_name().map(|n| n.to_string_lossy().into_owned())}, "breakpoints": breakpoints});
         let s = &mut self.debug.sessions[session];
         let seq = s.conn.request("setBreakpoints", args);
         s.pending.insert(seq, Pending::Other);
@@ -320,7 +545,7 @@ impl App {
         let vars: Vec<(&str, String)> = vars.iter().map(|(k, v)| (*k, if t.is_none() && matches!(*k, "file" | "dir" | "root") { v.replace('/', std::path::MAIN_SEPARATOR_STR) } else { v.clone() })).collect();
         let launch_args = dap::fill(&def.launch, &vars.iter().map(|(k, v)| (*k, v.as_str())).collect::<Vec<_>>());
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        self.debug = DebugState { breakpoints: std::mem::take(&mut self.debug.breakpoints), ..Default::default() };
+        self.debug = DebugState { breakpoints: std::mem::take(&mut self.debug.breakpoints), options: std::mem::take(&mut self.debug.options), tab: self.debug.tab, ..Default::default() };
         self.debug.console.push(LogLine { kind: LogKind::Info, text: i18n::fmt("Debugging {0} with {1}", &[&name, &def.name]) });
         if stdio {
             // the adapter speaks on its own standard streams: the connection is the process
@@ -338,10 +563,11 @@ impl App {
                 Ok(mut conn) => {
                     let mut pending = HashMap::new();
                     for (command, a) in [("initialize".to_string(), initialize_args(&def.adapter_id)), ("launch".to_string(), launch_args)] {
-                        pending.insert(conn.request(&command, a), Pending::Other);
+                        let kind = if command == "initialize" { Pending::Initialize } else { Pending::Other };
+                        pending.insert(conn.request(&command, a), kind);
                     }
                     self.debug.next_id += 1;
-                    self.debug.sessions.push(Session { id: self.debug.next_id, conn, pending });
+                    self.debug.sessions.push(Session { id: self.debug.next_id, conn, pending, caps: Value::Null });
                 }
                 Err(e) => {
                     self.debug.console.push(LogLine { kind: LogKind::Error, text: e.to_string() });
@@ -558,10 +784,10 @@ impl App {
                     let mut pending = HashMap::new();
                     for (command, args) in requests {
                         let seq = conn.request(&command, args);
-                        pending.insert(seq, Pending::Other);
+                        pending.insert(seq, if command == "initialize" { Pending::Initialize } else { Pending::Other });
                     }
                     self.debug.next_id += 1;
-                    self.debug.sessions.push(Session { id: self.debug.next_id, conn, pending });
+                    self.debug.sessions.push(Session { id: self.debug.next_id, conn, pending, caps: Value::Null });
                 }
                 Ok(Err(e)) => {
                     self.debug.connecting.remove(i);
@@ -671,6 +897,7 @@ impl App {
                     let msg = m["message"].as_str().or(m["body"]["error"]["format"].as_str()).unwrap_or("failed").to_string();
                     match pending {
                         Pending::Evaluate => self.debug.console.push(LogLine { kind: LogKind::Error, text: msg }),
+                        Pending::Disassemble | Pending::ReadMemory | Pending::MemoryAddress => self.debug.view_note = msg,
                         _ if m["command"] == "launch" => {
                             self.debug.console.push(LogLine { kind: LogKind::Error, text: msg.clone() });
                             self.toast(i18n::fmt("Cannot start debugging: {}", &[&msg]), Sev::Error);
@@ -688,6 +915,9 @@ impl App {
                             s.frames = frames;
                         }
                         self.select_frame(first);
+                        if self.debug.tab == DebugTab::Disassembly {
+                            self.request_disassembly();
+                        }
                     }
                     Pending::Scopes => {
                         let raw = m["body"]["scopes"].as_array().cloned().unwrap_or_default();
@@ -713,10 +943,66 @@ impl App {
                         let result = m["body"]["result"].as_str().unwrap_or_default().to_string();
                         self.debug.console.push(LogLine { kind: LogKind::Value, text: result });
                     }
+                    Pending::Initialize => self.debug.sessions[i].caps = m["body"].clone(),
+                    Pending::Disassemble => {
+                        self.debug.disassembly = m["body"]["instructions"].as_array().into_iter().flatten().map(|ins| Instruction {
+                            address: ins["address"].as_str().unwrap_or_default().to_string(),
+                            text: ins["instruction"].as_str().unwrap_or_default().to_string(),
+                            symbol: ins["symbol"].as_str().unwrap_or_default().to_string(),
+                            line: ins["line"].as_u64().map(|l| l as usize),
+                        }).collect();
+                        if self.debug.disassembly.is_empty() {
+                            self.debug.view_note = tr("The debugger gave no machine code here").into();
+                        }
+                    }
+                    // the memory reference, or else the address the value is (`(int *) 0x7ffe...`)
+                    Pending::MemoryAddress => match m["body"]["memoryReference"].as_str().map(String::from).or_else(|| address_in(m["body"]["result"].as_str().unwrap_or_default())) {
+                        Some(reference) => {
+                            let s = &mut self.debug.sessions[i];
+                            let seq = s.conn.request("readMemory", json!({"memoryReference": reference, "count": 256}));
+                            s.pending.insert(seq, Pending::ReadMemory);
+                        }
+                        None => self.debug.view_note = i18n::fmt("'{}' does not point to memory", &[&m["body"]["result"].as_str().unwrap_or("?")]),
+                    },
+                    Pending::ReadMemory => {
+                        let address = m["body"]["address"].as_str().and_then(|a| u64::from_str_radix(a.trim_start_matches("0x"), 16).ok()).unwrap_or(0);
+                        let bytes = base64_decode(m["body"]["data"].as_str().unwrap_or_default());
+                        if bytes.is_empty() {
+                            self.debug.view_note = tr("That memory cannot be read").into();
+                        }
+                        self.debug.memory = Some(MemoryView { address, bytes });
+                    }
                     Pending::Other => {}
                 }
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn memory_comes_as_base64_and_addresses_from_values() {
+        assert_eq!(base64_decode("AQAAAP8="), [1, 0, 0, 0, 255]);
+        assert_eq!(base64_decode("aGVsbG8gd29ybGQ="), b"hello world");
+        assert!(base64_decode("").is_empty());
+        assert_eq!(address_in("(int *) 0x7fffffffe14c").as_deref(), Some("0x7fffffffe14c"));
+        assert_eq!(address_in("0x10 <buf>").as_deref(), Some("0x10"));
+        assert_eq!(address_in("42"), None);
+        let rows = crate::ui_debug::hex_rows(0x1000, b"Hello, Light!\x00\x01\x02 and more");
+        assert_eq!(rows[0].0, "0x0000000000001000");
+        assert_eq!(rows[0].1, "48 65 6c 6c 6f 2c 20 4c  69 67 68 74 21 00 01 02");
+        assert_eq!(rows[0].2, "Hello, Light!...");
+        assert_eq!(rows[1].0, "0x0000000000001010");
+    }
+
+    #[test]
+    fn options_say_whether_a_breakpoint_is_plain() {
+        assert!(BreakpointOptions::default().is_empty());
+        assert!(!BreakpointOptions { hit: ">= 2".into(), ..Default::default() }.is_empty());
+        assert!(BreakpointOptions { condition: "  ".into(), ..Default::default() }.is_empty());
     }
 }

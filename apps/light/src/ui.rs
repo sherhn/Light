@@ -139,6 +139,7 @@ impl eframe::App for App {
         self.tick_palette();
         self.draw_popups(&ctx);
         self.draw_gutter_menu(&ctx);
+        self.draw_breakpoint_editor(&ctx);
         self.draw_toasts(&ctx);
         self.process_screenshots(&ctx);
         self.draw_resize_handles(&ctx);
@@ -266,7 +267,7 @@ impl App {
             line_tints.insert(0, (line, line, self.pal.warning.gamma_multiply(0.28)));
         }
         let breakpoint_lane = self.debuggable(idx);
-        let breakpoints = self.breakpoint_lines(idx);
+        let breakpoints = self.breakpoint_marks(idx);
         let editor_on = focused && self.editor_active(ctx);
         let cfg = ViewCfg {
             pal: &self.pal,
@@ -312,6 +313,9 @@ impl App {
             }
             if let Some(line) = out.breakpoint_click {
                 self.toggle_breakpoint(idx, line);
+            }
+            if let Some((line, pos)) = out.breakpoint_menu {
+                self.edit_breakpoint(idx, line, pos);
             }
             let rects = out.icon_rects.clone();
             ctx.data_mut(|d| d.insert_temp(egui::Id::unique(crate::gutter::ICON_RECTS_ID), rects));

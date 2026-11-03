@@ -75,8 +75,19 @@ pub struct ViewCfg<'a> {
     pub line_tints: &'a [(usize, usize, Color32)],
     /// The document can be debugged: a click on a line number sets or clears a breakpoint.
     pub breakpoint_lane: bool,
-    /// The 0-based lines with a breakpoint.
-    pub breakpoints: &'a [usize],
+    /// The 0-based lines with a breakpoint, and how each looks.
+    pub breakpoints: &'a [(usize, BreakpointLook)],
+}
+
+/// How a breakpoint is drawn next to its line number.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BreakpointLook {
+    /// A red dot.
+    Plain,
+    /// It stops only when its condition or hit count says: a dot with a light centre.
+    Conditional,
+    /// It logs a message and does not stop: a diamond.
+    Log,
 }
 
 /// A button in the gutter, next to the number of its line.
@@ -113,6 +124,8 @@ pub struct ViewOut {
     pub icon_rects: Vec<(usize, Rect)>,
     /// A line number was clicked in a document that takes breakpoints (0-based line).
     pub breakpoint_click: Option<usize>,
+    /// A line number was right-clicked there: edit the breakpoint (0-based line, screen position under it).
+    pub breakpoint_menu: Option<(usize, Pos2)>,
     pub gutter_rect: Option<Rect>,
 }
 
@@ -657,8 +670,22 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
         if line_no == caret_line && sel_s == sel_e {
             gp.rect_filled(Rect::from_min_size(Pos2::new(gutter_rect.min.x, y), Vec2::new(gutter_rect.width(), lh)), CornerRadius::ZERO, pal.current_line);
         }
-        if cfg.breakpoints.contains(&line_no) {
-            gp.circle_filled(Pos2::new(gutter_rect.min.x + 8.0, y + lh * 0.5), (lh * 0.2).clamp(3.5, 5.5), pal.error);
+        if let Some((_, look)) = cfg.breakpoints.iter().find(|(l, _)| *l == line_no) {
+            let c = Pos2::new(gutter_rect.min.x + 8.0, y + lh * 0.5);
+            let r = (lh * 0.2).clamp(3.5, 5.5);
+            match look {
+                BreakpointLook::Plain => {
+                    gp.circle_filled(c, r, pal.error);
+                }
+                BreakpointLook::Conditional => {
+                    gp.circle_filled(c, r, pal.error);
+                    gp.circle_filled(c, r * 0.42, pal.editor_bg);
+                }
+                BreakpointLook::Log => {
+                    let d = r * 1.15;
+                    gp.add(Shape::convex_polygon(vec![Pos2::new(c.x, c.y - d), Pos2::new(c.x + d, c.y), Pos2::new(c.x, c.y + d), Pos2::new(c.x - d, c.y)], pal.warning, Stroke::NONE));
+                }
+            }
         }
         if cfg.line_numbers {
             let color = if line_no == caret_line { pal.line_number_active } else { pal.line_number };
@@ -724,6 +751,15 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
         && marked_line(p).is_some()
     {
         ui.set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    if cfg.breakpoint_lane
+        && gresp.secondary_clicked()
+        && let Some(p) = gresp.interact_pointer_pos()
+        && p.x < mark_x - 2.0 - icon_w
+        && let Some(line) = rows.get(row_at(p))
+    {
+        let y = gutter_rect.min.y + row_of_line(line) as f32 * lh - state.scroll.y;
+        out.breakpoint_menu = Some((line, Pos2::new(gutter_rect.min.x + 4.0, y + lh + 2.0)));
     }
     if gresp.clicked()
         && let Some(p) = gresp.interact_pointer_pos()

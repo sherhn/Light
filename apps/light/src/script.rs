@@ -81,6 +81,8 @@ impl App {
             "debug_paused" => self.debug.status == crate::app_debug::DebugStatus::Paused && self.debug.stopped.as_ref().is_some_and(|s| !s.frames.is_empty() && !s.scopes.is_empty()) && !self.debug.variables.is_empty(),
             "debug_idle" => self.debug.status == crate::app_debug::DebugStatus::Idle,
             "lisp_debugger" => !self.repl.debuggers.is_empty(),
+            "debug_disassembly" => !self.debug.disassembly.is_empty() || !self.debug.view_note.is_empty(),
+            "debug_memory" => self.debug.memory.is_some() || !self.debug.view_note.is_empty(),
             "lisp_locals" => self.repl.debuggers.last().is_some_and(|d| !d.locals.is_empty()),
             "inspector" => matches!(self.popup, Popup::Inspector(_)),
             "debug_console" => self.debug.console.iter().any(|l| l.text.contains(cond["value"].as_str().unwrap_or("\u{0}"))),
@@ -420,6 +422,61 @@ impl App {
                 }
             }
             "debug_eval" => self.debug_evaluate(&sval),
+            "breakpoint_editor_set" => match self.debug.editor.as_mut() {
+                Some(ed) => {
+                    for (key, field) in [("condition", &mut ed.options.condition), ("hit", &mut ed.options.hit), ("log", &mut ed.options.log)] {
+                        if let Some(v) = step[key].as_str() { *field = v.to_string(); }
+                    }
+                }
+                None => self.fail("breakpoint_editor_set: the breakpoint editor is not open".into()),
+            },
+            "debug_click" => {
+                // a button of the breakpoint editor (`done`, `remove`) or a tab of the Debug window (`disassembly`...)
+                let mut rects: Vec<(String, egui::Rect)> = ctx.data(|d| d.get_temp::<Vec<(&'static str, egui::Rect)>>(egui::Id::unique("breakpoint_editor_rects"))).unwrap_or_default().into_iter().map(|(k, r)| (k.to_string(), r)).collect();
+                if self.debug.editor.is_none() {
+                    rects = ctx.data(|d| d.get_temp::<Vec<(String, egui::Rect)>>(egui::Id::unique("debug_tab_rects"))).unwrap_or_default();
+                }
+                match rects.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("debug_click: no {sval:?} among {:?}", rects.iter().map(|(k, _)| k).collect::<Vec<_>>())),
+                }
+            }
+            "assert_breakpoint" => {
+                let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
+                let look = self.breakpoint_marks(self.active).into_iter().find(|(l, _)| *l == line).map(|(_, k)| format!("{k:?}").to_lowercase()).unwrap_or_else(|| "none".into());
+                if look != sval {
+                    self.fail(format!("assert_breakpoint: line {}: {look}, expected {sval}", line + 1));
+                }
+                let path = self.doc().and_then(|d| d.path.clone()).unwrap_or_default();
+                let o = self.debug.options.get(&(path, line)).cloned().unwrap_or_default();
+                for (key, got) in [("condition", &o.condition), ("hit", &o.hit), ("log", &o.log)] {
+                    if let Some(want) = step[key].as_str() && want != got { self.fail(format!("assert_breakpoint: {key} {got:?}, expected {want:?}")); }
+                }
+            }
+            "debug_memory" => {
+                self.debug.memory_input = sval.clone();
+                self.request_memory(&sval);
+            }
+            "assert_disassembly" => {
+                let min = step["min"].as_u64().unwrap_or(1) as usize;
+                if self.debug.disassembly.len() < min {
+                    self.fail(format!("assert_disassembly: {} instructions ({}), expected {min}", self.debug.disassembly.len(), self.debug.view_note));
+                }
+                if let Some(text) = step["contains"].as_str() && !self.debug.disassembly.iter().any(|i| i.text.contains(text)) {
+                    self.fail(format!("assert_disassembly: no {text:?}"));
+                }
+            }
+            "assert_memory" => {
+                let rows = self.debug.memory.as_ref().map(|m| crate::ui_debug::hex_rows(m.address, &m.bytes)).unwrap_or_default();
+                if !rows.iter().any(|(_, hex, text)| hex.contains(&sval) || text.contains(&sval)) {
+                    self.fail(format!("assert_memory: {sval:?} not in {:?} ({})", rows.iter().take(3).collect::<Vec<_>>(), self.debug.view_note));
+                }
+            }
             "debug_button" | "gutter_number_click" => {
                 let pos = if op == "debug_button" {
                     let rects = ctx.data(|d| d.get_temp::<Vec<(&'static str, egui::Rect)>>(egui::Id::unique("debug_button_rects"))).unwrap_or_default();
@@ -430,12 +487,14 @@ impl App {
                     let lh = crate::editor_view::line_height_for(self.settings.font_size);
                     self.gutter_rect.map(|g| egui::pos2(g.min.x + 12.0, g.min.y + line * lh - scroll + lh * 0.5))
                 };
+                // `"right": true`: a right click (the breakpoint's editor)
+                let button = if step["right"].as_bool().unwrap_or(false) { egui::PointerButton::Secondary } else { egui::PointerButton::Primary };
                 match pos {
                     Some(pos) => {
                         let s = self.script.as_mut().unwrap();
                         s.pending.push(Event::PointerMoved(pos));
-                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
-                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button, pressed: false, modifiers: egui::Modifiers::NONE });
                     }
                     None => self.fail(format!("{op}: nothing to click ({step})")),
                 }
