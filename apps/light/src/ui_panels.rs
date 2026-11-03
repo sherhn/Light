@@ -16,7 +16,7 @@ use crate::widgets::{self, PANEL_HEADER_H, ROW_H};
 
 /// What drawing a console log found out.
 #[derive(Clone, Copy, Debug, Default)]
-struct LogOut {
+pub(crate) struct LogOut {
     /// The mouse went down in the log: the keys are meant for it.
     pressed: bool,
     /// Text was copied to the clipboard.
@@ -416,10 +416,13 @@ impl App {
             (BottomTool::Terminal, tr("Terminal").to_string()),
             (BottomTool::Problems, if problems.is_empty() { tr("Problems").to_string() } else { format!("{}  {}", tr("Problems"), problems.len()) }),
             (BottomTool::Git, "Git".to_string()),
+            (BottomTool::Debug, tr("Debug").to_string()),
             (BottomTool::Find, if self.find_results.hits.is_empty() { tr("Find").to_string() } else { format!("{}  {}", tr("Find"), self.find_results.hits.len()) }),
         ];
         let mut switch_to = None;
-        for (t, label) in tabs.into_iter().filter(|(t, _)| lisp || *t != BottomTool::Repl) {
+        // the Debug window once something can be or has been debugged
+        let debug = self.debug.status != crate::app_debug::DebugStatus::Idle || !self.debug.console.is_empty() || self.debuggable(self.active);
+        for (t, label) in tabs.into_iter().filter(|(t, _)| (lisp || *t != BottomTool::Repl) && (debug || *t != BottomTool::Debug)) {
             let active = t == tool;
             let font = if active { fonts::semibold(13.5) } else { fonts::ui(13.5) };
             let g = ui.painter().layout_no_wrap(label.clone(), font.clone(), pal.text);
@@ -510,6 +513,11 @@ impl App {
                     self.find_results = FindResults::default();
                 }
             }
+            BottomTool::Debug => {
+                if self.header_action(ui, hr, slot, Icon::Clear, "Clear output") {
+                    self.debug.console.clear();
+                }
+            }
             BottomTool::Git => {
                 if self.header_action(ui, hr, slot, Icon::Refresh, "Refresh") {
                     self.git.rx = None;
@@ -538,6 +546,7 @@ impl App {
             Some(BottomTool::Problems) => self.draw_problems(ui, &problems),
             Some(BottomTool::Find) => self.draw_find_results(ui),
             Some(BottomTool::Git) => self.draw_git(ui, ctx),
+            Some(BottomTool::Debug) => self.draw_debug(ui, ctx),
             None => {}
         }
     }
@@ -567,7 +576,7 @@ impl App {
 
     /// A console log (REPL, terminal, run output) whose text can be selected with the mouse (drag, double click for
     /// a word, triple click for a line) and copied with Ctrl+C or the right-click menu.
-    fn draw_log(&self, ui: &mut egui::Ui, id: &str, lines: &[LogLine], stick: bool, prompt: &str) -> LogOut {
+    pub(crate) fn draw_log(&self, ui: &mut egui::Ui, id: &str, lines: &[LogLine], stick: bool, prompt: &str) -> LogOut {
         if lines.iter().any(|l| l.text.trim_end_matches('\n').contains('\n')) {
             let rows: Vec<_> = lines.iter().flat_map(|l| l.text.trim_end_matches('\n').split('\n').map(|text| LogLine { kind: l.kind, text: text.trim_end_matches('\r').to_string() })).collect();
             return self.draw_log_rows(ui, id, &rows, stick, prompt);

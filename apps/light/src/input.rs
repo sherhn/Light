@@ -495,6 +495,10 @@ impl App {
             "run.scenarios" => self.open_scenarios_dialog(),
             "run.compile_file" => self.compile_current_file(),
             "run.stop" => {
+                // the Stop button ends debugging too when that is what goes on
+                if self.debug.status != crate::app_debug::DebugStatus::Idle && !self.run.running {
+                    self.stop_debug();
+                }
                 self.stop_run();
                 if !self.repl.busy.is_empty() {
                     self.repl_restart();
@@ -541,6 +545,21 @@ impl App {
             "view.project" => self.toggle_left(LeftTool::Project),
             "view.structure" => self.toggle_left(LeftTool::Structure),
             "view.tasks" => self.toggle_left(LeftTool::Tasks),
+            "view.debug" => self.toggle_bottom(BottomTool::Debug),
+            "debug.start" => match self.doc().filter(|d| d.diff.is_none()).and_then(|d| d.path.clone()) {
+                Some(path) => self.start_debug(&path),
+                None => self.toast(tr("Open a file to debug first"), Sev::Weak),
+            },
+            "debug.breakpoint" => {
+                let line = self.doc().map(|d| d.ed.line_col(d.ed.caret()).0);
+                if let Some(line) = line { self.toggle_breakpoint(self.active, line); }
+            }
+            "debug.resume" => self.debug_command("continue"),
+            "debug.step_over" => self.debug_command("next"),
+            "debug.step_into" => self.debug_command("stepIn"),
+            "debug.step_out" => self.debug_command("stepOut"),
+            "debug.pause" => self.debug_command("pause"),
+            "debug.stop" => self.stop_debug(),
             "view.repl" => self.toggle_bottom(BottomTool::Repl),
             "view.run" => self.toggle_bottom(BottomTool::Run),
             "view.problems" => self.toggle_bottom(BottomTool::Problems),

@@ -741,6 +741,7 @@ impl App {
                                 ConfirmKind::Rollback(_) => tr("Rollback"),
                                 ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) => tr("Restore"),
                                 ConfirmKind::DeleteLocal(_) => tr("Delete"),
+                                ConfirmKind::DownloadDebugger(_) => tr("Download"),
                             };
                             let danger = matches!(kind, ConfirmKind::Delete(_) | ConfirmKind::Rollback(_) | ConfirmKind::RestoreLocal(_) | ConfirmKind::RestoreLocalFile(..) | ConfirmKind::DeleteLocal(_));
                             let galley = ui.painter().layout_no_wrap(main_label.to_string(), fonts::semibold(13.5), pal.text_on_accent);
@@ -787,6 +788,7 @@ impl App {
                             ConfirmKind::Exit => self.exit_clean(),
                             ConfirmKind::OpenProject(path) => self.finish_open_project(&path),
                             ConfirmKind::CloseProject => self.finish_close_project(),
+                            ConfirmKind::DownloadDebugger(path) => self.download_debugger(&path),
                             ConfirmKind::Delete(p) => match ide_core::workspace::delete(&p) {
                                 Ok(()) => {
                                     self.docs.retain(|d| d.path.as_ref().is_none_or(|dp| !dp.starts_with(&p)));

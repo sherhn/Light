@@ -73,6 +73,10 @@ pub struct ViewCfg<'a> {
     pub icons: &'a [GutterIcon],
     /// Lines with a background of their own (the two sides of a merge conflict): first and last 0-based line, colour.
     pub line_tints: &'a [(usize, usize, Color32)],
+    /// The document can be debugged: a click on a line number sets or clears a breakpoint.
+    pub breakpoint_lane: bool,
+    /// The 0-based lines with a breakpoint.
+    pub breakpoints: &'a [usize],
 }
 
 /// A button in the gutter, next to the number of its line.
@@ -107,6 +111,8 @@ pub struct ViewOut {
     pub icon_click: Option<(usize, Pos2)>,
     /// Where the visible gutter buttons are (0-based line, rectangle).
     pub icon_rects: Vec<(usize, Rect)>,
+    /// A line number was clicked in a document that takes breakpoints (0-based line).
+    pub breakpoint_click: Option<usize>,
     pub gutter_rect: Option<Rect>,
 }
 
@@ -651,6 +657,9 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
         if line_no == caret_line && sel_s == sel_e {
             gp.rect_filled(Rect::from_min_size(Pos2::new(gutter_rect.min.x, y), Vec2::new(gutter_rect.width(), lh)), CornerRadius::ZERO, pal.current_line);
         }
+        if cfg.breakpoints.contains(&line_no) {
+            gp.circle_filled(Pos2::new(gutter_rect.min.x + 8.0, y + lh * 0.5), (lh * 0.2).clamp(3.5, 5.5), pal.error);
+        }
         if cfg.line_numbers {
             let color = if line_no == caret_line { pal.line_number_active } else { pal.line_number };
             gp.text(Pos2::new(num_right, y + lh * 0.5), Align2::RIGHT_CENTER, line_no + 1, num_font.clone(), color);
@@ -719,8 +728,11 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     if gresp.clicked()
         && let Some(p) = gresp.interact_pointer_pos()
     {
+        let on_numbers = cfg.breakpoint_lane && p.x < icon_x.min(mark_x) - 2.0;
         let on_icon = (icon_w > 0.0 && p.x >= icon_x - 2.0 && p.x <= icon_x + icon_w + 1.0).then(|| rows.get(row_at(p))).flatten().filter(|line| cfg.icons.iter().any(|g| g.line == *line));
-        if let Some(line) = on_icon {
+        if on_numbers && let Some(line) = rows.get(row_at(p)) {
+            out.breakpoint_click = Some(line);
+        } else if let Some(line) = on_icon {
             let y = gutter_rect.min.y + row_of_line(line) as f32 * lh - state.scroll.y;
             out.icon_click = Some((line, Pos2::new(icon_x, y + lh + 2.0)));
         } else if p.x > gutter_rect.max.x - FOLD_W {
@@ -848,7 +860,7 @@ mod scrollbar_tests {
         let mut editor = Editor::new(&"x".repeat(500), lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[] };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[], breakpoint_lane: false, breakpoints: &[] };
         let mut track = Pos2::ZERO;
         for frame in 0..6 {
             let position = track + Vec2::new(if frame >= 3 { 80.0 } else { 0.0 }, 0.0);
@@ -913,7 +925,7 @@ mod problem_tests {
         let mut editor = Editor::new(text, lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[] };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[], breakpoint_lane: false, breakpoints: &[] };
         let (mut tint, mut underline) = (false, false);
         for _ in 0..2 {
             let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(500.0, 200.0))), ..Default::default() }, |ui| {

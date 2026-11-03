@@ -160,6 +160,40 @@ pub struct TestDef {
     pub result_separator: String,
 }
 
+/// A program the IDE downloads when it is first needed (after asking), checked against its SHA-256 and unpacked.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct DownloadDef {
+    /// What it is called when the IDE asks (`vscode-js-debug`).
+    pub name: String,
+    pub version: String,
+    /// A `.tar.gz` archive.
+    pub url: String,
+    pub sha256: String,
+    pub size: u64,
+    /// Its licence and where it comes from, to say so before downloading.
+    pub license: String,
+    pub homepage: String,
+}
+
+/// A debugger of a language: an adapter that speaks the Debug Adapter Protocol, how to start it and the launch
+/// configuration that debugs a file. The adapter listens on a TCP port; it runs where the project runs (in its Linux
+/// for a project in WSL).
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct DebugDef {
+    /// `Node.js`.
+    pub name: String,
+    pub languages: Vec<String>,
+    pub download: Option<DownloadDef>,
+    /// The adapter's command line: `{adapter}` is where the download was unpacked, `{port}` the port to listen on.
+    pub command: Vec<String>,
+    /// The `adapterID` of the `initialize` request.
+    pub adapter_id: String,
+    /// The arguments of the `launch` request; `{file}`, `{dir}` and `{root}` (the project) in its strings are filled in.
+    pub launch: serde_json::Value,
+}
+
 /// A group of tools a module wants in the project's Linux (see the developer tools on the Linux page).
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
@@ -228,6 +262,8 @@ pub struct Manifest {
     pub tasks: Vec<TaskDef>,
     /// Test frameworks, the first that wants a file runs its tests (see [`TestDef`]).
     pub tests: Vec<TestDef>,
+    /// Debuggers of the languages (see [`DebugDef`]).
+    pub debug: Vec<DebugDef>,
 }
 
 impl Manifest {
@@ -266,6 +302,16 @@ impl Manifest {
             crate::testing::check(t).map_err(|e| format!("{}: the tests {:?}: {e}", self.id, t.name))?;
             if let Some(l) = t.languages.iter().find(|l| !self.languages.iter().any(|x| x.id == **l)) {
                 return Err(format!("{}: the tests {:?} are for the unknown language {l:?}", self.id, t.name));
+            }
+        }
+        for d in &self.debug {
+            if d.command.is_empty() || !d.launch.is_object() || d.languages.is_empty() {
+                return Err(format!("{}: the debugger {:?} needs languages, a command and a launch configuration", self.id, d.name));
+            }
+            if let Some(dl) = &d.download
+                && (dl.url.is_empty() || dl.sha256.len() != 64)
+            {
+                return Err(format!("{}: the debugger {:?}: a download needs a URL and its SHA-256", self.id, d.name));
             }
         }
         for t in &self.tasks {

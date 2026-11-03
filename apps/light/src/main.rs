@@ -8,6 +8,8 @@ mod app_tasks;
 mod app_testing;
 mod app_http;
 mod app_conflicts;
+mod app_debug;
+mod ui_debug;
 mod gutter;
 mod app_scenario;
 mod ui_scenarios;

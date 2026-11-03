@@ -35,6 +35,7 @@ pub enum BottomTool {
     Find,
     Git,
     Terminal,
+    Debug,
 }
 
 /// The editor area divided into two panes. The focused pane shows `docs[active]`; the other one shows the
@@ -356,6 +357,8 @@ pub enum ConfirmKind {
     /// Put one file back into its state in a local commit: (commit id, relative path).
     RestoreLocalFile(u64, String),
     DeleteLocal(u64),
+    /// Download the adapter of a debugger, then debug this file.
+    DownloadDebugger(PathBuf),
 }
 
 /// Messages from the background clone thread.

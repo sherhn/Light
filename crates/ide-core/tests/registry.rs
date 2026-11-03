@@ -457,3 +457,15 @@ fn http_requests_are_highlighted_and_outlined() {
     assert_eq!(language("http").outline(text).iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), ["List", "GET {{host}}/users"]);
     assert_eq!(ide_core::http::parse(text).requests.len(), 1);
 }
+
+#[test]
+fn the_node_debugger_is_downloaded_from_its_release_and_launches_the_file() {
+    let module = manifests().into_iter().find(|m| m.id == "javascript").unwrap();
+    let d = &module.debug[0];
+    assert_eq!((d.name.as_str(), d.adapter_id.as_str()), ("Node.js", "pwa-node"));
+    let dl = d.download.as_ref().unwrap();
+    assert!(dl.url.starts_with("https://github.com/microsoft/vscode-js-debug/releases/download/") && dl.url.contains(&dl.version) && dl.sha256.len() == 64 && dl.license == "MIT");
+    assert!(d.command.iter().any(|a| a.contains("{adapter}")) && d.command.iter().any(|a| a == "{port}"));
+    let launch = ide_core::dap::fill(&d.launch, &[("file", "/p/a.js"), ("dir", "/p")]);
+    assert_eq!((launch["program"].as_str(), launch["cwd"].as_str(), launch["console"].as_str()), (Some("/p/a.js"), Some("/p"), Some("internalConsole")));
+}

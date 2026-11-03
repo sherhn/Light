@@ -38,9 +38,17 @@ TESTS = [
          passed=r"(?m)^\s*ok \d+ - (?P<name>.+?)(?: # .*)?$", failed=r"(?m)^\s*not ok \d+ - (?P<name>.+?)(?: # .*)?$"),
 ]
 
+# Microsoft's JavaScript debugger, the one VS Code uses, as a debug adapter of its own: downloaded when it is first
+# needed, after asking
+JS_DEBUG = dict(name="vscode-js-debug", version="1.140.0", url="https://github.com/microsoft/vscode-js-debug/releases/download/v1.140.0/js-debug-dap-v1.140.0.tar.gz",
+                sha256="27dab92937ec1ab35821ae955aac867544fe06a1b6307229049f2d789af10968", size=1249709, license="MIT", homepage="https://github.com/microsoft/vscode-js-debug")
+DEBUG = [dict(name="Node.js", languages=["javascript", "jsx"], download=JS_DEBUG, adapter_id="pwa-node",
+              command=["node", "{adapter}/js-debug/src/dapDebugServer.js", "{port}", "127.0.0.1"],
+              launch={"type": "pwa-node", "request": "launch", "name": "Light", "program": "{file}", "cwd": "{dir}", "console": "internalConsole", "skipFiles": ["<node_internals>/**"]})]
+
 
 MODULE = module(
-    id="javascript", name="JavaScript", category="Languages", version="1.2.0",
+    id="javascript", name="JavaScript", category="Languages", version="1.3.0",
     summary="JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
     description="JavaScript ES modules and CommonJS, JSX and package.json. Syntax coloring includes comments, strings, template literals, regular expressions, keywords and browser/Node builtins. Brace indentation and folding, function/class outline and completion. Node.js syntax checks, Run, Watch and node:test; package.json exposes npm install, start, dev, build, test and lint. Uses your Node.js/npm on Windows, macOS or Linux (including WSL). No files or dependencies are created until you explicitly run a command.",
     languages=[
@@ -52,6 +60,7 @@ MODULE = module(
         + [dict(language="javascript-package", name="npm: " + label, command='npm --prefix "{dir}" ' + command) for label, command in [("Install dependencies", "install"), ("Start", "start"), ("Development server", "run dev"), ("Build", "run build"), ("Test", "test"), ("Lint", "run lint")]],
     check=[dict(language="javascript", name="Node syntax", command='node --check "{file}"', pattern=r"(?m)^(?P<file>[^\n]+):(?P<line>\d+)\r?\n(?:[^\n]*\n)*?SyntaxError: (?P<msg>[^\n]+)")],
     tests=TESTS,
+    debug=DEBUG,
     # every script of every package.json of the project, run in its folder (the Tasks window)
     tasks=[dict(name="npm", files=["package.json"], json="scripts", command='npm run "{task}"', skip=["node_modules"])],
     tools=[dict(name="Node.js and npm", programs=["node", "npm"], required=["node", "npm"], apt="nodejs npm")],

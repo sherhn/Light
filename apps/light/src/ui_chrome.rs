@@ -108,7 +108,7 @@ impl App {
             ui.menu_button(tr("Git"), |ui| {
                 self.menu_items(ui, ctx, &["git.commit", "git.local_commit", "git.reset_base", "git.push", "git.pull", "-", "git.branches", "git.new_branch", "git.merge", "git.resolve", "-", "git.diff", "git.rollback", "git.stage_file", "-", "git.refresh", "git.init"]);
             });
-            ui.menu_button(tr("Run"), |ui| self.menu_items(ui, ctx, &["run.run_file", "run.compile_file", "run.stop", "-", "run.load_system", "run.test_system", "-", "run.scenarios"]));
+            ui.menu_button(tr("Run"), |ui| self.menu_items(ui, ctx, &["run.run_file", "run.compile_file", "run.stop", "-", "debug.start", "debug.breakpoint", "debug.resume", "debug.step_over", "debug.step_into", "debug.step_out", "debug.stop", "-", "run.load_system", "run.test_system", "-", "run.scenarios"]));
             ui.menu_button(tr("Tools"), |ui| self.menu_items(ui, ctx, &["repl.eval", "repl.eval_last", "repl.load_file", "repl.restart", "repl.clear", "repl.focus", "-", "view.terminal"]));
             ui.menu_button(tr("Window"), |ui| self.menu_items(ui, ctx, &["file.next_tab", "file.prev_tab", "file.close_others", "view.hide_all"]));
             ui.menu_button(tr("Help"), |ui| self.menu_items(ui, ctx, &["nav.find_action", "help.keymap", "help.about"]));
@@ -286,6 +286,9 @@ impl App {
                 icons::paint(ui.painter(), r.shrink(10.0), Icon::Play, pal.ok);
                 if resp.on_hover_text(tr("Run (Shift+F10)")).clicked() {
                     self.run_command(ctx, "run.run_file");
+                }
+                if self.debuggable(self.active) && widgets::icon_button(ui, &pal, Icon::Bug, 36.0, pal.accent, tr("Debug (Shift+F9)")).clicked() {
+                    self.run_command(ctx, "debug.start");
                 }
                 if self.html_browser_available() {
                     let response = widgets::secondary_button(ui, &pal, tr("Show in browser"));

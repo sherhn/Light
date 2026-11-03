@@ -78,6 +78,9 @@ impl App {
             "completion" => self.completion.active && !self.completion.items.is_empty(),
             "hover" => self.hover.info.is_some(),
             "checks_idle" => self.checks.idle(),
+            "debug_paused" => self.debug.status == crate::app_debug::DebugStatus::Paused && self.debug.stopped.as_ref().is_some_and(|s| !s.frames.is_empty() && !s.scopes.is_empty()) && !self.debug.variables.is_empty(),
+            "debug_idle" => self.debug.status == crate::app_debug::DebugStatus::Idle,
+            "debug_console" => self.debug.console.iter().any(|l| l.text.contains(cond["value"].as_str().unwrap_or("\u{0}"))),
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             // the picture of the active tab (a raster image, or the drawing beside the code of an SVG) is on screen
@@ -301,6 +304,19 @@ impl App {
                     let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
                     let rects = ctx.data(|d| d.get_temp::<Vec<(usize, egui::Rect)>>(egui::Id::unique(crate::gutter::ICON_RECTS_ID))).unwrap_or_default();
                     let pos = rects.iter().find(|(l, _)| *l == line).map(|(_, r)| r.center());
+                    // the editor may still be scrolling: click only where the button was a frame ago as well
+                    if let Some(p) = pos
+                        && step["seen"].as_array().is_none_or(|seen| seen.len() != 2 || (seen[0].as_f64().unwrap_or(0.0) - p.x as f64).abs() > 0.5 || (seen[1].as_f64().unwrap_or(0.0) - p.y as f64).abs() > 0.5)
+                        && step["tries"].as_u64().unwrap_or(0) < 60
+                    {
+                        let mut again = step.clone();
+                        again["seen"] = serde_json::json!([p.x, p.y]);
+                        again["tries"] = serde_json::json!(step["tries"].as_u64().unwrap_or(0) + 1);
+                        let s = self.script.as_mut().unwrap();
+                        s.steps.push_front(again);
+                        s.wait_frames = 1;
+                        return;
+                    }
                     if pos.is_none() && step["scrolled"].is_null() {
                         // off the screen: scroll the line into the middle and try again a few frames later
                         if let Some(d) = self.doc_mut() {
@@ -361,6 +377,64 @@ impl App {
                     && self.conflicted_files().len() as u64 != n
                 {
                     self.fail(format!("assert_merge: expected {n} conflicted files, got {:?}", self.conflicted_files()));
+                }
+            }
+            "assert_debug" => {
+                let status = format!("{:?}", self.debug.status).to_lowercase();
+                if status != sval {
+                    self.fail(format!("assert_debug: expected {sval:?}, got {status:?}"));
+                }
+                let frame = self.debug.stopped.as_ref().and_then(|s| s.frames.get(s.frame).cloned());
+                if let Some(line) = step["line"].as_u64()
+                    && frame.as_ref().map(|f| f.line as u64) != Some(line)
+                {
+                    self.fail(format!("assert_debug: expected line {line}, stopped at {frame:?}"));
+                }
+                if let Some(name) = step["function"].as_str()
+                    && !frame.as_ref().is_some_and(|f| f.name.contains(name))
+                {
+                    self.fail(format!("assert_debug: expected the frame {name:?}, got {frame:?}"));
+                }
+            }
+            "assert_debug_variable" => {
+                let name = step["name"].as_str().unwrap_or_default();
+                let found: Vec<String> = self.debug.variables.values().flatten().filter(|v| v.name == name).map(|v| v.value.clone()).collect();
+                if !found.contains(&sval) {
+                    self.fail(format!("assert_debug_variable: {name} = {sval:?} not among {found:?}"));
+                }
+            }
+            "assert_debug_console" => {
+                if !self.debug.console.iter().any(|l| l.text.contains(&sval)) {
+                    let tail: Vec<_> = self.debug.console.iter().rev().take(12).map(|l| l.text.clone()).collect();
+                    self.fail(format!("assert_debug_console: {sval:?} not in {tail:?}"));
+                }
+            }
+            "assert_breakpoints" => {
+                let want: Vec<usize> = step["value"].as_array().into_iter().flatten().filter_map(|v| v.as_u64().map(|l| l as usize)).collect();
+                let got: Vec<usize> = self.breakpoint_lines(self.active).iter().map(|l| l + 1).collect();
+                if got != want {
+                    self.fail(format!("assert_breakpoints: expected {want:?}, got {got:?}"));
+                }
+            }
+            "debug_eval" => self.debug_evaluate(&sval),
+            "debug_button" | "gutter_number_click" => {
+                let pos = if op == "debug_button" {
+                    let rects = ctx.data(|d| d.get_temp::<Vec<(&'static str, egui::Rect)>>(egui::Id::unique("debug_button_rects"))).unwrap_or_default();
+                    rects.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center())
+                } else {
+                    let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as f32;
+                    let scroll = self.doc().map_or(0.0, |d| d.view.scroll.y);
+                    let lh = crate::editor_view::line_height_for(self.settings.font_size);
+                    self.gutter_rect.map(|g| egui::pos2(g.min.x + 12.0, g.min.y + line * lh - scroll + lh * 0.5))
+                };
+                match pos {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("{op}: nothing to click ({step})")),
                 }
             }
             "assert_tasks" => {
@@ -1117,6 +1191,7 @@ impl App {
                     Some(BottomTool::Find) => "find",
                     Some(BottomTool::Git) => "git",
                     Some(BottomTool::Terminal) => "terminal",
+                    Some(BottomTool::Debug) => "debug",
                     None => "none",
                 };
                 if name != sval {

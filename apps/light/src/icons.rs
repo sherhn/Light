@@ -94,6 +94,12 @@ pub enum Icon {
     Tasks,
     /// A merge of branches.
     Merge,
+    /// The debugger.
+    Bug,
+    Pause,
+    StepOver,
+    StepInto,
+    StepOut,
 }
 
 pub fn glyph(icon: Icon) -> Option<char> {
@@ -171,6 +177,11 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::Blank => l::FILE,
         Icon::Tasks => l::LIST_VIDEO,
         Icon::Merge => l::GIT_MERGE,
+        Icon::Bug => l::BUG,
+        Icon::Pause => l::PAUSE,
+        Icon::StepOver => l::REDO_DOT,
+        Icon::StepInto => l::ARROW_DOWN_TO_DOT,
+        Icon::StepOut => l::ARROW_UP_FROM_DOT,
     })
 }
 

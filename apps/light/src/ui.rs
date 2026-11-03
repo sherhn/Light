@@ -261,7 +261,12 @@ impl App {
         let find: Vec<(usize, usize)> = if focused && self.find.open { self.find.matches.clone() } else { vec![] };
         let git_marks: Vec<ide_core::diff::Mark> = App::git_marks(&mut self.docs[idx]).to_vec();
         let gutter_icons = self.gutter_icons(idx);
-        let line_tints = self.conflict_tints(idx);
+        let mut line_tints = self.conflict_tints(idx);
+        if let Some(line) = self.debug_line(idx) {
+            line_tints.insert(0, (line, line, self.pal.warning.gamma_multiply(0.28)));
+        }
+        let breakpoint_lane = self.debuggable(idx);
+        let breakpoints = self.breakpoint_lines(idx);
         let editor_on = focused && self.editor_active(ctx);
         let cfg = ViewCfg {
             pal: &self.pal,
@@ -278,6 +283,8 @@ impl App {
             doc_id: self.docs[idx].id,
             icons: &gutter_icons,
             line_tints: &line_tints,
+            breakpoint_lane,
+            breakpoints: &breakpoints,
         };
         let mut view = match (own_view, self.split.as_mut()) {
             (true, Some(sp)) => std::mem::take(&mut sp.view),
@@ -302,6 +309,9 @@ impl App {
             }
             if let Some((line, pos)) = out.icon_click {
                 self.open_gutter_menu(idx, line, pos);
+            }
+            if let Some(line) = out.breakpoint_click {
+                self.toggle_breakpoint(idx, line);
             }
             let rects = out.icon_rects.clone();
             ctx.data_mut(|d| d.insert_temp(egui::Id::unique(crate::gutter::ICON_RECTS_ID), rects));

@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
@@ -613,6 +613,42 @@
       "file_command": "node --test --test-reporter=tap \"{file}\"",
       "passed": "(?m)^\\s*ok \\d+ - (?P<name>.+?)(?: # .*)?$",
       "failed": "(?m)^\\s*not ok \\d+ - (?P<name>.+?)(?: # .*)?$"
+    }
+  ],
+  "debug": [
+    {
+      "name": "Node.js",
+      "languages": [
+        "javascript",
+        "jsx"
+      ],
+      "download": {
+        "name": "vscode-js-debug",
+        "version": "1.140.0",
+        "url": "https://github.com/microsoft/vscode-js-debug/releases/download/v1.140.0/js-debug-dap-v1.140.0.tar.gz",
+        "sha256": "27dab92937ec1ab35821ae955aac867544fe06a1b6307229049f2d789af10968",
+        "size": 1249709,
+        "license": "MIT",
+        "homepage": "https://github.com/microsoft/vscode-js-debug"
+      },
+      "adapter_id": "pwa-node",
+      "command": [
+        "node",
+        "{adapter}/js-debug/src/dapDebugServer.js",
+        "{port}",
+        "127.0.0.1"
+      ],
+      "launch": {
+        "type": "pwa-node",
+        "request": "launch",
+        "name": "Light",
+        "program": "{file}",
+        "cwd": "{dir}",
+        "console": "internalConsole",
+        "skipFiles": [
+          "<node_internals>/**"
+        ]
+      }
     }
   ],
   "tasks": [

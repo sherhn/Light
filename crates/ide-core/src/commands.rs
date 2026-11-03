@@ -181,6 +181,15 @@ cmds! {
     "run.show_in_browser", "Show in browser", Run, [];
     "run.compile_file", "Compile Current File", Run, ["Ctrl+F9"];
     "run.stop", "Stop", Run, ["Ctrl+F2"];
+    "debug.start", "Debug Current File", Run, ["Shift+F9"];
+    "debug.breakpoint", "Toggle Breakpoint", Run, ["Ctrl+F8"];
+    "debug.resume", "Resume Program", Run, ["F9"];
+    "debug.step_over", "Step Over", Run, ["F8"];
+    "debug.step_into", "Step Into", Run, ["F11"];
+    "debug.step_out", "Step Out", Run, ["Shift+F8"];
+    "debug.pause", "Pause Program", Run, [];
+    "debug.stop", "Stop Debugging", Run, [];
+    "view.debug", "Debug", View, ["Alt+5"];
     "repl.eval", "Send Form to REPL", Run, ["Ctrl+Enter"];
     "repl.eval_last", "Send Last Expression to REPL", Run, ["Ctrl+Shift+Enter"];
     "repl.load_file", "Load File into REPL", Run, ["Ctrl+Shift+L"];

@@ -46,11 +46,13 @@ pub struct ProjectConfig {
     /// What the project tree, Go to File, search and the index leave out (see [`ide_core::workspace::Hidden`]); a
     /// project that never said starts with the folders of the coding agents.
     pub hidden: Vec<String>,
+    /// The breakpoints of the debugger: file (relative to the project, `/` separated) -> 1-based lines.
+    pub breakpoints: std::collections::BTreeMap<String, Vec<usize>>,
 }
 
 impl Default for ProjectConfig {
     fn default() -> Self {
-        ProjectConfig { linux: None, decided: false, modules: vec![], scenarios: vec![], hidden: default_hidden() }
+        ProjectConfig { linux: None, decided: false, modules: vec![], scenarios: vec![], hidden: default_hidden(), breakpoints: Default::default() }
     }
 }
 
@@ -108,6 +110,7 @@ impl App {
             return;
         };
         self.project_cfg = load_config(&root);
+        self.load_breakpoints();
         self.unix_project = looks_like_linux_project(&root);
         self.project_modules.clear();
         self.env_banner_dismissed = false;
@@ -478,7 +481,7 @@ mod tests {
         assert!(!looks_like_linux_project(&d));
         std::fs::write(d.join("makefile"), "all:\n").unwrap();
         assert!(looks_like_linux_project(&d));
-        let cfg = ProjectConfig { linux: Some("Ubuntu-24.04".into()), decided: true, modules: vec!["python".into()], scenarios: vec![Scenario { name: "build".into(), commands: vec!["make".into(), "make test".into()], stop_on_error: false }], hidden: vec!["/build".into()] };
+        let cfg = ProjectConfig { linux: Some("Ubuntu-24.04".into()), decided: true, modules: vec!["python".into()], scenarios: vec![Scenario { name: "build".into(), commands: vec!["make".into(), "make test".into()], stop_on_error: false }], hidden: vec!["/build".into()], ..Default::default() };
         save_config(&d, &cfg).unwrap();
         assert_eq!(load_config(&d), cfg);
         assert!(!d.join(".light").exists(), "project metadata belongs outside the project");
