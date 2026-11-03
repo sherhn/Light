@@ -83,9 +83,13 @@ pub fn find(def: &TestDef, text: &str) -> Vec<TestItem> {
         while suites.last().is_some_and(|(d, _)| *d >= depth) {
             suites.pop();
         }
-        let found = suite.as_ref().and_then(|re| re.captures(line).and_then(|c| name_of(re, &c))).map(|n| (n, true)).or_else(|| test.captures(line).and_then(|c| name_of(&test, &c)).map(|n| (n, false)));
-        if let Some((name, is_suite)) = found {
-            let full = suites.iter().map(|(_, n)| n.as_str()).chain([name.as_str()]).collect::<Vec<_>>().join(sep);
+        let found = suite.as_ref().and_then(|re| re.captures(line).and_then(|c| name_of(re, &c))).map(|n| (n, None, true)).or_else(|| {
+            let c = test.captures(line)?;
+            // `TEST(Suite, Name)`: the suite is on the test's own line
+            Some((name_of(&test, &c)?, c.name("suite").map(|m| m.as_str().to_string()), false))
+        });
+        if let Some((name, own_suite, is_suite)) = found {
+            let full = suites.iter().map(|(_, n)| n.as_str()).chain(own_suite.as_deref()).chain([name.as_str()]).collect::<Vec<_>>().join(sep);
             out.push(TestItem { line: line_no, name: name.clone(), full, suite: is_suite });
             if is_suite {
                 suites.push((depth, name));
@@ -197,6 +201,14 @@ mod tests {
         // TAP of node:test gives the own names
         let tap = TestDef { result_separator: String::new(), ..def };
         assert!(is_named(&tap, &items[1], "adds"));
+    }
+
+    #[test]
+    fn a_suite_on_the_line_of_the_test_is_part_of_its_name() {
+        let gtest = TestDef { test: r"^\s*TEST(?:_F|_P)?\(\s*(?P<suite>\w+)\s*,\s*(?P<name>\w+)\s*\)".into(), separator: ".".into(), command: "ctest -R \"{test}\"".into(), ..Default::default() };
+        let items = find(&gtest, "#include <gtest/gtest.h>\nTEST(Math, Adds) {\n  EXPECT_EQ(2, 1 + 1);\n}\nTEST_F(Fixture, Works) {}\n");
+        assert_eq!(items.iter().map(|i| (i.line, i.name.as_str(), i.full.as_str())).collect::<Vec<_>>(), [(1, "Adds", "Math.Adds"), (4, "Works", "Fixture.Works")]);
+        assert_eq!(selector(&gtest, &items[0]), r"^Math\.Adds$");
     }
 
     #[test]

@@ -155,6 +155,11 @@ fn download_adapter(dl: &DownloadDef, dir: &Path) -> Result<PathBuf, String> {
     Ok(dir.to_path_buf())
 }
 
+/// The arguments of the `initialize` request: what Light can do.
+fn initialize_args(adapter_id: &str) -> Value {
+    json!({"clientID": "light", "clientName": "Light", "adapterID": adapter_id, "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path", "supportsStartDebuggingRequest": true, "supportsVariableType": true, "locale": "en"})
+}
+
 fn frames_of(body: &Value, t: Option<&wsl::Target>) -> Vec<Frame> {
     body["stackFrames"].as_array().into_iter().flatten().map(|f| {
         let path = f["source"]["path"].as_str().filter(|p| !p.starts_with('<') && f["source"]["sourceReference"].as_i64().unwrap_or(0) == 0).map(|p| match t {
@@ -235,7 +240,8 @@ impl App {
 
     // ------------------------------------------------------------------ the session
 
-    /// Debug the file `path` with the debugger of its language.
+    /// Debug the file `path` with the debugger of its language: the adapter is downloaded first (when the user agrees)
+    /// and the program built first (when the debugger says how).
     pub fn start_debug(&mut self, path: &Path) {
         if self.debug.status != DebugStatus::Idle {
             self.stop_debug();
@@ -245,26 +251,60 @@ impl App {
             return;
         };
         self.save_all();
-        let adapter = match &def.download {
-            Some(dl) => {
-                let Some(dir) = adapter_dir(dl) else { return };
-                if !dir.join(".complete").is_file() {
-                    let size = crate::file_info::size(dl.size);
-                    self.popup = crate::state::Popup::Confirm {
-                        kind: crate::state::ConfirmKind::DownloadDebugger(path.to_path_buf()),
-                        message: i18n::fmt("To debug this file Light downloads {0} {1} ({2}, {3} licence) from {4}. Download it now?", &[&dl.name, &dl.version, &size, &dl.license, &dl.homepage]),
-                    };
+        if let Some(dl) = &def.download {
+            let Some(dir) = adapter_dir(dl) else { return };
+            if !dir.join(".complete").is_file() {
+                let size = crate::file_info::size(dl.size);
+                self.popup = crate::state::Popup::Confirm {
+                    kind: crate::state::ConfirmKind::DownloadDebugger(path.to_path_buf()),
+                    message: i18n::fmt("To debug this file Light downloads {0} {1} ({2}, {3} licence) from {4}. Download it now?", &[&dl.name, &dl.version, &size, &dl.license, &dl.homepage]),
+                };
+                return;
+            }
+        }
+        let t = self.wsl_target();
+        let prepare = if t.is_none() && !def.windows_prepare.is_empty() { &def.windows_prepare } else { &def.prepare };
+        if prepare.trim().is_empty() {
+            self.launch_debugger(path, def);
+            return;
+        }
+        // build with what the debugger needs, in a Run tab; the debugging starts when that succeeds
+        let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
+        let run = ide_core::modules::RunDef { command: prepare.clone(), ..Default::default() };
+        let line = run.command_line(&crate::app_run::shell_path(path, t.as_ref()), &crate::app_run::shell_path(&dir, t.as_ref()), t.is_none());
+        let launch = crate::app_run::shell_launch(&line, &dir, t.as_ref(), &[]);
+        let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let title = i18n::fmt("Build {} for debugging", &[&name]);
+        if self.start_run(format!("debug-build:{}", path.display()), title.clone(), launch, &title, dir, t) {
+            self.run_request = Some(crate::app_run::RunRequest::DebugBuild(path.to_path_buf()));
+        }
+    }
+
+    /// The build for debugging ended: the debugging starts if it succeeded.
+    pub fn debug_build_finished(&mut self, code: Option<i32>) {
+        let Some(crate::app_run::RunRequest::DebugBuild(path)) = self.run_request.clone() else { return };
+        if code != Some(0) {
+            self.toast(tr("The build for debugging failed - see the Run window"), Sev::Error);
+            return;
+        }
+        if let Some(def) = self.debug_def_for(&path) {
+            self.launch_debugger(&path, def);
+        }
+    }
+
+    /// Start the adapter of `def` and launch `path` under it.
+    fn launch_debugger(&mut self, path: &Path, def: DebugDef) {
+        let adapter = def.download.as_ref().and_then(adapter_dir).unwrap_or_default();
+        let stdio = def.transport == "stdio";
+        let port = if stdio {
+            0
+        } else {
+            match dap::free_port() {
+                Ok(p) => p,
+                Err(e) => {
+                    self.toast(i18n::fmt("Cannot start the debugger: {}", &[&e]), Sev::Error);
                     return;
                 }
-                dir
-            }
-            None => PathBuf::new(),
-        };
-        let port = match dap::free_port() {
-            Ok(p) => p,
-            Err(e) => {
-                self.toast(i18n::fmt("Cannot start the debugger: {}", &[&e]), Sev::Error);
-                return;
             }
         };
         let t = self.wsl_target();
@@ -272,38 +312,68 @@ impl App {
         let adapter_s = if adapter.as_os_str().is_empty() { String::new() } else { crate::app_run::shell_path(&adapter, t.as_ref()) };
         let port_s = port.to_string();
         let args: Vec<String> = def.command.iter().map(|a| a.replace("{adapter}", &adapter_s).replace("{port}", &port_s)).collect();
-        let launch = match &t {
-            Some(t) => {
-                let marker = wsl::new_marker();
-                let line = args.iter().map(|a| wsl::sh_quote(a)).collect::<Vec<_>>().join(" ");
-                Launch { cmd: wsl::shell(t, &dir, &format!("{line} 2>&1"), &[], &marker), cleanup: Some(wsl::Cleanup { target: t.clone(), marker }) }
-            }
-            None => {
-                let mut cmd = std::process::Command::new(&args[0]);
-                cmd.args(&args[1..]).current_dir(&dir);
-                Launch { cmd, cleanup: None }
-            }
-        };
-        let handle = match runner::spawn_launch(launch) {
-            Ok(h) => h,
-            Err(e) => {
-                self.toast(i18n::fmt("Cannot start the debugger: {}", &[&e]), Sev::Error);
-                return;
-            }
-        };
         let root = self.project_root().map(Path::to_path_buf).unwrap_or_else(|| dir.clone());
-        let vars = [("file", crate::app_run::shell_path(path, t.as_ref())), ("dir", crate::app_run::shell_path(&dir, t.as_ref())), ("root", crate::app_run::shell_path(&root, t.as_ref()))];
-        // the adapter on this computer gets paths with the system's separators
-        let vars: Vec<(&str, String)> = vars.iter().map(|(k, v)| (*k, if t.is_none() { v.replace('/', std::path::MAIN_SEPARATOR_STR) } else { v.clone() })).collect();
+        let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+        let exe = if t.is_none() && cfg!(windows) { ".exe" } else { "" };
+        let vars = [("file", crate::app_run::shell_path(path, t.as_ref())), ("dir", crate::app_run::shell_path(&dir, t.as_ref())), ("root", crate::app_run::shell_path(&root, t.as_ref())), ("stem", stem), ("exe", exe.to_string())];
+        // an adapter on this computer gets paths with the system's separators
+        let vars: Vec<(&str, String)> = vars.iter().map(|(k, v)| (*k, if t.is_none() && matches!(*k, "file" | "dir" | "root") { v.replace('/', std::path::MAIN_SEPARATOR_STR) } else { v.clone() })).collect();
         let launch_args = dap::fill(&def.launch, &vars.iter().map(|(k, v)| (*k, v.as_str())).collect::<Vec<_>>());
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         self.debug = DebugState { breakpoints: std::mem::take(&mut self.debug.breakpoints), ..Default::default() };
         self.debug.console.push(LogLine { kind: LogKind::Info, text: i18n::fmt("Debugging {0} with {1}", &[&name, &def.name]) });
-        self.debug.adapter = Some(handle);
-        self.debug.port = port;
+        if stdio {
+            // the adapter speaks on its own standard streams: the connection is the process
+            let cmd = match &t {
+                Some(t) => wsl::exec(t, Some(&dir), &args[0], &args[1..]),
+                None => {
+                    let mut c = std::process::Command::new(&args[0]);
+                    c.args(&args[1..]).current_dir(&dir);
+                    c
+                }
+            };
+            let mut cmd = cmd;
+            lisp_runtime::no_window(&mut cmd);
+            match Connection::spawn(cmd) {
+                Ok(mut conn) => {
+                    let mut pending = HashMap::new();
+                    for (command, a) in [("initialize".to_string(), initialize_args(&def.adapter_id)), ("launch".to_string(), launch_args)] {
+                        pending.insert(conn.request(&command, a), Pending::Other);
+                    }
+                    self.debug.next_id += 1;
+                    self.debug.sessions.push(Session { id: self.debug.next_id, conn, pending });
+                }
+                Err(e) => {
+                    self.debug.console.push(LogLine { kind: LogKind::Error, text: e.to_string() });
+                    self.toast(i18n::fmt("Cannot start the debugger: {}", &[&e]), Sev::Error);
+                    return;
+                }
+            }
+        } else {
+            let launch = match &t {
+                Some(t) => {
+                    let marker = wsl::new_marker();
+                    let line = args.iter().map(|a| wsl::sh_quote(a)).collect::<Vec<_>>().join(" ");
+                    Launch { cmd: wsl::shell(t, &dir, &format!("{line} 2>&1"), &[], &marker), cleanup: Some(wsl::Cleanup { target: t.clone(), marker }) }
+                }
+                None => {
+                    let mut cmd = std::process::Command::new(&args[0]);
+                    cmd.args(&args[1..]).current_dir(&dir);
+                    Launch { cmd, cleanup: None }
+                }
+            };
+            match runner::spawn_launch(launch) {
+                Ok(h) => self.debug.adapter = Some(h),
+                Err(e) => {
+                    self.toast(i18n::fmt("Cannot start the debugger: {}", &[&e]), Sev::Error);
+                    return;
+                }
+            }
+            self.debug.port = port;
+            self.connect_session(vec![("launch".into(), launch_args)], &def.adapter_id);
+        }
         self.debug.status = DebugStatus::Starting;
         self.debug.file = Some(path.to_path_buf());
-        self.connect_session(vec![("launch".into(), launch_args)], &def.adapter_id);
         self.debug.def = Some(def);
         self.bottom_tool = Some(crate::state::BottomTool::Debug);
     }
@@ -312,7 +382,7 @@ impl App {
     fn connect_session(&mut self, requests: Vec<(String, Value)>, adapter_id: &str) {
         let addr = std::net::SocketAddr::from(([127, 0, 0, 1], self.debug.port));
         let (tx, rx) = mpsc::channel();
-        let mut all = vec![("initialize".to_string(), json!({"clientID": "light", "clientName": "Light", "adapterID": adapter_id, "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path", "supportsStartDebuggingRequest": true, "supportsVariableType": true, "locale": "en"}))];
+        let mut all = vec![("initialize".to_string(), initialize_args(adapter_id))];
         all.extend(requests);
         std::thread::spawn(move || {
             let _ = tx.send(Connection::connect(addr, Duration::from_secs(20)).map(|c| (c, all)).map_err(|e| e.to_string()));
@@ -563,7 +633,8 @@ impl App {
                 }
                 Some("output") => {
                     let category = m["body"]["category"].as_str().unwrap_or("console");
-                    if category != "telemetry" {
+                    let wsl_notice = category == "adapter" && m["body"]["output"].as_str().is_some_and(|t| t.trim_start().starts_with("wsl:"));
+                    if category != "telemetry" && !wsl_notice {
                         let kind = if category == "stderr" { LogKind::Error } else if category == "stdout" { LogKind::Output } else { LogKind::Trace };
                         let text = m["body"]["output"].as_str().unwrap_or_default();
                         for line in text.trim_end_matches('\n').split('\n') {
@@ -624,7 +695,7 @@ impl App {
                         // the scopes of the code itself are open from the start; the global one (huge) and the
                         // expensive ones wait for a click
                         for s in &raw {
-                            let global = s["presentationHint"] == "globals" || s["name"].as_str().is_some_and(|n| n.starts_with("Global"));
+                            let global = matches!(s["presentationHint"].as_str(), Some("globals" | "registers")) || s["name"].as_str().is_some_and(|n| n.starts_with("Global") || n == "Registers");
                             if s["expensive"] != true && !global && let Some(r) = s["variablesReference"].as_i64().filter(|r| *r != 0) {
                                 self.debug.expanded.remove(&r);
                                 self.expand_variables(r);

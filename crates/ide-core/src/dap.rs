@@ -63,7 +63,9 @@ pub struct Connection {
     tx: Sender<Value>,
     pub rx: Receiver<Incoming>,
     seq: i64,
-    stream: TcpStream,
+    stream: Option<TcpStream>,
+    /// An adapter that speaks on its standard input and output: it ends with the connection.
+    child: Option<std::process::Child>,
 }
 
 impl Connection {
@@ -111,7 +113,58 @@ impl Connection {
                 }
             }
         });
-        Ok(Connection { tx, rx, seq: 0, stream })
+        Ok(Connection { tx, rx, seq: 0, stream: Some(stream), child: None })
+    }
+
+    /// Start an adapter that speaks on its standard input and output (`gdb -i dap`). What it writes to its errors
+    /// comes as output events of category `adapter`.
+    pub fn spawn(mut command: std::process::Command) -> io::Result<Connection> {
+        use std::process::Stdio;
+        command.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        let mut child = command.spawn()?;
+        let mut writer = child.stdin.take().ok_or_else(|| io::Error::other("no input"))?;
+        let reader = child.stdout.take().ok_or_else(|| io::Error::other("no output"))?;
+        let errors_out = child.stderr.take().ok_or_else(|| io::Error::other("no errors"))?;
+        let (tx, outgoing) = mpsc::channel::<Value>();
+        let (incoming, rx) = mpsc::channel();
+        let errors = incoming.clone();
+        let log = incoming.clone();
+        std::thread::spawn(move || {
+            for value in outgoing {
+                if let Err(e) = write_message(&mut writer, &value) {
+                    let _ = errors.send(Incoming::Closed(e.to_string()));
+                    break;
+                }
+            }
+        });
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(reader);
+            loop {
+                match read_message(&mut reader) {
+                    Ok(v) => {
+                        if incoming.send(Incoming::Message(v)).is_err() {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        let _ = incoming.send(Incoming::Closed(if e.kind() == io::ErrorKind::UnexpectedEof { "the adapter ended".into() } else { e.to_string() }));
+                        break;
+                    }
+                }
+            }
+        });
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(errors_out);
+            let mut line = String::new();
+            while reader.read_line(&mut line).unwrap_or(0) > 0 {
+                let text = line.replace('\0', "");
+                if !text.trim().is_empty() {
+                    let _ = log.send(Incoming::Message(json!({"type": "event", "event": "output", "body": {"category": "adapter", "output": text}})));
+                }
+                line.clear();
+            }
+        });
+        Ok(Connection { tx, rx, seq: 0, stream: None, child: Some(child) })
     }
 
     /// Send a request; its response will carry the number returned.
@@ -135,7 +188,13 @@ impl Connection {
 
 impl Drop for Connection {
     fn drop(&mut self) {
-        let _ = self.stream.shutdown(std::net::Shutdown::Both);
+        if let Some(s) = &self.stream {
+            let _ = s.shutdown(std::net::Shutdown::Both);
+        }
+        if let Some(mut c) = self.child.take() {
+            let _ = c.kill();
+            let _ = c.wait();
+        }
     }
 }
 

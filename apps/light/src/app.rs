@@ -1228,6 +1228,7 @@ impl App {
             self.make_finished(code);
             self.tests_finished(code);
             self.http_finished(code);
+            self.debug_build_finished(code);
             // a scenario goes on with its next command
             self.scenario_after_exit(code);
         }

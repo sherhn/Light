@@ -70,26 +70,43 @@ pub struct TaskDef {
     pub name: String,
     /// The file names that hold tasks (`package.json`), compared without regard to case.
     pub files: Vec<String>,
-    /// The tasks are the members of this object of a JSON file (`scripts`)...
+    /// The tasks are the members of this object of a JSON file (`scripts`), or the `name`s of the objects of this
+    /// array (`configurePresets` of CMakePresets.json; those marked `hidden` are not tasks)...
     pub json: String,
     /// ...or the matches of this regular expression (with a group `name`) over the file's text.
     pub pattern: String,
     /// A shell command line with `{task}` (the task's name), `{file}` and `{dir}` (the file holding the tasks and its
-    /// folder, as the shell sees them); it runs in `{dir}`.
+    /// folder, as the shell sees them) and `{root}` (the project); it runs in `{dir}`.
     pub command: String,
     /// A different command line for a project that runs on Windows (empty: the same one).
     pub windows: String,
     /// Folders whose files never hold the project's own tasks (`node_modules`): they are not looked in.
     pub skip: Vec<String>,
+    /// Tasks every such file has, each with a command of its own (CMake's configure and build), listed first.
+    pub fixed: Vec<FixedTask>,
+}
+
+/// A task of [`TaskDef::fixed`].
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct FixedTask {
+    pub name: String,
+    pub command: String,
+    pub windows: String,
 }
 
 impl TaskDef {
     /// The names of the tasks that `text` (the content of one of the `files`) defines, in the order they are written.
     /// Names a command line could not carry safely (quotes, line breaks) are left out.
     pub fn tasks_in(&self, text: &str) -> Vec<String> {
+        let fixed = self.fixed.iter().map(|f| f.name.clone());
         let mut names: Vec<String> = if !self.json.is_empty() {
-            let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else { return vec![] };
-            let Some(object) = value.get(&self.json).and_then(|v| v.as_object()) else { return vec![] };
+            let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else { return fixed.collect() };
+            if let Some(items) = value.get(&self.json).and_then(|v| v.as_array()) {
+                let named = items.iter().filter(|i| i["hidden"] != true).filter_map(|i| i["name"].as_str().map(String::from));
+                return dedup(fixed.chain(named).collect());
+            }
+            let Some(object) = value.get(&self.json).and_then(|v| v.as_object()) else { return fixed.collect() };
             // serde_json keeps the members sorted: the file says in which order they come
             let from = text.find(&format!("\"{}\"", self.json)).unwrap_or(0);
             let mut keyed: Vec<(usize, String)> = object.keys().map(|k| {
@@ -97,13 +114,14 @@ impl TaskDef {
                 (text[from..].find(&quoted).map_or(usize::MAX, |i| from + i), k.clone())
             }).collect();
             keyed.sort();
-            keyed.into_iter().map(|(_, k)| k).collect()
+            fixed.chain(keyed.into_iter().map(|(_, k)| k)).collect()
+        } else if !self.pattern.is_empty() {
+            let Ok(re) = regex::Regex::new(&self.pattern) else { return fixed.collect() };
+            fixed.chain(re.captures_iter(text).filter_map(|c| c.name("name").map(|m| m.as_str().to_string()))).collect()
         } else {
-            let Ok(re) = regex::Regex::new(&self.pattern) else { return vec![] };
-            re.captures_iter(text).filter_map(|c| c.name("name").map(|m| m.as_str().to_string())).collect()
+            fixed.collect()
         };
-        let mut seen = std::collections::HashSet::new();
-        names.retain(|n| !n.trim().is_empty() && !n.contains(['"', '\n', '\r', '`', '$', '%']) && seen.insert(n.clone()));
+        names = dedup(names);
         names
     }
 
@@ -112,11 +130,23 @@ impl TaskDef {
         self.files.iter().any(|f| f.eq_ignore_ascii_case(file_name))
     }
 
-    /// The command line that runs `task` of the file `file` in `dir` (see [`RunDef::command_line`]).
-    pub fn command_line(&self, task: &str, file: &str, dir: &str, windows: bool) -> String {
-        let template = if windows && !self.windows.is_empty() { &self.windows } else { &self.command };
-        template.replace("{task}", task).replace("{file}", file).replace("{dir}", dir)
+    /// The command line that runs `task` of the file `file` in `dir` of the project `root` (see
+    /// [`RunDef::command_line`]).
+    pub fn command_line(&self, task: &str, file: &str, dir: &str, root: &str, windows: bool) -> String {
+        let (own, win) = match self.fixed.iter().find(|f| f.name == task) {
+            Some(f) => (&f.command, &f.windows),
+            None => (&self.command, &self.windows),
+        };
+        let template = if windows && !win.is_empty() { win } else { own };
+        template.replace("{task}", task).replace("{file}", file).replace("{dir}", dir).replace("{root}", root)
     }
+}
+
+/// Names a command line can carry safely (no quotes, line breaks or shell variables), each once.
+fn dedup(mut names: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    names.retain(|n| !n.trim().is_empty() && !n.contains(['"', '\n', '\r', '`', '$', '%']) && seen.insert(n.clone()));
+    names
 }
 
 /// A test framework of a language: how to find its tests in a file (the editor puts a run button next to each), how to
@@ -138,7 +168,7 @@ pub struct TestDef {
     pub project_file: String,
     pub project_needs: String,
     /// A regular expression for the line that declares a test, with the name in a group `name` (or `name2`, `name3`:
-    /// one for each kind of quotes).
+    /// one for each kind of quotes). A group `suite` names the test's suite on the same line (`TEST(Suite, Name)`).
     pub test: String,
     /// The same for a group of tests (a suite); a suite holds the lines below it that are indented deeper.
     pub suite: String,
@@ -190,7 +220,14 @@ pub struct DebugDef {
     pub command: Vec<String>,
     /// The `adapterID` of the `initialize` request.
     pub adapter_id: String,
-    /// The arguments of the `launch` request; `{file}`, `{dir}` and `{root}` (the project) in its strings are filled in.
+    /// `tcp`: the adapter listens on `{port}` (the default); `stdio`: it speaks on its standard input and output.
+    pub transport: String,
+    /// A shell command line that builds the program with what the debugger needs (`cc -g`) before it starts, with the
+    /// placeholders of a run command; nothing is debugged when it fails.
+    pub prepare: String,
+    pub windows_prepare: String,
+    /// The arguments of the `launch` request; `{file}`, `{dir}`, `{stem}` (the file's name without its extension),
+    /// `{exe}` (`.exe` on Windows, nothing elsewhere) and `{root}` (the project) in its strings are filled in.
     pub launch: serde_json::Value,
 }
 
@@ -315,7 +352,8 @@ impl Manifest {
             }
         }
         for t in &self.tasks {
-            if t.files.is_empty() || t.command.trim().is_empty() || t.json.is_empty() == t.pattern.is_empty() {
+            let listed = !t.json.is_empty() || !t.pattern.is_empty();
+            if t.files.is_empty() || (t.json.is_empty() == t.pattern.is_empty() && t.fixed.is_empty()) || (!t.json.is_empty() && !t.pattern.is_empty()) || (listed && t.command.trim().is_empty()) || t.fixed.iter().any(|f| f.name.is_empty() || f.command.trim().is_empty()) {
                 return Err(format!("{}: the tasks {:?} need files, a command and either json or a pattern", self.id, t.name));
             }
             if !t.pattern.is_empty() {
@@ -394,7 +432,12 @@ mod tests {
         assert_eq!(npm.tasks_in(package), ["test", "build", "lint:fix"]);
         assert!(npm.tasks_in("{not json").is_empty() && npm.tasks_in(r#"{"scripts":[]}"#).is_empty());
         assert!(npm.holds("Package.JSON") && !npm.holds("package-lock.json"));
-        assert_eq!(npm.command_line("build", "/p/web/package.json", "/p/web", false), "npm --prefix \"/p/web\" run \"build\"");
+        assert_eq!(npm.command_line("build", "/p/web/package.json", "/p/web", "/p", false), "npm --prefix \"/p/web\" run \"build\"");
+        let presets = TaskDef { name: "CMake".into(), files: vec!["CMakePresets.json".into()], json: "configurePresets".into(), command: "cmake --preset {task}".into(), fixed: vec![FixedTask { name: "fresh".into(), command: "cmake --fresh -S {root}".into(), ..Default::default() }], ..Default::default() };
+        assert_eq!(presets.tasks_in(r#"{"configurePresets":[{"name":"base","hidden":true},{"name":"debug"},{"name":"release"}]}"#), ["fresh", "debug", "release"]);
+        assert_eq!(presets.command_line("fresh", "/p/CMakePresets.json", "/p", "/p", false), "cmake --fresh -S /p");
+        assert_eq!(presets.command_line("debug", "/p/CMakePresets.json", "/p", "/p", false), "cmake --preset debug");
+        assert_eq!(presets.tasks_in("not json"), ["fresh"]);
         let make = TaskDef { name: "make".into(), files: vec!["Makefile".into()], pattern: r"(?m)^(?P<name>[A-Za-z0-9_][\w.-]*)[ \t]*:(?:[^=]|$)".into(), command: "make {task}".into(), ..Default::default() };
         assert_eq!(make.tasks_in("all: app\nCC := gcc\napp: main.o\n\tcc -o app\nclean:\n\trm app\nall: again\n"), ["all", "app", "clean"]);
         let module = |t: &str| Manifest::parse(&format!(r#"{{"id":"x","name":"X","version":"1.0.0","tasks":[{t}]}}"#));
