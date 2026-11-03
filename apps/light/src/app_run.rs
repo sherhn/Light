@@ -435,6 +435,8 @@ pub enum RunRequest {
     Task(ide_core::modules::TaskDef, PathBuf, String),
     /// Tests of a file: the framework, the file, the test or suite (none: all of them).
     Test(Box<ide_core::modules::TestDef>, PathBuf, Option<ide_core::testing::TestItem>),
+    /// A request of a `.http` file: the file, the line of the request, the environment, the file its body was sent from.
+    Http(PathBuf, usize, Option<String>, Option<PathBuf>),
 }
 
 pub struct RunTab {
@@ -487,6 +489,7 @@ impl App {
             Some(RunRequest::Scenario(name)) => self.run_scenario(&name),
             Some(RunRequest::Task(def, path, task)) => self.run_task(&def, &path, &task),
             Some(RunRequest::Test(_, path, item)) => self.run_tests(&path, item.as_ref()),
+            Some(RunRequest::Http(path, line, env, _)) => self.send_request(&path, line, env.as_deref()),
             None => self.run_selected(),
         }
     }

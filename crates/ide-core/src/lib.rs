@@ -15,6 +15,7 @@ pub mod exec;
 pub mod git;
 pub mod github;
 pub mod graph;
+pub mod http;
 pub mod index;
 pub mod localvcs;
 pub mod paths;

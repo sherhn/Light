@@ -300,7 +300,20 @@ impl App {
                 let pos = if op == "gutter_icon_click" {
                     let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
                     let rects = ctx.data(|d| d.get_temp::<Vec<(usize, egui::Rect)>>(egui::Id::unique(crate::gutter::ICON_RECTS_ID))).unwrap_or_default();
-                    rects.iter().find(|(l, _)| *l == line).map(|(_, r)| r.center())
+                    let pos = rects.iter().find(|(l, _)| *l == line).map(|(_, r)| r.center());
+                    if pos.is_none() && step["scrolled"].is_null() {
+                        // off the screen: scroll the line into the middle and try again a few frames later
+                        if let Some(d) = self.doc_mut() {
+                            d.view.scroll_to_line_f = Some(line.saturating_sub(3) as f32);
+                        }
+                        let mut again = step.clone();
+                        again["scrolled"] = serde_json::Value::Bool(true);
+                        let s = self.script.as_mut().unwrap();
+                        s.steps.push_front(again);
+                        s.wait_frames = 3;
+                        return;
+                    }
+                    pos
                 } else {
                     self.gutter_menu.as_ref().and_then(|m| m.rows.iter().find(|(label, _)| *label == sval).map(|(_, r)| r.center()))
                 };

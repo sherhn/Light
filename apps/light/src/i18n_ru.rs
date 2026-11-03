@@ -1142,4 +1142,11 @@ pub const RU: &[(&str, &str)] = &[
     ("No test framework of the modules that are on runs this file", "Ни один тестовый фреймворк включённых модулей не запускает этот файл"),
     ("The test '{}' is not in the file any more", "Теста «{}» в файле больше нет"),
     ("Tests: {0} passed, {1} failed", "Тесты: {0} прошли, {1} упали"),
+    ("Send '{}'", "Отправить «{}»"),
+    ("Send with '{}'", "Отправить с «{}»"),
+    ("There is no request on that line any more", "На этой строке больше нет запроса"),
+    ("No environment '{}' in http-client.env.json", "В http-client.env.json нет окружения «{}»"),
+    ("Cannot send the request: {}", "Не удалось отправить запрос: {}"),
+    ("The request got no response", "Ответа на запрос нет"),
+    ("{0} in {1} ms, {2}", "{0} за {1} мс, {2}"),
 ];

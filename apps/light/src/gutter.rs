@@ -16,6 +16,8 @@ use crate::widgets;
 pub enum GutterAction {
     /// Run a test or suite of the file (none: every test of the file).
     RunTests(PathBuf, Option<ide_core::testing::TestItem>),
+    /// Send the request on a line of a `.http` file, with an environment.
+    SendRequest(PathBuf, usize, Option<String>),
 }
 
 /// The open gutter menu.
@@ -35,12 +37,16 @@ pub const ICON_RECTS_ID: &str = "gutter_icon_rects";
 impl App {
     /// The gutter buttons of document `idx`.
     pub fn gutter_icons(&mut self, idx: usize) -> Vec<GutterIcon> {
-        self.test_icons(idx)
+        let mut icons = self.test_icons(idx);
+        icons.extend(self.http_icons(idx));
+        icons
     }
 
     /// What the menu of the button on `line` of document `idx` offers.
     pub fn gutter_actions(&mut self, idx: usize, line: usize) -> Vec<(Icon, String, GutterAction)> {
-        self.test_actions(idx, line)
+        let mut actions = self.test_actions(idx, line);
+        actions.extend(self.http_actions(idx, line));
+        actions
     }
 
     /// A gutter button was clicked: its menu opens below it (a second click closes it).
@@ -57,6 +63,7 @@ impl App {
     pub fn do_gutter_action(&mut self, action: GutterAction) {
         match action {
             GutterAction::RunTests(path, item) => self.run_tests(&path, item.as_ref()),
+            GutterAction::SendRequest(path, line, env) => self.send_request(&path, line, env.as_deref()),
         }
     }
 

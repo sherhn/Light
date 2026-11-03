@@ -1,0 +1,122 @@
+{
+  "version": "1.0.0",
+  "cover": "cover.png",
+  "license": "MIT",
+  "author": "Light contributors",
+  "id": "http",
+  "name": "HTTP Client",
+  "category": "Tools",
+  "builtin": "http",
+  "summary": "HTTP requests in .http files: send them from the editor, with variables, environments and readable responses.",
+  "description": "Write requests the way the HTTP clients of JetBrains IDEs and VS Code's REST Client do: a method, a URL, headers and a body, requests separated by ###. A button next to each request sends it with curl and shows the status, headers and the body (JSON indented) in the Run window. {{variables}} come from @name = value lines, from http-client.env.json and http-client.private.env.json environments, or are made up on the spot ({{$uuid}}, {{$timestamp}}, {{$isoTimestamp}}, {{$randomInt}}). < file sends a file as the body; # @no-redirect keeps redirects from being followed.",
+  "languages": [
+    {
+      "id": "http",
+      "name": "HTTP requests",
+      "extensions": [
+        "http"
+      ],
+      "line_comment": "#",
+      "indent": {
+        "mode": "keep",
+        "size": 2
+      },
+      "grammar": [
+        {
+          "match": "^###.*$",
+          "class": "heading"
+        },
+        {
+          "match": "^[ \\t]*(?:#|//)[ \\t]*(@(?:name|no-redirect))\\b.*$",
+          "captures": {
+            "1": "meta"
+          }
+        },
+        {
+          "match": "^[ \\t]*(?:#|//).*$",
+          "class": "comment"
+        },
+        {
+          "match": "^[ \\t]*(@[A-Za-z_][\\w.-]*)[ \\t]*=",
+          "captures": {
+            "1": "variable"
+          }
+        },
+        {
+          "match": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|TRACE|CONNECT)[ \\t]+(\\S+)(?:[ \\t]+(HTTP/[\\d.]+))?",
+          "captures": {
+            "1": "keyword",
+            "2": "string",
+            "3": "constant"
+          }
+        },
+        {
+          "match": "^(https?://\\S+)",
+          "captures": {
+            "1": "string"
+          }
+        },
+        {
+          "match": "^([A-Za-z][\\w-]*)(:)[ \\t]",
+          "captures": {
+            "1": "argument"
+          }
+        },
+        {
+          "match": "\\{\\{[^}\\n]*\\}\\}",
+          "class": "variable"
+        },
+        {
+          "match": "^<[ \\t]+\\S.*$",
+          "class": "preproc"
+        },
+        {
+          "match": "\"(?:[^\"\\\\n]|\\.)*\"?",
+          "class": "string"
+        },
+        {
+          "words": [
+            "true",
+            "false",
+            "null"
+          ],
+          "class": "constant"
+        },
+        {
+          "match": "-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b",
+          "class": "number"
+        }
+      ],
+      "outline": [
+        {
+          "pattern": "^###[ \\t]*(\\S[^\\n]*)$",
+          "kind": "function",
+          "name": 1
+        },
+        {
+          "pattern": "^((?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|TRACE|CONNECT)[ \\t]+\\S+)",
+          "kind": "function",
+          "name": 1
+        }
+      ]
+    }
+  ],
+  "detect": {
+    "extensions": [
+      "http"
+    ],
+    "files": [
+      "http-client.env.json"
+    ]
+  },
+  "templates": [
+    {
+      "name": "HTTP requests",
+      "description": "requests.http with a GET and a POST",
+      "open": "requests.http",
+      "files": {
+        "requests.http": "@host = https://httpbin.org\n\n### Who am I\nGET {{host}}/get\nAccept: application/json\n\n### Send JSON\nPOST {{host}}/post\nContent-Type: application/json\n\n{\n  \"id\": \"{{$uuid}}\",\n  \"at\": \"{{$isoTimestamp}}\"\n}\n"
+      }
+    }
+  ]
+}

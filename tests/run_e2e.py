@@ -19,6 +19,7 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import fake_github
+import fake_http
 PROFILE = "release" if "--release" in sys.argv else "debug"
 EXE = pathlib.Path(os.environ["LIGHT_E2E_EXE"]) if os.environ.get("LIGHT_E2E_EXE") else ROOT / "target" / PROFILE / ("light.exe" if os.name == "nt" else "light")
 CLI = ROOT / "target" / PROFILE / ("light-cli.exe" if os.name == "nt" else "light-cli")
@@ -77,9 +78,13 @@ def run_one(script_path):
     tmp = pathlib.Path(tempfile.mkdtemp(prefix=f"light-e2e-{name}-"))
     # set before anything can return: the cleanup below stops it
     github = None
+    http_server = None
     try:
         proj = make_fixture(tmp)
         text = script_path.read_text(encoding="utf-8")
+        if "@http_server" in text:
+            http_server = fake_http.Server().start()
+            text = text.replace("${HTTP}", http_server.url)
         text = text.replace("${GH_TOKEN}", fake_github.FAKE_TOKEN).replace("${PROJ}", fwd(proj)).replace("${SHOTS}", fwd(SHOTS)).replace("${NAME}", name).replace("${CFG}", fwd(tmp / "cfg")).replace("${SEP}", "\\\\" if os.name == "nt" else "/")
         if "@needs_python" in text and not (shutil.which("py") or shutil.which("python3")):
             # a real interpreter is what the script checks files with
@@ -324,6 +329,8 @@ def run_one(script_path):
     finally:
         if github is not None:
             github.stop()
+        if http_server is not None:
+            http_server.stop()
         if os.environ.get("KEEP"):
             print(f"  kept fixture: {tmp}")
         else:

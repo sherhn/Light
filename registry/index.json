@@ -690,6 +690,45 @@
           "*.env.*"
         ]
       }
+    },
+    {
+      "id": "http",
+      "name": "HTTP Client",
+      "version": "1.0.0",
+      "category": "Tools",
+      "summary": "HTTP requests in .http files: send them from the editor, with variables, environments and readable responses.",
+      "cover": "cover.png",
+      "path": "modules/http",
+      "files": [
+        {
+          "name": "module.json",
+          "size": 3539,
+          "sha256": "6886872a094b7bbc7b02125f656a5bf4cb6ec6992db5be41bcb7fce7e0ed4fff"
+        },
+        {
+          "name": "LICENSE",
+          "size": 1063,
+          "sha256": "32d3cbb5b6cdb812b661e614aa08d844a4e3566de66ab8018f5ffe6ef3ede78b"
+        },
+        {
+          "name": "THIRD_PARTY_NOTICES.md",
+          "size": 144,
+          "sha256": "ac5b86f78078b2420961ed4b1f8d960a82bafe757238601553c8781276ef8122"
+        },
+        {
+          "name": "cover.png",
+          "size": 19609,
+          "sha256": "4f2fcdfa301a5e08ff774a8e424d3434523da13c169ecdc083832b380df7e2dc"
+        }
+      ],
+      "detect": {
+        "extensions": [
+          "http"
+        ],
+        "files": [
+          "http-client.env.json"
+        ]
+      }
     }
   ]
 }

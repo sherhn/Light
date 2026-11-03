@@ -127,7 +127,7 @@ fn the_index_is_current_and_every_module_is_valid() {
     let src = Source::Dir(registry_dir());
     let index: Index = src.fetch_index().expect("index.json");
     let ids: Vec<&str> = index.modules.iter().map(|m| m.id.as_str()).collect();
-    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "javascript", "shell-make", "json", "toml", "yaml", "ini", "dotenv"]);
+    assert_eq!(ids, ["lisp", "c-cpp", "python", "assembler", "html", "css", "markdown", "restructuredtext", "docker", "javascript", "shell-make", "json", "toml", "yaml", "ini", "dotenv", "http"]);
     for e in &index.modules {
         assert!(e.files.iter().any(|f| f.name == "module.json"), "{}", e.id);
         for f in &e.files {
@@ -171,7 +171,7 @@ fn every_language_is_claimed_by_the_files_it_should() {
     assert_eq!(id("package.json", None), "javascript-package");
     assert_eq!(id("index.mjs", None), "javascript");
     assert_eq!(id("Component.jsx", None), "jsx");
-    for (path, expected) in [("settings.json", "json"), ("events.ndjson", "json"), ("events.jsonl", "json"), ("settings.jsonc", "jsonc"), ("Cargo.toml", "toml"), ("config.YAML", "yaml"), ("config.yml", "yaml"), ("config.ini", "ini"), ("config.cfg", "ini"), (".editorconfig", "ini"), (".gitconfig", "ini"), (".env", "dotenv"), (".env.local", "dotenv"), (".env.example", "dotenv"), ("production.env", "dotenv"), ("app.env.local", "dotenv")] {
+    for (path, expected) in [("settings.json", "json"), ("events.ndjson", "json"), ("events.jsonl", "json"), ("settings.jsonc", "jsonc"), ("Cargo.toml", "toml"), ("config.YAML", "yaml"), ("config.yml", "yaml"), ("config.ini", "ini"), ("config.cfg", "ini"), (".editorconfig", "ini"), (".gitconfig", "ini"), (".env", "dotenv"), (".env.local", "dotenv"), (".env.example", "dotenv"), ("production.env", "dotenv"), ("app.env.local", "dotenv"), ("api.http", "http"), ("notes.rest", "rst")] {
         assert_eq!(id(path, None), expected, "{path}");
     }
     assert_eq!(id("link.ld", None), "c");
@@ -444,4 +444,16 @@ fn javascript_test_frameworks_find_tests_and_read_their_runs() {
     assert!(jest_out.passed.is_empty() && testing::is_named(jest, &items[2], &jest_out.failed[0]));
     let tap = testing::outcome(node, "    ok 1 - adds\n      ---\n    not ok 2 - skips # SKIP\nok 1 - math\n");
     assert_eq!((tap.passed, tap.failed), (vec!["adds".to_string(), "math".to_string()], vec!["skips".to_string()]));
+}
+
+#[test]
+fn http_requests_are_highlighted_and_outlined() {
+    let module = manifests().into_iter().find(|m| m.id == "http").unwrap();
+    assert_eq!(module.builtin, "http", "the IDE sends the requests");
+    let text = "@host = https://x.org\n### List\nGET {{host}}/users HTTP/1.1\nAccept: application/json\n# a note\n\n{\"a\": true}\n";
+    let h = hl("http", text);
+    assert!(has(&h, Class::Heading, "### List") && has(&h, Class::SpecialForm, "GET") && has(&h, Class::String, "{{host}}/users") && has(&h, Class::Constant, "HTTP/1.1"), "{h:?}");
+    assert!(has(&h, Class::Keyword, "Accept") && has(&h, Class::SpecialVar, "@host") && has(&h, Class::Comment, "# a note") && has(&h, Class::Constant, "true"));
+    assert_eq!(language("http").outline(text).iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), ["List", "GET {{host}}/users"]);
+    assert_eq!(ide_core::http::parse(text).requests.len(), 1);
 }
