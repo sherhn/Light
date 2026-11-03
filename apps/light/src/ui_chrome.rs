@@ -109,7 +109,7 @@ impl App {
                 self.menu_items(ui, ctx, &["git.commit", "git.local_commit", "git.reset_base", "git.push", "git.pull", "-", "git.branches", "git.new_branch", "git.merge", "git.resolve", "-", "git.diff", "git.rollback", "git.stage_file", "-", "git.refresh", "git.init"]);
             });
             ui.menu_button(tr("Run"), |ui| self.menu_items(ui, ctx, &["run.run_file", "run.compile_file", "run.stop", "-", "debug.start", "debug.breakpoint", "debug.resume", "debug.step_over", "debug.step_into", "debug.step_out", "debug.stop", "-", "run.load_system", "run.test_system", "-", "run.scenarios"]));
-            ui.menu_button(tr("Tools"), |ui| self.menu_items(ui, ctx, &["repl.eval", "repl.eval_last", "repl.load_file", "repl.restart", "repl.clear", "repl.focus", "-", "lisp.inspect", "lisp.who_calls", "lisp.who_references", "lisp.who_macroexpands", "lisp.trace", "-", "view.terminal"]));
+            ui.menu_button(tr("Tools"), |ui| self.menu_items(ui, ctx, &["repl.eval", "repl.eval_last", "repl.load_file", "repl.restart", "repl.clear", "repl.focus", "-", "repl.inspect", "repl.who_calls", "repl.who_references", "repl.who_macroexpands", "repl.trace", "-", "view.terminal"]));
             ui.menu_button(tr("Window"), |ui| self.menu_items(ui, ctx, &["file.next_tab", "file.prev_tab", "file.close_others", "view.hide_all"]));
             ui.menu_button(tr("Help"), |ui| self.menu_items(ui, ctx, &["nav.find_action", "help.keymap", "help.about"]));
         });

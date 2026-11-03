@@ -39,7 +39,7 @@
 
   {"op":"log","value":"the inspector goes into the parts of a value and back"},
   {"op":"caret","line":8,"col":16},
-  {"op":"command","value":"lisp.inspect"},
+  {"op":"command","value":"repl.inspect"},
   {"op":"wait","what":"inspector","timeout":30},
   {"op":"frames","value":2},
   {"op":"assert_inspector","value":"(1 \"two\" #(3 4))","parts":3,"part":"1 \"two\""},
@@ -52,11 +52,11 @@
 
   {"op":"log","value":"who calls inner: outer, in this file; tracing shows the calls in the REPL"},
   {"op":"caret","line":1,"col":8},
-  {"op":"command","value":"lisp.who_calls"},
+  {"op":"command","value":"repl.who_calls"},
   {"op":"frames","value":10},
   {"op":"assert_bottom","value":"find"},
   {"op":"assert_find_results","min":1},
-  {"op":"command","value":"lisp.trace"},
+  {"op":"command","value":"repl.trace"},
   {"op":"frames","value":10},
   {"op":"assert_toast","value":"inner"},
   {"op":"command","value":"repl.focus"},
