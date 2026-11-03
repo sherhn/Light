@@ -84,6 +84,10 @@ def run_one(script_path):
         if "@needs_python" in text and not (shutil.which("py") or shutil.which("python3")):
             # a real interpreter is what the script checks files with
             return name, True, "skipped: no Python on this machine", 0.0
+        runners = os.environ.get("LIGHT_E2E_NODE_MODULES", "")
+        if "@test_runners" in text and not (runners and (pathlib.Path(runners) / "vitest").is_dir() and (pathlib.Path(runners) / "jest").is_dir()):
+            # Vitest and Jest are not downloaded by the tests: LIGHT_E2E_NODE_MODULES names a node_modules that has them
+            return name, True, "skipped: LIGHT_E2E_NODE_MODULES has no vitest and jest", 0.0
         if "@full_window" in text and not screen_fits_window():
             # its clicks are at places of the 1280x800 window, which a smaller screen shrinks (a CI runner has 1024x768)
             return name, True, "skipped: the screen is smaller than the 1280x800 window", 0.0
@@ -95,6 +99,16 @@ def run_one(script_path):
             web.mkdir(exist_ok=True)
             (web / "main.mjs").write_text('export const double = (x) => x * 2;\nconsole.log("javascript module ready", double(3));\n', encoding="utf-8")
             (web / "package.json").write_text(json.dumps({"name": "light-test", "private": True, "type": "module", "scripts": {"test": "node main.mjs", "build": "node main.mjs"}}), encoding="utf-8")
+        if "@test_runners" in text:
+            # a Vitest package and a Jest package, both using the node_modules the environment names
+            for kind in ("vitest", "jest"):
+                pkg = proj / kind
+                pkg.mkdir(exist_ok=True)
+                (pkg / "package.json").write_text(json.dumps({"name": f"light-{kind}", "private": True, "devDependencies": {kind: "*"}}), encoding="utf-8")
+                if os.name == "nt":
+                    subprocess.run(["cmd", "/c", "mklink", "/J", str(pkg / "node_modules"), str(pathlib.Path(runners))], capture_output=True, check=True)
+                else:
+                    os.symlink(runners, pkg / "node_modules", target_is_directory=True)
         if "@docker_module" in text:
             (proj / "Dockerfile").write_text("FROM busybox AS base\nWORKDIR /app\nCMD [\"echo\", \"fixture\"]\n", encoding="utf-8")
             (proj / "compose.yaml").write_text("services:\n  web:\n    image: busybox\n    command: [echo, fixture]\n", encoding="utf-8")

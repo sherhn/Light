@@ -1138,4 +1138,8 @@ pub const RU: &[(&str, &str)] = &[
     ("Tasks (Alt+2)", "Задачи (Alt+2)"),
     ("No tasks: the files of the project define none that the modules that are on know of (package.json scripts, make targets).", "Задач нет: файлы проекта не задают таких, которые знают включённые модули (скрипты package.json, цели make)."),
     ("Run '{}'", "Запустить «{}»"),
+    ("Run all tests in '{}'", "Запустить все тесты в «{}»"),
+    ("No test framework of the modules that are on runs this file", "Ни один тестовый фреймворк включённых модулей не запускает этот файл"),
+    ("The test '{}' is not in the file any more", "Теста «{}» в файле больше нет"),
+    ("Tests: {0} passed, {1} failed", "Тесты: {0} прошли, {1} упали"),
 ];

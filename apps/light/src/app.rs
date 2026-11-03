@@ -73,6 +73,10 @@ pub struct App {
     pub checks: crate::app_check::CheckState,
     /// The tasks the project's files define (the Tasks window).
     pub tasks: crate::app_tasks::TasksState,
+    /// The tests of the open files and how they did.
+    pub testing: crate::app_testing::TestingState,
+    /// The menu of a gutter button.
+    pub gutter_menu: Option<crate::gutter::GutterMenu>,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -187,6 +191,8 @@ impl App {
             hover: Default::default(),
             checks: Default::default(),
             tasks: Default::default(),
+            testing: Default::default(),
+            gutter_menu: None,
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -398,6 +404,8 @@ impl App {
         self.hide_hover();
         self.needed_modules.clear();
         self.tasks = Default::default();
+        self.testing = Default::default();
+        self.gutter_menu = None;
         self.modules_banner_dismissed = false;
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder
@@ -1212,6 +1220,7 @@ impl App {
             self.run.log.push(LogLine { kind: if code == Some(0) { LogKind::Info } else { LogKind::Error }, text: msg });
             self.run.handle = None;
             self.make_finished(code);
+            self.tests_finished(code);
             // a scenario goes on with its next command
             self.scenario_after_exit(code);
         }

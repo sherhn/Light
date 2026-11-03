@@ -296,6 +296,32 @@ impl App {
                     None => self.fail(format!("run_tab_click: no visible run tab {sval:?}")),
                 }
             }
+            "gutter_icon_click" | "gutter_menu_click" => {
+                let pos = if op == "gutter_icon_click" {
+                    let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
+                    let rects = ctx.data(|d| d.get_temp::<Vec<(usize, egui::Rect)>>(egui::Id::unique(crate::gutter::ICON_RECTS_ID))).unwrap_or_default();
+                    rects.iter().find(|(l, _)| *l == line).map(|(_, r)| r.center())
+                } else {
+                    self.gutter_menu.as_ref().and_then(|m| m.rows.iter().find(|(label, _)| *label == sval).map(|(_, r)| r.center()))
+                };
+                match pos {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("{op}: nothing to click ({step}); menu: {:?}", self.gutter_menu.as_ref().map(|m| m.rows.iter().map(|(l, _)| l.clone()).collect::<Vec<_>>()))),
+                }
+            }
+            "assert_gutter_icons" => {
+                // [[line, "play" | "ok" | "error"], ...]: exactly these buttons in the active document
+                let got: Vec<(u64, &str)> = self.gutter_icons(self.active).iter().map(|g| (g.line as u64 + 1, match g.icon { crate::icons::Icon::Ok => "ok", crate::icons::Icon::Error => "error", crate::icons::Icon::Play => "play", _ => "other" })).collect();
+                let want: Vec<(u64, String)> = step["value"].as_array().into_iter().flatten().filter_map(|p| Some((p[0].as_u64()?, p[1].as_str()?.to_string()))).collect();
+                if got.iter().map(|(l, k)| (*l, k.to_string())).collect::<Vec<_>>() != want {
+                    self.fail(format!("gutter icons: expected {want:?}, got {got:?}"));
+                }
+            }
             "assert_tasks" => {
                 self.refresh_tasks(true);
                 let file = step["file"].as_str().unwrap_or_default();

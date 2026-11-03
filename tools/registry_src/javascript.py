@@ -16,9 +16,31 @@ GRAMMAR = [
     match(r"\b(this)\b", "variable"), call(),
 ]
 
+# the name of a test or a suite in quotes of any kind (a template with `${...}` in it is not a fixed name)
+def _declared(callee):
+    return r"^\s*" + callee + r"""(?:\.(?:only|skip|todo|concurrent|fails|failing))*\(\s*(?:'(?P<name>[^'\n]*)'|"(?P<name2>[^"\n]*)"|`(?P<name3>[^`$\n]*)`)"""
+
+
+TEST_FILES = r"(?:^|/)__tests__/|\.(?:test|spec)\.[cm]?jsx?$"
+TESTS = [
+    # Vitest and Jest when the package.json of the file names them; node:test when the file imports it
+    dict(name="Vitest", languages=["javascript", "jsx"], files=TEST_FILES, project_file="package.json", project_needs='"vitest"',
+         test=_declared("(?:it|test)"), suite=_declared("(?:describe|suite)"), separator=" ",
+         command='npx vitest run "{file}" -t "{test}"', file_command='npx vitest run "{file}"', env={"NO_COLOR": "1", "FORCE_COLOR": "0"},
+         passed=r"(?m)^\s*✓ (?P<name>.+?)(?: \d+ms)?$", failed=r"(?m)^\s*× (?P<name>.+?)(?: \d+ms)?$", result_separator=" > "),
+    dict(name="Jest", languages=["javascript", "jsx"], files=TEST_FILES, project_file="package.json", project_needs='"jest"',
+         test=_declared("(?:it|test)"), suite=_declared("describe"), separator=" ",
+         command='npx jest --runTestsByPath "{file}" -t "{test}"', file_command='npx jest --runTestsByPath "{file}"', env={"NO_COLOR": "1", "FORCE_COLOR": "0"},
+         failed=r"(?m)^\s*● (?P<name>.+?)$", result_separator=" › "),
+    dict(name="node:test", languages=["javascript"], content=r"""from\s+['"]node:test['"]|require\(\s*['"]node:test['"]\s*\)""", project_file="package.json",
+         test=_declared("(?:it|test)"), suite=_declared("(?:describe|suite)"), separator=" ",
+         command='node --test --test-reporter=tap --test-name-pattern="{test}" "{file}"', file_command='node --test --test-reporter=tap "{file}"',
+         passed=r"(?m)^\s*ok \d+ - (?P<name>.+?)(?: # .*)?$", failed=r"(?m)^\s*not ok \d+ - (?P<name>.+?)(?: # .*)?$"),
+]
+
 
 MODULE = module(
-    id="javascript", name="JavaScript", category="Languages", version="1.1.0",
+    id="javascript", name="JavaScript", category="Languages", version="1.2.0",
     summary="JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
     description="JavaScript ES modules and CommonJS, JSX and package.json. Syntax coloring includes comments, strings, template literals, regular expressions, keywords and browser/Node builtins. Brace indentation and folding, function/class outline and completion. Node.js syntax checks, Run, Watch and node:test; package.json exposes npm install, start, dev, build, test and lint. Uses your Node.js/npm on Windows, macOS or Linux (including WSL). No files or dependencies are created until you explicitly run a command.",
     languages=[
@@ -29,6 +51,7 @@ MODULE = module(
     run=[dict(language="javascript", name="Node: Run file", command='node "{file}"'), dict(language="javascript", name="Node: Watch file", command='node --watch "{file}"'), dict(language="javascript", name="Node: Test file", command='node --test "{file}"')]
         + [dict(language="javascript-package", name="npm: " + label, command='npm --prefix "{dir}" ' + command) for label, command in [("Install dependencies", "install"), ("Start", "start"), ("Development server", "run dev"), ("Build", "run build"), ("Test", "test"), ("Lint", "run lint")]],
     check=[dict(language="javascript", name="Node syntax", command='node --check "{file}"', pattern=r"(?m)^(?P<file>[^\n]+):(?P<line>\d+)\r?\n(?:[^\n]*\n)*?SyntaxError: (?P<msg>[^\n]+)")],
+    tests=TESTS,
     # every script of every package.json of the project, run in its folder (the Tasks window)
     tasks=[dict(name="npm", files=["package.json"], json="scripts", command='npm run "{task}"', skip=["node_modules"])],
     tools=[dict(name="Node.js and npm", programs=["node", "npm"], required=["node", "npm"], apt="nodejs npm")],

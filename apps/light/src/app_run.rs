@@ -73,14 +73,14 @@ pub fn message_path(run: &MakeRun, dir: &str, file: &str) -> PathBuf {
 
 /// A shell command line run in `dir`: by the shell of the project's Linux (its errors in the same stream as its output),
 /// or by the shell of this computer.
-pub fn shell_launch(line: &str, dir: &Path, t: Option<&Target>) -> Launch {
+pub fn shell_launch(line: &str, dir: &Path, t: Option<&Target>, env: &[(String, String)]) -> Launch {
     match t {
         Some(t) => {
             let marker = wsl::new_marker();
-            let cmd = wsl::shell(t, dir, &format!("{line} 2>&1"), &[], &marker);
+            let cmd = wsl::shell(t, dir, &format!("{line} 2>&1"), env, &marker);
             Launch { cmd, cleanup: Some(wsl::Cleanup { target: t.clone(), marker }) }
         }
-        None => Launch { cmd: ide_core::cmdscript::shell_command(line, dir, &[]), cleanup: None },
+        None => Launch { cmd: ide_core::cmdscript::shell_command(line, dir, env), cleanup: None },
     }
 }
 
@@ -248,7 +248,7 @@ impl App {
         };
         let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let line = def.command_line(&file_s, &dir_s, t.is_none());
-        let launch = shell_launch(&line, &root, t.as_ref());
+        let launch = shell_launch(&line, &root, t.as_ref(), &[]);
         if self.start_run(format!("file:{}", file.display()), format!("{} '{}'", def.name, name), launch, &def.name, root, t) {
             self.run_request = Some(RunRequest::Language(def.clone(), file.to_path_buf()));
         }
@@ -433,6 +433,8 @@ pub enum RunRequest {
     Scenario(String),
     /// A task of the Tasks window: how its file's tasks run, the file, the task.
     Task(ide_core::modules::TaskDef, PathBuf, String),
+    /// Tests of a file: the framework, the file, the test or suite (none: all of them).
+    Test(Box<ide_core::modules::TestDef>, PathBuf, Option<ide_core::testing::TestItem>),
 }
 
 pub struct RunTab {
@@ -484,6 +486,7 @@ impl App {
             Some(RunRequest::Asdf(system, test)) => self.run_asdf_system(&system, test),
             Some(RunRequest::Scenario(name)) => self.run_scenario(&name),
             Some(RunRequest::Task(def, path, task)) => self.run_task(&def, &path, &task),
+            Some(RunRequest::Test(_, path, item)) => self.run_tests(&path, item.as_ref()),
             None => self.run_selected(),
         }
     }

@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
@@ -553,6 +553,66 @@
       "name": "Node syntax",
       "command": "node --check \"{file}\"",
       "pattern": "(?m)^(?P<file>[^\\n]+):(?P<line>\\d+)\\r?\\n(?:[^\\n]*\\n)*?SyntaxError: (?P<msg>[^\\n]+)"
+    }
+  ],
+  "tests": [
+    {
+      "name": "Vitest",
+      "languages": [
+        "javascript",
+        "jsx"
+      ],
+      "files": "(?:^|/)__tests__/|\\.(?:test|spec)\\.[cm]?jsx?$",
+      "project_file": "package.json",
+      "project_needs": "\"vitest\"",
+      "test": "^\\s*(?:it|test)(?:\\.(?:only|skip|todo|concurrent|fails|failing))*\\(\\s*(?:'(?P<name>[^'\\n]*)'|\"(?P<name2>[^\"\\n]*)\"|`(?P<name3>[^`$\\n]*)`)",
+      "suite": "^\\s*(?:describe|suite)(?:\\.(?:only|skip|todo|concurrent|fails|failing))*\\(\\s*(?:'(?P<name>[^'\\n]*)'|\"(?P<name2>[^\"\\n]*)\"|`(?P<name3>[^`$\\n]*)`)",
+      "separator": " ",
+      "command": "npx vitest run \"{file}\" -t \"{test}\"",
+      "file_command": "npx vitest run \"{file}\"",
+      "env": {
+        "NO_COLOR": "1",
+        "FORCE_COLOR": "0"
+      },
+      "passed": "(?m)^\\s*✓ (?P<name>.+?)(?: \\d+ms)?$",
+      "failed": "(?m)^\\s*× (?P<name>.+?)(?: \\d+ms)?$",
+      "result_separator": " > "
+    },
+    {
+      "name": "Jest",
+      "languages": [
+        "javascript",
+        "jsx"
+      ],
+      "files": "(?:^|/)__tests__/|\\.(?:test|spec)\\.[cm]?jsx?$",
+      "project_file": "package.json",
+      "project_needs": "\"jest\"",
+      "test": "^\\s*(?:it|test)(?:\\.(?:only|skip|todo|concurrent|fails|failing))*\\(\\s*(?:'(?P<name>[^'\\n]*)'|\"(?P<name2>[^\"\\n]*)\"|`(?P<name3>[^`$\\n]*)`)",
+      "suite": "^\\s*describe(?:\\.(?:only|skip|todo|concurrent|fails|failing))*\\(\\s*(?:'(?P<name>[^'\\n]*)'|\"(?P<name2>[^\"\\n]*)\"|`(?P<name3>[^`$\\n]*)`)",
+      "separator": " ",
+      "command": "npx jest --runTestsByPath \"{file}\" -t \"{test}\"",
+      "file_command": "npx jest --runTestsByPath \"{file}\"",
+      "env": {
+        "NO_COLOR": "1",
+        "FORCE_COLOR": "0"
+      },
+      "failed": "(?m)^\\s*● (?P<name>.+?)$",
+      "result_separator": " › "
+    },
+    {
+      "name": "node:test",
+      "languages": [
+        "javascript"
+      ],
+      "content": "from\\s+['\"]node:test['\"]|require\\(\\s*['\"]node:test['\"]\\s*\\)",
+      "project_file": "package.json",
+      "test": "^\\s*(?:it|test)(?:\\.(?:only|skip|todo|concurrent|fails|failing))*\\(\\s*(?:'(?P<name>[^'\\n]*)'|\"(?P<name2>[^\"\\n]*)\"|`(?P<name3>[^`$\\n]*)`)",
+      "suite": "^\\s*(?:describe|suite)(?:\\.(?:only|skip|todo|concurrent|fails|failing))*\\(\\s*(?:'(?P<name>[^'\\n]*)'|\"(?P<name2>[^\"\\n]*)\"|`(?P<name3>[^`$\\n]*)`)",
+      "separator": " ",
+      "command": "node --test --test-reporter=tap --test-name-pattern=\"{test}\" \"{file}\"",
+      "file_command": "node --test --test-reporter=tap \"{file}\"",
+      "passed": "(?m)^\\s*ok \\d+ - (?P<name>.+?)(?: # .*)?$",
+      "failed": "(?m)^\\s*not ok \\d+ - (?P<name>.+?)(?: # .*)?$"
     }
   ],
   "tasks": [

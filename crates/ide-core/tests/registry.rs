@@ -424,3 +424,24 @@ fn package_scripts_and_make_targets_are_tasks() {
     let mk = "CC := gcc\nOBJS = a.o\n.PHONY: all clean\nall: bin/app\nbin/app: $(OBJS)\n\t$(CC) -o $@ $^\n%.o: %.c\n\t$(CC) -c $<\nclean:\n\trm -f bin/app\ninstall:: all\n";
     assert_eq!(make.tasks_in(mk), ["all", "clean"], "assignments, special and pattern rules are not tasks to run");
 }
+
+#[test]
+fn javascript_test_frameworks_find_tests_and_read_their_runs() {
+    use ide_core::testing;
+    let module = manifests().into_iter().find(|m| m.id == "javascript").unwrap();
+    let names: Vec<&str> = module.tests.iter().map(|t| t.name.as_str()).collect();
+    assert_eq!(names, ["Vitest", "Jest", "node:test"]);
+    let (vitest, jest, node) = (&module.tests[0], &module.tests[1], &module.tests[2]);
+    assert!(testing::wants(vitest, "src/math.test.js", "") && testing::wants(jest, "src/__tests__/math.js", "") && !testing::wants(vitest, "src/math.js", ""));
+    assert!(testing::wants(node, "test/any.mjs", "import { test } from 'node:test';\n") && !testing::wants(node, "test/any.mjs", "import x from 'y';\n"));
+    let spec = "describe('math', () => {\n  it.only(\"adds\", () => {});\n  test.skip(`skips`, () => {});\n  test(`costs ${n}`, () => {});\n});\n";
+    let items = testing::find(vitest, spec);
+    assert_eq!(items.iter().map(|i| i.full.as_str()).collect::<Vec<_>>(), ["math", "math adds", "math skips"]);
+    assert_eq!(testing::command_line(jest, Some(&items[1]), "C:/p/m.test.js", "C:/p", "C:/p", true), r#"npx jest --runTestsByPath "C:/p/m.test.js" -t "^math adds$""#);
+    let vitest_out = testing::outcome(vitest, " ✓ math > adds 2ms\n × math > skips 3ms\n");
+    assert!(testing::is_named(vitest, &items[1], &vitest_out.passed[0]) && testing::is_named(vitest, &items[2], &vitest_out.failed[0]));
+    let jest_out = testing::outcome(jest, "FAIL ./m.test.js\n  ● math › skips\n\n    expect(received)\n");
+    assert!(jest_out.passed.is_empty() && testing::is_named(jest, &items[2], &jest_out.failed[0]));
+    let tap = testing::outcome(node, "    ok 1 - adds\n      ---\n    not ok 2 - skips # SKIP\nok 1 - math\n");
+    assert_eq!((tap.passed, tap.failed), (vec!["adds".to_string(), "math".to_string()], vec!["skips".to_string()]));
+}

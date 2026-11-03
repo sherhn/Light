@@ -20,6 +20,7 @@ pub mod localvcs;
 pub mod paths;
 pub mod modules;
 pub mod search;
+pub mod testing;
 pub mod termcomplete;
 pub mod todo;
 pub mod settings;

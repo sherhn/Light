@@ -97,7 +97,7 @@ impl App {
         let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
         let t = self.wsl_target();
         let line = def.command_line(task, &shell_path(path, t.as_ref()), &shell_path(&dir, t.as_ref()), t.is_none());
-        let launch = shell_launch(&line, &dir, t.as_ref());
+        let launch = shell_launch(&line, &dir, t.as_ref(), &[]);
         let title = format!("{} {task}", def.name);
         if self.start_run(format!("task:{}:{}:{task}", def.name, path.display()), title.clone(), launch, &title, dir, t) {
             self.run_request = Some(RunRequest::Task(def.clone(), path.to_path_buf(), task.to_string()));

@@ -119,6 +119,47 @@ impl TaskDef {
     }
 }
 
+/// A test framework of a language: how to find its tests in a file (the editor puts a run button next to each), how to
+/// run one of them, a suite or the whole file, and how to tell from the output which passed and which failed. A module
+/// lists its frameworks in order; a file belongs to the first one that wants it (see [`crate::testing`]).
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct TestDef {
+    /// `Vitest`, `Jest`...
+    pub name: String,
+    /// The language ids whose files can hold these tests.
+    pub languages: Vec<String>,
+    /// A regular expression over the file's path relative to the project (`/` separated); empty: every file.
+    pub files: String,
+    /// A regular expression the file's text must match (`node:test` imported); empty: no condition.
+    pub content: String,
+    /// The nearest file of this name in the file's folder or above it (inside the project) is where the tests run;
+    /// with `project_needs`, the framework is used only when that file contains this text (`"vitest"`).
+    pub project_file: String,
+    pub project_needs: String,
+    /// A regular expression for the line that declares a test, with the name in a group `name` (or `name2`, `name3`:
+    /// one for each kind of quotes).
+    pub test: String,
+    /// The same for a group of tests (a suite); a suite holds the lines below it that are indented deeper.
+    pub suite: String,
+    /// What joins the names of the suites and the test into the full name the framework knows (` `).
+    pub separator: String,
+    /// Shell command lines: `command` runs one test or suite, `file_command` the whole file. Placeholders: `{file}`
+    /// and `{dir}` (as a run command's), `{root}` (the folder of `project_file`, where it runs) and `{test}` (the
+    /// regular expression that selects the test or suite by its full name).
+    pub command: String,
+    pub file_command: String,
+    pub windows: String,
+    pub windows_file_command: String,
+    /// Environment variables for the runs (`NO_COLOR`).
+    pub env: BTreeMap<String, String>,
+    /// Regular expressions over the output with a group `name` for each test that passed or failed. The names are the
+    /// tests' own names or their full names with `result_separator` between the parts.
+    pub passed: String,
+    pub failed: String,
+    pub result_separator: String,
+}
+
 /// A group of tools a module wants in the project's Linux (see the developer tools on the Linux page).
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
@@ -185,6 +226,8 @@ pub struct Manifest {
     pub templates: Vec<Template>,
     /// Tasks the project's files define (see [`TaskDef`]).
     pub tasks: Vec<TaskDef>,
+    /// Test frameworks, the first that wants a file runs its tests (see [`TestDef`]).
+    pub tests: Vec<TestDef>,
 }
 
 impl Manifest {
@@ -218,6 +261,12 @@ impl Manifest {
                 return Err(format!("{}: the check {:?} is for the unknown language {:?}", self.id, c.name, c.language));
             }
             crate::modules::check::compile(&c.pattern).map_err(|e| format!("{}: the check {:?}: {e}", self.id, c.name))?;
+        }
+        for t in &self.tests {
+            crate::testing::check(t).map_err(|e| format!("{}: the tests {:?}: {e}", self.id, t.name))?;
+            if let Some(l) = t.languages.iter().find(|l| !self.languages.iter().any(|x| x.id == **l)) {
+                return Err(format!("{}: the tests {:?} are for the unknown language {l:?}", self.id, t.name));
+            }
         }
         for t in &self.tasks {
             if t.files.is_empty() || t.command.trim().is_empty() || t.json.is_empty() == t.pattern.is_empty() {

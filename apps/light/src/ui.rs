@@ -138,6 +138,7 @@ impl eframe::App for App {
 
         self.tick_palette();
         self.draw_popups(&ctx);
+        self.draw_gutter_menu(&ctx);
         self.draw_toasts(&ctx);
         self.process_screenshots(&ctx);
         self.draw_resize_handles(&ctx);
@@ -257,6 +258,7 @@ impl App {
         let markers = self.docs[idx].markers();
         let find: Vec<(usize, usize)> = if focused && self.find.open { self.find.matches.clone() } else { vec![] };
         let git_marks: Vec<ide_core::diff::Mark> = App::git_marks(&mut self.docs[idx]).to_vec();
+        let gutter_icons = self.gutter_icons(idx);
         let editor_on = focused && self.editor_active(ctx);
         let cfg = ViewCfg {
             pal: &self.pal,
@@ -271,6 +273,7 @@ impl App {
             git_marks: &git_marks,
             minimap: self.settings.minimap,
             doc_id: self.docs[idx].id,
+            icons: &gutter_icons,
         };
         let mut view = match (own_view, self.split.as_mut()) {
             (true, Some(sp)) => std::mem::take(&mut sp.view),
@@ -293,6 +296,11 @@ impl App {
             if let Some((line, pos)) = out.gutter_click {
                 self.open_hunk_popup(line, pos);
             }
+            if let Some((line, pos)) = out.icon_click {
+                self.open_gutter_menu(idx, line, pos);
+            }
+            let rects = out.icon_rects.clone();
+            ctx.data_mut(|d| d.insert_temp(egui::Id::unique(crate::gutter::ICON_RECTS_ID), rects));
             self.caret_screen = out.caret_screen;
         }
         if out.clicked {

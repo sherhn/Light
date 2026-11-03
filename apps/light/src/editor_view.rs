@@ -69,6 +69,18 @@ pub struct ViewCfg<'a> {
     /// Which document this is: each keeps its own scrolling (a fling or a scroll animation of one tab must not carry
     /// on in the tab shown after it).
     pub doc_id: u64,
+    /// Buttons next to the line numbers (run a test, send a request); a document with none has no room for them.
+    pub icons: &'a [GutterIcon],
+}
+
+/// A button in the gutter, next to the number of its line.
+#[derive(Clone, Debug)]
+pub struct GutterIcon {
+    /// 0-based line.
+    pub line: usize,
+    pub icon: Icon,
+    pub color: Color32,
+    pub tip: String,
 }
 
 #[derive(Default)]
@@ -89,6 +101,10 @@ pub struct ViewOut {
     pub fold_toggle: Option<FoldKey>,
     /// A change marker in the gutter was clicked: (0-based line, screen position just below that line).
     pub gutter_click: Option<(usize, Pos2)>,
+    /// A button of [`ViewCfg::icons`] was clicked: (0-based line, screen position just below it).
+    pub icon_click: Option<(usize, Pos2)>,
+    /// Where the visible gutter buttons are (0-based line, rectangle).
+    pub icon_rects: Vec<(usize, Rect)>,
     pub gutter_rect: Option<Rect>,
 }
 
@@ -121,6 +137,8 @@ const GUTTER_PAD: f32 = 14.0;
 const NUM_GAP: f32 = 10.0;
 const MARK_W: f32 = 4.0;
 const FOLD_W: f32 = 18.0;
+/// The lane of the gutter buttons, between the line numbers and the change markers.
+const ICON_W: f32 = 20.0;
 const TEXT_PAD: f32 = 6.0;
 /// Code overview (minimap): pixels per row and per character.
 const MAP_W: f32 = 128.0;
@@ -180,7 +198,8 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     let digits = total_lines.to_string().len().max(3);
     let num_font = FontId::monospace((cfg.font_size * 0.9).round());
     let num_cw = ui.fonts_mut(|f| f.glyph_width(&num_font, '0')).max(1.0);
-    let gutter_w = if cfg.line_numbers { GUTTER_PAD + num_cw * digits as f32 + NUM_GAP + MARK_W + FOLD_W } else { 8.0 + MARK_W + FOLD_W };
+    let icon_w = if cfg.icons.is_empty() { 0.0 } else { ICON_W };
+    let gutter_w = icon_w + if cfg.line_numbers { GUTTER_PAD + num_cw * digits as f32 + NUM_GAP + MARK_W + FOLD_W } else { 8.0 + MARK_W + FOLD_W };
 
     // ---- caches
     let rev = ed.revision();
@@ -618,7 +637,8 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     let first = ((state.scroll.y / lh).floor().max(0.0)) as usize;
     let last = ((((state.scroll.y + gutter_rect.height()) / lh).ceil()) as usize + 1).min(rows.len());
     let mark_x = gutter_rect.max.x - FOLD_W - MARK_W;
-    let num_right = mark_x - NUM_GAP;
+    let icon_x = mark_x - 2.0 - icon_w;
+    let num_right = icon_x - if icon_w > 0.0 { 4.0 } else { NUM_GAP };
     let fold_x = gutter_rect.max.x - FOLD_W * 0.5;
     for row in first..last {
         let line_no = rows.at(row);
@@ -637,6 +657,25 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                 icons::paint(&gp, cr, if folded { Icon::ChevronRight } else { Icon::ChevronDown }, pal.line_number);
             }
         }
+    }
+    let icon_rect = |row: usize| Rect::from_center_size(Pos2::new(icon_x + icon_w * 0.5, gutter_rect.min.y + row as f32 * lh - state.scroll.y + lh * 0.5), Vec2::splat((lh * 0.62).min(15.0)));
+    let hover_pos = ui.input(|i| i.pointer.hover_pos());
+    for g in cfg.icons {
+        let row = row_of_line(g.line);
+        if rows.get(row) != Some(g.line) {
+            continue;
+        }
+        let r = icon_rect(row);
+        if r.max.y < gutter_rect.min.y || r.min.y > gutter_rect.max.y {
+            continue;
+        }
+        if hover_pos.is_some_and(|p| r.expand(3.0).contains(p)) {
+            gp.rect_filled(r.expand(3.0), CornerRadius::same(4), pal.hover);
+            ui.set_cursor_icon(egui::CursorIcon::PointingHand);
+            let _ = gresp.clone().on_hover_text(&g.tip);
+        }
+        icons::paint(&gp, r, g.icon, g.color);
+        out.icon_rects.push((g.line, r));
     }
     let mark_color = |k: MarkKind| match k {
         MarkKind::Added => pal.git_added,
@@ -675,7 +714,11 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     if gresp.clicked()
         && let Some(p) = gresp.interact_pointer_pos()
     {
-        if p.x > gutter_rect.max.x - FOLD_W {
+        let on_icon = (icon_w > 0.0 && p.x >= icon_x - 2.0 && p.x <= icon_x + icon_w + 1.0).then(|| rows.get(row_at(p))).flatten().filter(|line| cfg.icons.iter().any(|g| g.line == *line));
+        if let Some(line) = on_icon {
+            let y = gutter_rect.min.y + row_of_line(line) as f32 * lh - state.scroll.y;
+            out.icon_click = Some((line, Pos2::new(icon_x, y + lh + 2.0)));
+        } else if p.x > gutter_rect.max.x - FOLD_W {
             if let Some(line) = rows.get(row_at(p))
                 && let Some(r) = region_start.get(&line)
             {
@@ -800,7 +843,7 @@ mod scrollbar_tests {
         let mut editor = Editor::new(&"x".repeat(500), lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0 };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[] };
         let mut track = Pos2::ZERO;
         for frame in 0..6 {
             let position = track + Vec2::new(if frame >= 3 { 80.0 } else { 0.0 }, 0.0);
@@ -865,7 +908,7 @@ mod problem_tests {
         let mut editor = Editor::new(text, lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0 };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[] };
         let (mut tint, mut underline) = (false, false);
         for _ in 0..2 {
             let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(500.0, 200.0))), ..Default::default() }, |ui| {
