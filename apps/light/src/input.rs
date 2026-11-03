@@ -546,6 +546,11 @@ impl App {
             "view.structure" => self.toggle_left(LeftTool::Structure),
             "view.tasks" => self.toggle_left(LeftTool::Tasks),
             "view.debug" => self.toggle_bottom(BottomTool::Debug),
+            "lisp.inspect" => self.lisp_inspect(None),
+            "lisp.who_calls" => self.lisp_xref("who-calls"),
+            "lisp.who_references" => self.lisp_xref("who-references"),
+            "lisp.who_macroexpands" => self.lisp_xref("who-macroexpands"),
+            "lisp.trace" => self.lisp_toggle_trace(),
             "debug.start" => match self.doc().filter(|d| d.diff.is_none()).and_then(|d| d.path.clone()) {
                 Some(path) => self.start_debug(&path),
                 None => self.toast(tr("Open a file to debug first"), Sev::Weak),

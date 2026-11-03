@@ -972,7 +972,7 @@ impl App {
         if echo {
             self.repl.log.push(LogLine { kind: LogKind::Input, text: code.trim_end().to_string() });
         }
-        let res = self.repl.session.as_ref().map(|s| s.eval(code));
+        let res = self.repl.session.as_ref().map(|s| s.eval_debug(code));
         match res {
             Some(Ok(id)) => {
                 self.repl.busy.insert(id);
@@ -1039,8 +1039,10 @@ impl App {
                         self.repl.log.push(LogLine { kind: LogKind::Trace, text: l.to_string() });
                     }
                 }
+                ReplEvent::Debugger { id, payload } => self.lisp_debugger_opened(id, &payload),
                 ReplEvent::Done { id, package } => {
                     self.repl.busy.remove(&id);
+                    self.repl.debuggers.retain(|d| d.id != id);
                     self.repl.package = package;
                 }
                 ReplEvent::Reply { id, payload } => {
@@ -1068,6 +1070,7 @@ impl App {
 
     fn handle_reply(&mut self, p: Pending, payload: &str) {
         match p {
+            Pending::Ignore | Pending::Locals | Pending::Inspect | Pending::Xref { .. } | Pending::Trace { .. } => self.lisp_tool_reply(p, payload),
             Pending::Complete { start, prefix, .. } => {
                 if self.completion.active && self.completion.start == start && self.completion.prefix == prefix {
                     let mut live: Vec<CItem> = payload

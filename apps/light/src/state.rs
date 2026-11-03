@@ -202,6 +202,13 @@ pub enum Pending {
     Definition { name: String },
     /// What the hover popup shows for a name.
     Hover { cache_key: String, name: String },
+    /// Nothing to do with the answer.
+    Ignore,
+    /// The variables of the frame selected in the debugger.
+    Locals,
+    Inspect,
+    Xref { kind: &'static str, name: String },
+    Trace { name: String },
 }
 
 #[derive(Default)]
@@ -219,6 +226,8 @@ pub struct ReplState {
     pub pending: HashMap<u64, Pending>,
     pub stick_to_bottom: bool,
     pub focus_input: bool,
+    /// The evaluations stopped in the debugger, the innermost last.
+    pub debuggers: Vec<crate::app_lisp_tools::LispDebugger>,
 }
 
 #[derive(Default)]
@@ -479,6 +488,8 @@ pub enum Popup {
     Scenarios(Box<ScenariosState>),
     /// The files a merge left in conflict.
     Conflicts,
+    /// The Lisp inspector.
+    Inspector(Box<crate::app_lisp_tools::InspectorState>),
 }
 
 /// The scenarios being edited: a working copy, and the commands of each as one text.

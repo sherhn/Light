@@ -80,6 +80,9 @@ impl App {
             "checks_idle" => self.checks.idle(),
             "debug_paused" => self.debug.status == crate::app_debug::DebugStatus::Paused && self.debug.stopped.as_ref().is_some_and(|s| !s.frames.is_empty() && !s.scopes.is_empty()) && !self.debug.variables.is_empty(),
             "debug_idle" => self.debug.status == crate::app_debug::DebugStatus::Idle,
+            "lisp_debugger" => !self.repl.debuggers.is_empty(),
+            "lisp_locals" => self.repl.debuggers.last().is_some_and(|d| !d.locals.is_empty()),
+            "inspector" => matches!(self.popup, Popup::Inspector(_)),
             "debug_console" => self.debug.console.iter().any(|l| l.text.contains(cond["value"].as_str().unwrap_or("\u{0}"))),
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
@@ -435,6 +438,50 @@ impl App {
                         s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
                     }
                     None => self.fail(format!("{op}: nothing to click ({step})")),
+                }
+            }
+            "lisp_click" => {
+                // a row of the Lisp debugger (`restart:NAME`, `frame:N`) or of the inspector (a part's label)
+                let id = if matches!(self.popup, Popup::Inspector(_)) { "inspector_rects" } else { "lisp_debugger_rects" };
+                let rects = ctx.data(|d| d.get_temp::<Vec<(String, egui::Rect)>>(egui::Id::unique(id))).unwrap_or_default();
+                match rects.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("lisp_click: no {sval:?} among {:?}", rects.iter().map(|(k, _)| k).collect::<Vec<_>>())),
+                }
+            }
+            "lisp_debugger_value" => {
+                if let Some(d) = self.repl.debuggers.last_mut() { d.value = sval.clone(); }
+            }
+            "assert_lisp_debugger" => {
+                // {"value": a piece of the condition, "level": n, "restart": a name, "frame": a piece, "local": "name = value"}; "none": no debugger
+                match self.repl.debuggers.last() {
+                    None if sval == "none" => {}
+                    None => self.fail("assert_lisp_debugger: no debugger is open".into()),
+                    Some(d) if sval == "none" => self.fail(format!("assert_lisp_debugger: a debugger is open: {}", d.condition)),
+                    Some(d) => {
+                        let d = d.clone();
+                        if !d.condition.contains(&sval) { self.fail(format!("assert_lisp_debugger: {sval:?} not in {:?}", d.condition)); }
+                        if let Some(l) = step["level"].as_u64() && d.level as u64 != l { self.fail(format!("assert_lisp_debugger: level {} instead of {l}", d.level)); }
+                        if let Some(r) = step["restart"].as_str() && !d.restarts.iter().any(|(n, _)| n == r) { self.fail(format!("assert_lisp_debugger: no restart {r:?} in {:?}", d.restarts)); }
+                        if let Some(f) = step["frame"].as_str() && !d.frames.iter().any(|x| x.contains(f)) { self.fail(format!("assert_lisp_debugger: no frame {f:?} in {:?}", d.frames)); }
+                        if let Some(v) = step["local"].as_str() && !d.locals.iter().any(|(n, x)| format!("{n} = {x}") == v) { self.fail(format!("assert_lisp_debugger: no local {v:?} in {:?}", d.locals)); }
+                    }
+                }
+            }
+            "assert_inspector" => {
+                match &self.popup {
+                    Popup::Inspector(st) => {
+                        let st = st.clone();
+                        if !st.object.contains(&sval) { self.fail(format!("assert_inspector: {sval:?} not in {:?}", st.object)); }
+                        if let Some(n) = step["parts"].as_u64() && st.parts.len() as u64 != n { self.fail(format!("assert_inspector: {} parts, expected {n}", st.parts.len())); }
+                        if let Some(p) = step["part"].as_str() && !st.parts.iter().any(|(l, v)| format!("{l} {v}") == p) { self.fail(format!("assert_inspector: no part {p:?} in {:?}", st.parts)); }
+                    }
+                    _ => self.fail("assert_inspector: the inspector is not open".into()),
                 }
             }
             "assert_tasks" => {
@@ -1048,6 +1095,7 @@ impl App {
                     Popup::RenameFile { .. } => "rename_file",
                     Popup::Scenarios(_) => "scenarios",
                     Popup::Conflicts => "conflicts",
+                    Popup::Inspector(_) => "inspector",
                     Popup::NewBranch { .. } => "new_branch",
                     Popup::LocalCommit { .. } => "local_commit",
                 };

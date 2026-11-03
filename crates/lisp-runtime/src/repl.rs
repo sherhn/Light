@@ -28,6 +28,9 @@ pub enum ReplEvent {
     Done { id: u64, package: String },
     /// Answer to a non-eval request (completion, arglist, doc, ...).
     Reply { id: u64, payload: String },
+    /// An evaluation of `eval-debug` stopped for an error and waits for a restart: the condition, the restarts and the
+    /// frames (see `debug-loop` in repl-server.lisp).
+    Debugger { id: u64, payload: String },
     Exited(Option<i32>),
 }
 
@@ -134,6 +137,7 @@ fn to_event(m: protocol::Message) -> ReplEvent {
         "error" => ReplEvent::Error { id: m.id, message: m.payload },
         "trace" => ReplEvent::Trace { id: m.id, text: m.payload },
         "done" => ReplEvent::Done { id: m.id, package: m.payload },
+        "debugger" => ReplEvent::Debugger { id: m.id, payload: m.payload },
         _ => ReplEvent::Reply { id: m.id, payload: m.payload },
     }
 }
@@ -224,6 +228,11 @@ impl ReplSession {
 
     pub fn eval(&self, code: &str) -> io::Result<u64> {
         self.request("eval", code)
+    }
+
+    /// Evaluate the user's code: an error stops in the debugger (a [`ReplEvent::Debugger`]) until a restart is chosen.
+    pub fn eval_debug(&self, code: &str) -> io::Result<u64> {
+        self.request("eval-debug", code)
     }
 
     pub fn try_recv(&self) -> Option<ReplEvent> {

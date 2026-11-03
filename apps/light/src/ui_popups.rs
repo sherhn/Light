@@ -58,6 +58,7 @@ impl App {
         self.draw_settings(ctx);
         self.draw_info_dialogs(ctx);
         self.draw_conflicts_dialog(ctx);
+        self.draw_inspector(ctx);
         self.draw_completion(ctx);
         self.draw_hint(ctx);
         self.draw_hover(ctx);

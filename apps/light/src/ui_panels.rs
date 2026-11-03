@@ -873,6 +873,7 @@ impl App {
                 self.ensure_repl();
             }
         });
+        self.draw_lisp_debugger(ui);
         let input_h = self.console_input_height(ui, &self.repl.input);
         let avail = ui.available_height() - input_h - ui.spacing().item_spacing.y;
         let mut log_out = LogOut::default();

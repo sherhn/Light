@@ -9,6 +9,7 @@ mod app_testing;
 mod app_http;
 mod app_conflicts;
 mod app_debug;
+mod app_lisp_tools;
 mod ui_debug;
 mod gutter;
 mod app_scenario;

@@ -173,6 +173,11 @@ cmds! {
     "lisp.backward_sexp", "Backward Form", Code, ["Ctrl+Alt+B"];
     "lisp.up_list", "Up Form", Code, ["Ctrl+Alt+U"];
     "lisp.down_list", "Down Form", Code, ["Ctrl+Alt+D"];
+    "lisp.inspect", "Inspect Value...", Code, ["Ctrl+Alt+I"];
+    "lisp.who_calls", "Who Calls", Code, ["Ctrl+Alt+H"];
+    "lisp.who_references", "Who References", Code, [];
+    "lisp.who_macroexpands", "Who Macroexpands", Code, [];
+    "lisp.trace", "Toggle Trace", Code, [];
     // ---- Refactor
     "refactor.rename", "Rename...", Refactor, ["Shift+F6"];
     // ---- Run / REPL
