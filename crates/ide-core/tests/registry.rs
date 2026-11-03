@@ -418,7 +418,7 @@ fn package_scripts_and_make_targets_are_tasks() {
     let npm = &module("javascript").tasks[0];
     assert!(npm.holds("package.json") && npm.skip.contains(&"node_modules".to_string()));
     assert_eq!(npm.tasks_in(r#"{"name":"app","scripts":{"dev":"vite","test":"vitest run"}}"#), ["dev", "test"]);
-    assert_eq!(npm.command_line("test", "/p/package.json", "/p", true), "npm run \"test\"");
+    assert_eq!(npm.command_line("test", "/p/package.json", "/p", "/p", true), "npm run \"test\"");
     let make = &module("shell-make").tasks[0];
     assert!(make.holds("Makefile") && make.holds("GNUmakefile"));
     let mk = "CC := gcc\nOBJS = a.o\n.PHONY: all clean\nall: bin/app\nbin/app: $(OBJS)\n\t$(CC) -o $@ $^\n%.o: %.c\n\t$(CC) -c $<\nclean:\n\trm -f bin/app\ninstall:: all\n";
@@ -468,4 +468,42 @@ fn the_node_debugger_is_downloaded_from_its_release_and_launches_the_file() {
     assert!(d.command.iter().any(|a| a.contains("{adapter}")) && d.command.iter().any(|a| a == "{port}"));
     let launch = ide_core::dap::fill(&d.launch, &[("file", "/p/a.js"), ("dir", "/p")]);
     assert_eq!((launch["program"].as_str(), launch["cwd"].as_str(), launch["console"].as_str()), (Some("/p/a.js"), Some("/p"), Some("internalConsole")));
+}
+
+#[test]
+fn c_and_cpp_have_cmake_tasks_ctest_tests_gdb_and_memory_checks() {
+    use ide_core::testing;
+    let module = manifests().into_iter().find(|m| m.id == "c-cpp").unwrap();
+    // CMake: the project's own steps first, then its targets; the presets
+    let cmake = &module.tasks[0];
+    let lists = "cmake_minimum_required(VERSION 3.16)\nproject(app CXX)\nadd_library(core core.cpp)\nadd_executable(app main.cpp)\n  add_executable( tests test.cpp )\n";
+    assert_eq!(cmake.tasks_in(lists), ["configure", "build", "test", "clean", "core", "app", "tests"]);
+    assert_eq!(cmake.command_line("configure", "/p/CMakeLists.txt", "/p", "/p", false), "cmake -S \"/p\" -B \"/p/build\" -DCMAKE_BUILD_TYPE=Debug");
+    assert_eq!(cmake.command_line("app", "/p/CMakeLists.txt", "/p", "/p", false), "cmake --build \"/p/build\" --target app");
+    let presets = r#"{"version":6,"configurePresets":[{"name":"base","hidden":true},{"name":"debug","inherits":"base"}],"buildPresets":[{"name":"debug","configurePreset":"debug"}]}"#;
+    assert_eq!(module.tasks[1].tasks_in(presets), ["debug"]);
+    assert_eq!(module.tasks[2].command_line("debug", "/p/CMakePresets.json", "/p", "/p", false), "cmake --build --preset debug");
+    assert!(module.tasks[3].tasks_in(presets).is_empty());
+    // GoogleTest: Suite.Name, as gtest_discover_tests registers it with CTest
+    let (gtest, catch2) = (&module.tests[0], &module.tests[1]);
+    let spec = "#include <gtest/gtest.h>\n\nTEST(Math, Adds) {\n  EXPECT_EQ(2, 1 + 1);\n}\nTEST_F(MathFixture, Fails) {}\n";
+    assert!(testing::wants(gtest, "tests/math_test.cpp", spec) && !testing::wants(gtest, "main.cpp", "int main() {}"));
+    let items = testing::find(gtest, spec);
+    assert_eq!(items.iter().map(|i| i.full.as_str()).collect::<Vec<_>>(), ["Math.Adds", "MathFixture.Fails"]);
+    assert_eq!(testing::command_line(gtest, Some(&items[0]), "/p/t.cpp", "/p", "/p", false), r#"cmake --build "/p/build" && ctest --test-dir "/p/build" --output-on-failure -R "^Math\.Adds$""#);
+    // what ctest printed in Ubuntu 24.04
+    let out = "Test project /p/build\n    Start 1: Math.Adds\n1/3 Test #1: Math.Adds ........................   Passed    0.00 sec\n    Start 2: MathFixture.Fails\n2/3 Test #2: MathFixture.Fails ................***Failed    0.00 sec\n3/3 Test #3: adds numbers .....................***Not Run   0.00 sec\n";
+    let o = testing::outcome(gtest, out);
+    assert_eq!((o.passed, o.failed), (vec!["Math.Adds".to_string()], vec!["MathFixture.Fails".to_string(), "adds numbers".to_string()]));
+    let cases = testing::find(catch2, "#include <catch2/catch_test_macros.hpp>\nTEST_CASE(\"adds numbers\") {}\nSCENARIO(\"a story\") {}\n");
+    assert_eq!(cases.iter().map(|i| i.full.as_str()).collect::<Vec<_>>(), ["adds numbers", "a story"]);
+    assert!(testing::is_named(catch2, &cases[0], "adds numbers"));
+    // GDB over its own Debug Adapter Protocol, the file built with debug information first
+    let gdb = module.debug.iter().find(|d| d.languages == ["c"]).unwrap();
+    assert_eq!((gdb.transport.as_str(), gdb.command.join(" ")), ("stdio", "gdb -q -i dap".to_string()));
+    assert!(gdb.prepare.contains("-g -O0") && gdb.windows_prepare.contains(".exe"));
+    let launch = ide_core::dap::fill(&gdb.launch, &[("dir", "/p"), ("stem", "main"), ("exe", "")]);
+    assert_eq!(launch["program"].as_str(), Some("/p/main"));
+    let names: Vec<&str> = module.run.iter().filter(|r| r.language == "cpp").map(|r| r.name.as_str()).collect();
+    assert_eq!(names, ["Compile and run file", "Run with AddressSanitizer", "Run under Valgrind"]);
 }
