@@ -11,7 +11,9 @@ Add the languages and tools your project needs.
 - Code highlighting, completion, navigation and project search.
 - Integrated Git with merge conflict resolution, terminal and run scenarios.
 - A Tasks window for package.json scripts and make targets; run buttons for Vitest, Jest and node:test tests.
-- A debugger for Node.js (breakpoints, stepping, variables, a console), set up on first use.
+- A debugger for Node.js (breakpoints, stepping, variables, a console), set up on first use, and GDB for C and C++.
+- C and C++: CMake tasks and presets, GoogleTest, Catch2 and doctest tests through CTest, AddressSanitizer and Valgrind runs.
+- Lisp: errors stop in a debugger with restarts and the frames' variables; an inspector, who calls and trace.
 - Linux through WSL on Windows.
 - Local history, document previews (Markdown, reStructuredText, SVG), an image viewer (PNG, JPEG, GIF, BMP, WebP, ICO) and customizable themes.
 
@@ -34,7 +36,9 @@ Light — открытая модульная IDE на Rust и egui для Windo
 - Подсветка кода, автодополнение, навигация и поиск по проекту.
 - Встроенные Git с разрешением конфликтов слияния, терминал и сценарии запуска.
 - Окно задач для скриптов package.json и целей make; кнопки запуска тестов Vitest, Jest и node:test.
-- Отладчик Node.js (точки останова, шаги, переменные, консоль), который настраивается при первом запуске.
+- Отладчик Node.js (точки останова, шаги, переменные, консоль), который настраивается при первом запуске, и GDB для C и C++.
+- C и C++: задачи и пресеты CMake, тесты GoogleTest, Catch2 и doctest через CTest, запуск с AddressSanitizer и под Valgrind.
+- Lisp: ошибка останавливается в отладчике с рестартами и переменными кадров; инспектор, «кто вызывает» и trace.
 - Linux через WSL при работе в Windows.
 - Локальная история, предпросмотр документов (Markdown, reStructuredText, SVG), просмотр изображений (PNG, JPEG, GIF, BMP, WebP, ICO) и настраиваемые темы.
 
