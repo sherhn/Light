@@ -551,6 +551,7 @@ impl App {
                 self.services.refreshed_at_reset();
             }
             "run.coverage" => self.run_with_coverage(),
+            "run.profile" => self.run_with_profiler(),
             "repl.inspect" => self.lisp_inspect(None),
             "repl.who_calls" => self.lisp_xref("who-calls"),
             "repl.who_references" => self.lisp_xref("who-references"),

@@ -23,6 +23,7 @@ pub mod http;
 pub mod index;
 pub mod localvcs;
 pub mod paths;
+pub mod profile;
 pub mod modules;
 pub mod search;
 pub mod testing;

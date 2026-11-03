@@ -525,3 +525,11 @@ fn node_test_and_jest_measure_coverage_into_the_report() {
     assert!(line.contains("--coverageDirectory=\"{report_dir}\"") && !line.contains(" -t "), "{line}");
     assert_eq!(testing::command_line_for(node, None, "/p/a.test.mjs", "/p", "/p", false, false), testing::command_line(node, None, "/p/a.test.mjs", "/p", "/p", false));
 }
+
+#[test]
+fn node_profiles_a_file_into_the_report_folder() {
+    let module = manifests().into_iter().find(|m| m.id == "javascript").unwrap();
+    let p = module.run.iter().find(|r| r.profile == "cpuprofile").unwrap();
+    assert_eq!(p.name, "Node: Profile file");
+    assert!(p.command.contains("--cpu-prof") && p.command.contains("--cpu-prof-dir=\"{report_dir}\""));
+}

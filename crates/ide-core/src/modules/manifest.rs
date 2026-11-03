@@ -24,6 +24,9 @@ pub struct RunDef {
     /// The run measures code coverage: the format of the report (see [`crate::coverage::FORMATS`]) it writes to
     /// `{report}` (in the folder `{report_dir}`, which the IDE makes for the run).
     pub coverage: String,
+    /// The run profiles the program: the format of the profile (see [`crate::profile::FORMATS`]) it writes to
+    /// `{report}` or as the one file of its kind in `{report_dir}`.
+    pub profile: String,
 }
 
 impl RunDef {
@@ -60,7 +63,7 @@ pub struct CheckDef {
 impl CheckDef {
     /// The command line that checks `file` (see [`RunDef::command_line`]).
     pub fn command_line(&self, file: &str, dir: &str, windows: bool) -> String {
-        RunDef { language: self.language.clone(), name: self.name.clone(), command: self.command.clone(), windows: self.windows.clone(), coverage: String::new() }.command_line(file, dir, windows)
+        RunDef { language: self.language.clone(), name: self.name.clone(), command: self.command.clone(), windows: self.windows.clone(), ..Default::default() }.command_line(file, dir, windows)
     }
 }
 
@@ -342,6 +345,11 @@ impl Manifest {
                 return Err(format!("{}: the check {:?} is for the unknown language {:?}", self.id, c.name, c.language));
             }
             crate::modules::check::compile(&c.pattern).map_err(|e| format!("{}: the check {:?}: {e}", self.id, c.name))?;
+        }
+        for r in self.run.iter().filter(|r| !r.profile.is_empty()) {
+            if !crate::profile::FORMATS.contains(&r.profile.as_str()) {
+                return Err(format!("{}: the run command {:?}: unknown profile format {:?}", self.id, r.name, r.profile));
+            }
         }
         for r in self.run.iter().filter(|r| !r.coverage.is_empty()) {
             if !crate::coverage::FORMATS.contains(&r.coverage.as_str()) {

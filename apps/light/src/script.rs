@@ -82,6 +82,7 @@ impl App {
             "debug_idle" => self.debug.status == crate::app_debug::DebugStatus::Idle,
             "lisp_debugger" => !self.repl.debuggers.is_empty(),
             "coverage" => !self.coverage.files.is_empty(),
+            "profile" => self.profiler.profile.is_some(),
             "services_listed" => self.services.idle(),
             "services_logs" => cond["value"].as_str().is_some_and(|v| self.container_log_text().contains(v)),
             "container_state" => cond["name"].as_str().is_some_and(|n| self.services.containers.iter().any(|c| c.name == n && c.state == cond["value"].as_str().unwrap_or_default())),
@@ -648,6 +649,44 @@ impl App {
                     Some(c) if c.state != sval => self.fail(format!("assert_container: {name} is {}, expected {sval}", c.state)),
                     None if sval != "gone" => self.fail(format!("assert_container: no {name} among {:?}", self.services.containers.iter().map(|c| &c.name).collect::<Vec<_>>())),
                     _ => {}
+                }
+            }
+            "profiler_click" => {
+                // a box of the flame graph (`flame:NAME`), a row of the table (`hot:NAME`), a view (`view:hot`), `reset`;
+                // `"double": true` double-clicks
+                match self.profiler.rows.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        for _ in 0..if step["double"].as_bool().unwrap_or(false) { 2 } else { 1 } {
+                            s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                            s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                        }
+                    }
+                    None => self.fail(format!("profiler_click: no {sval:?} among {:?}", self.profiler.rows.iter().map(|(k, _)| k).take(30).collect::<Vec<_>>())),
+                }
+            }
+            "assert_profile" => {
+                // {"value": a function the profile has, "min": its least share of the samples in %, "zoom": the depth}
+                match self.profiler.profile.clone() {
+                    None => self.fail("assert_profile: there is no profile".into()),
+                    Some(p) => {
+                        let hot = ide_core::profile::hot(&p.root);
+                        match hot.iter().find(|h| h.name == sval) {
+                            None if !sval.is_empty() => self.fail(format!("assert_profile: no {sval:?} among {:?}", hot.iter().take(10).map(|h| &h.name).collect::<Vec<_>>())),
+                            Some(h) => {
+                                let share = h.total as f64 * 100.0 / p.root.total.max(1) as f64;
+                                if let Some(min) = step["min"].as_f64() && share < min { self.fail(format!("assert_profile: {sval} has {share:.1}%, expected {min}% or more")); }
+                            }
+                            None => {}
+                        }
+                        if let Some(z) = step["zoom"].as_u64() && self.profiler.zoom.len() as u64 != z { self.fail(format!("assert_profile: zoomed {} deep, expected {z}", self.profiler.zoom.len())); }
+                        // `"zoomed": "NAME"`: the function zoomed into
+                        if let Some(name) = step["zoomed"].as_str() {
+                            let at = self.profiler.zoom.iter().try_fold(&p.root, |f, i| f.children.get(*i));
+                            if at.is_none_or(|f| f.name != name) { self.fail(format!("assert_profile: not zoomed into {name:?} ({:?})", at.map(|f| &f.name))); }
+                        }
+                    }
                 }
             }
             "assert_tasks" => {
@@ -1410,6 +1449,7 @@ impl App {
                     Some(BottomTool::Debug) => "debug",
                     Some(BottomTool::Coverage) => "coverage",
                     Some(BottomTool::Services) => "services",
+                    Some(BottomTool::Profiler) => "profiler",
                     None => "none",
                 };
                 if name != sval {

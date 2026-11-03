@@ -54,7 +54,7 @@ DEBUG = [dict(name="Node.js", languages=["javascript", "jsx"], download=JS_DEBUG
 
 
 MODULE = module(
-    id="javascript", name="JavaScript", category="Languages", version="1.4.0",
+    id="javascript", name="JavaScript", category="Languages", version="1.5.0",
     summary="JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
     description="JavaScript ES modules and CommonJS, JSX and package.json. Syntax coloring includes comments, strings, template literals, regular expressions, keywords and browser/Node builtins. Brace indentation and folding, function/class outline and completion. Node.js syntax checks, Run, Watch and node:test; package.json exposes npm install, start, dev, build, test and lint. Uses your Node.js/npm on Windows, macOS or Linux (including WSL). No files or dependencies are created until you explicitly run a command.",
     languages=[
@@ -62,7 +62,9 @@ MODULE = module(
         dict(id="jsx", name="JSX", extensions=["jsx"], line_comment="//", block_comment=["/*", "*/"], brackets=["()", "[]", "{}"], indent={"mode": "braces", "size": 2}, fold="braces", grammar=GRAMMAR + [match(r"</?([A-Za-z][\w.-]*)", captures={1: "type"}), match(r"\b([\w-]+)=", captures={1: "argument"})], outline=[outline(r"(?:function|class)[ \t]+([\w$]+)", "function")]),
         dict(id="javascript-package", name="npm package", filenames=["package.json"], brackets=["[]", "{}"], indent={"mode": "braces", "size": 2}, fold="braces", check=["brackets"], grammar=JSON_GRAMMAR, outline=[outline(r'^[ \t]*"([^"\n]+)"[ \t]*:', "variable")]),
     ],
-    run=[dict(language="javascript", name="Node: Run file", command='node "{file}"'), dict(language="javascript", name="Node: Watch file", command='node --watch "{file}"'), dict(language="javascript", name="Node: Test file", command='node --test "{file}"')]
+    run=[dict(language="javascript", name="Node: Run file", command='node "{file}"'), dict(language="javascript", name="Node: Watch file", command='node --watch "{file}"'), dict(language="javascript", name="Node: Test file", command='node --test "{file}"'),
+         # where the time goes: Node.js samples the program and the IDE draws the calls as a flame graph
+         dict(language="javascript", name="Node: Profile file", profile="cpuprofile", command='node --cpu-prof --cpu-prof-dir="{report_dir}" "{file}"')]
         + [dict(language="javascript-package", name="npm: " + label, command='npm --prefix "{dir}" ' + command) for label, command in [("Install dependencies", "install"), ("Start", "start"), ("Development server", "run dev"), ("Build", "run build"), ("Test", "test"), ("Lint", "run lint")]],
     check=[dict(language="javascript", name="Node syntax", command='node --check "{file}"', pattern=r"(?m)^(?P<file>[^\n]+):(?P<line>\d+)\r?\n(?:[^\n]*\n)*?SyntaxError: (?P<msg>[^\n]+)")],
     tests=TESTS,

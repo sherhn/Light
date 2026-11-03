@@ -39,6 +39,7 @@ pub enum BottomTool {
     Coverage,
     /// What runs: the Run tabs still going and the containers of Docker.
     Services,
+    Profiler,
 }
 
 /// The editor area divided into two panes. The focused pane shows `docs[active]`; the other one shows the

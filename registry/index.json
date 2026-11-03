@@ -407,7 +407,7 @@
     {
       "id": "javascript",
       "name": "JavaScript",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "category": "Languages",
       "summary": "JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
       "cover": "cover.png",
@@ -415,8 +415,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 18413,
-          "sha256": "ba18163cd492acc03a4d37a715fcac5f416ada1ea5f85aa04bc755eed93b72a9"
+          "size": 18603,
+          "sha256": "4ba9147e71196feb0bc5dc1bd89d6d74956bb17042660e4ddb66ccb2d51988de"
         },
         {
           "name": "LICENSE",

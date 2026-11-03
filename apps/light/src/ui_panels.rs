@@ -419,6 +419,7 @@ impl App {
             (BottomTool::Debug, tr("Debug").to_string()),
             (BottomTool::Coverage, tr("Coverage").to_string()),
             (BottomTool::Services, tr("Services").to_string()),
+            (BottomTool::Profiler, tr("Profiler").to_string()),
             (BottomTool::Find, if self.find_results.hits.is_empty() { tr("Find").to_string() } else { format!("{}  {}", tr("Find"), self.find_results.hits.len()) }),
         ];
         let mut switch_to = None;
@@ -426,7 +427,8 @@ impl App {
         let debug = self.debug.status != crate::app_debug::DebugStatus::Idle || !self.debug.console.is_empty() || self.debuggable(self.active);
         let coverage = !self.coverage.files.is_empty() || tool == BottomTool::Coverage;
         let services = self.docker_enabled() || tool == BottomTool::Services;
-        for (t, label) in tabs.into_iter().filter(|(t, _)| (lisp || *t != BottomTool::Repl) && (debug || *t != BottomTool::Debug) && (coverage || *t != BottomTool::Coverage) && (services || *t != BottomTool::Services)) {
+        let profiler = self.profiler.profile.is_some() || tool == BottomTool::Profiler;
+        for (t, label) in tabs.into_iter().filter(|(t, _)| (lisp || *t != BottomTool::Repl) && (debug || *t != BottomTool::Debug) && (coverage || *t != BottomTool::Coverage) && (services || *t != BottomTool::Services) && (profiler || *t != BottomTool::Profiler)) {
             let active = t == tool;
             let font = if active { fonts::semibold(13.5) } else { fonts::ui(13.5) };
             let g = ui.painter().layout_no_wrap(label.clone(), font.clone(), pal.text);
@@ -523,6 +525,11 @@ impl App {
                 }
             }
             BottomTool::Services => {}
+            BottomTool::Profiler => {
+                if self.header_action(ui, hr, slot, Icon::Clear, "Clear profile") {
+                    self.profiler = Default::default();
+                }
+            }
             BottomTool::Coverage => {
                 if self.header_action(ui, hr, slot, Icon::Clear, "Clear coverage") {
                     self.coverage = Default::default();
@@ -564,6 +571,7 @@ impl App {
             Some(BottomTool::Debug) => self.draw_debug(ui, ctx),
             Some(BottomTool::Coverage) => self.draw_coverage(ui),
             Some(BottomTool::Services) => self.draw_services(ui),
+            Some(BottomTool::Profiler) => self.draw_profiler(ui),
             None => {}
         }
     }

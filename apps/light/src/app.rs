@@ -85,6 +85,8 @@ pub struct App {
     pub git_tools: crate::app_git_tools::GitTools,
     /// The Services window: the containers of Docker.
     pub services: crate::app_docker::ServicesState,
+    /// The last CPU profile.
+    pub profiler: crate::app_profiler::ProfilerState,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -205,6 +207,7 @@ impl App {
             coverage: Default::default(),
             git_tools: Default::default(),
             services: Default::default(),
+            profiler: Default::default(),
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -424,6 +427,7 @@ impl App {
         self.git_tools = Default::default();
         self.stop_services();
         self.services = Default::default();
+        self.profiler = Default::default();
         self.modules_banner_dismissed = false;
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder
@@ -1247,6 +1251,7 @@ impl App {
             self.http_finished(code);
             self.debug_build_finished(code);
             self.coverage_finished(code);
+            self.profile_finished(code);
             // a scenario goes on with its next command
             self.scenario_after_exit(code);
         }
