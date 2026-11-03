@@ -69,3 +69,4 @@ pub const FOLDER_SEARCH: char = '\u{e339}';
 pub const SUN: char = '\u{e178}';
 pub const MOON: char = '\u{e11e}';
 pub const FILE: char = '\u{e0c0}';
+pub const LIST_VIDEO: char = '\u{e2e2}';

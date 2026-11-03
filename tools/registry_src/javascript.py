@@ -18,7 +18,7 @@ GRAMMAR = [
 
 
 MODULE = module(
-    id="javascript", name="JavaScript", category="Languages", version="1.0.2",
+    id="javascript", name="JavaScript", category="Languages", version="1.1.0",
     summary="JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
     description="JavaScript ES modules and CommonJS, JSX and package.json. Syntax coloring includes comments, strings, template literals, regular expressions, keywords and browser/Node builtins. Brace indentation and folding, function/class outline and completion. Node.js syntax checks, Run, Watch and node:test; package.json exposes npm install, start, dev, build, test and lint. Uses your Node.js/npm on Windows, macOS or Linux (including WSL). No files or dependencies are created until you explicitly run a command.",
     languages=[
@@ -29,6 +29,8 @@ MODULE = module(
     run=[dict(language="javascript", name="Node: Run file", command='node "{file}"'), dict(language="javascript", name="Node: Watch file", command='node --watch "{file}"'), dict(language="javascript", name="Node: Test file", command='node --test "{file}"')]
         + [dict(language="javascript-package", name="npm: " + label, command='npm --prefix "{dir}" ' + command) for label, command in [("Install dependencies", "install"), ("Start", "start"), ("Development server", "run dev"), ("Build", "run build"), ("Test", "test"), ("Lint", "run lint")]],
     check=[dict(language="javascript", name="Node syntax", command='node --check "{file}"', pattern=r"(?m)^(?P<file>[^\n]+):(?P<line>\d+)\r?\n(?:[^\n]*\n)*?SyntaxError: (?P<msg>[^\n]+)")],
+    # every script of every package.json of the project, run in its folder (the Tasks window)
+    tasks=[dict(name="npm", files=["package.json"], json="scripts", command='npm run "{task}"', skip=["node_modules"])],
     tools=[dict(name="Node.js and npm", programs=["node", "npm"], required=["node", "npm"], apt="nodejs npm")],
     detect=dict(extensions=["js", "mjs", "cjs", "jsx"], files=["package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"]),
 )

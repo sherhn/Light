@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.1.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
@@ -553,6 +553,19 @@
       "name": "Node syntax",
       "command": "node --check \"{file}\"",
       "pattern": "(?m)^(?P<file>[^\\n]+):(?P<line>\\d+)\\r?\\n(?:[^\\n]*\\n)*?SyntaxError: (?P<msg>[^\\n]+)"
+    }
+  ],
+  "tasks": [
+    {
+      "name": "npm",
+      "files": [
+        "package.json"
+      ],
+      "json": "scripts",
+      "command": "npm run \"{task}\"",
+      "skip": [
+        "node_modules"
+      ]
     }
   ],
   "tools": [

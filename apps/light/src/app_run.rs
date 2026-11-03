@@ -71,6 +71,27 @@ pub fn message_path(run: &MakeRun, dir: &str, file: &str) -> PathBuf {
     }
 }
 
+/// A shell command line run in `dir`: by the shell of the project's Linux (its errors in the same stream as its output),
+/// or by the shell of this computer.
+pub fn shell_launch(line: &str, dir: &Path, t: Option<&Target>) -> Launch {
+    match t {
+        Some(t) => {
+            let marker = wsl::new_marker();
+            let cmd = wsl::shell(t, dir, &format!("{line} 2>&1"), &[], &marker);
+            Launch { cmd, cleanup: Some(wsl::Cleanup { target: t.clone(), marker }) }
+        }
+        None => Launch { cmd: ide_core::cmdscript::shell_command(line, dir, &[]), cleanup: None },
+    }
+}
+
+/// A path as the shell of the project sees it: in its Linux, or with forward slashes here.
+pub fn shell_path(path: &Path, t: Option<&Target>) -> String {
+    match t {
+        Some(t) => wsl::to_linux(path, t),
+        None => path.display().to_string().replace('\\', "/"),
+    }
+}
+
 impl App {
     pub fn html_browser_available(&self) -> bool {
         self.doc().is_some_and(|doc| doc.diff.is_none() && doc.page.is_none()
@@ -182,7 +203,7 @@ impl App {
     }
 
     /// Show `launch` in the Run window as the current run; its compiler messages become problems when it ends.
-    fn start_run(&mut self, key: String, title: String, launch: Launch, label: &str, root: PathBuf, t: Option<Target>) -> bool {
+    pub(crate) fn start_run(&mut self, key: String, title: String, launch: Launch, label: &str, root: PathBuf, t: Option<Target>) -> bool {
         match runner::spawn_launch(launch) {
             Ok(h) => {
                 let place = match &t {
@@ -227,14 +248,7 @@ impl App {
         };
         let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let line = def.command_line(&file_s, &dir_s, t.is_none());
-        let launch = match &t {
-            Some(t) => {
-                let marker = wsl::new_marker();
-                let cmd = wsl::shell(t, &root, &format!("{line} 2>&1"), &[], &marker);
-                Launch { cmd, cleanup: Some(wsl::Cleanup { target: t.clone(), marker }) }
-            }
-            None => Launch { cmd: ide_core::cmdscript::shell_command(&line, &root, &[]), cleanup: None },
-        };
+        let launch = shell_launch(&line, &root, t.as_ref());
         if self.start_run(format!("file:{}", file.display()), format!("{} '{}'", def.name, name), launch, &def.name, root, t) {
             self.run_request = Some(RunRequest::Language(def.clone(), file.to_path_buf()));
         }
@@ -417,6 +431,8 @@ pub enum RunRequest {
     Make(String),
     Asdf(String, bool),
     Scenario(String),
+    /// A task of the Tasks window: how its file's tasks run, the file, the task.
+    Task(ide_core::modules::TaskDef, PathBuf, String),
 }
 
 pub struct RunTab {
@@ -467,6 +483,7 @@ impl App {
             Some(RunRequest::Make(target)) => self.run_make(&target),
             Some(RunRequest::Asdf(system, test)) => self.run_asdf_system(&system, test),
             Some(RunRequest::Scenario(name)) => self.run_scenario(&name),
+            Some(RunRequest::Task(def, path, task)) => self.run_task(&def, &path, &task),
             None => self.run_selected(),
         }
     }

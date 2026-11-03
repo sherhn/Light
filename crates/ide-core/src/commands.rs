@@ -192,6 +192,7 @@ cmds! {
     "view.run", "Run", View, ["Alt+4"];
     "view.problems", "Problems", View, ["Alt+6"];
     "view.structure", "Structure", View, ["Alt+7"];
+    "view.tasks", "Tasks", View, ["Alt+2"];
     "view.repl", "REPL", View, ["Alt+8"];
     "view.terminal", "Terminal", View, ["Alt+F12"];
     "view.hide_all", "Hide All Tool Windows", View, ["Ctrl+Shift+F12"];

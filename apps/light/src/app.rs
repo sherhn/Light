@@ -71,6 +71,8 @@ pub struct App {
     pub hover: crate::hover::HoverState,
     /// The syntax checks of the languages of modules, running in the background.
     pub checks: crate::app_check::CheckState,
+    /// The tasks the project's files define (the Tasks window).
+    pub tasks: crate::app_tasks::TasksState,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -184,6 +186,7 @@ impl App {
             hint: None,
             hover: Default::default(),
             checks: Default::default(),
+            tasks: Default::default(),
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -394,6 +397,7 @@ impl App {
         self.hint = None;
         self.hide_hover();
         self.needed_modules.clear();
+        self.tasks = Default::default();
         self.modules_banner_dismissed = false;
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder

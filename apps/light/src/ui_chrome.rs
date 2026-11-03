@@ -419,6 +419,7 @@ impl App {
                 (Icon::Project, LeftTool::Project, tr("Project (Alt+1)"), None),
                 (Icon::Commit, LeftTool::Commit, tr("Commit (Alt+0)"), commit_badge),
                 (Icon::List, LeftTool::Structure, tr("Structure (Alt+7)"), None),
+                (Icon::Tasks, LeftTool::Tasks, tr("Tasks (Alt+2)"), None),
             ] {
                 if self.strip_button(ui, icon, self.left_tool == Some(tool), tip, badge) {
                     self.toggle_left(tool);

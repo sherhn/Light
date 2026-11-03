@@ -93,7 +93,7 @@ impl App {
         r
     }
 
-    fn header_action(&mut self, ui: &mut egui::Ui, header: Rect, slot: usize, icon: Icon, tip: &'static str) -> bool {
+    pub(crate) fn header_action(&mut self, ui: &mut egui::Ui, header: Rect, slot: usize, icon: Icon, tip: &'static str) -> bool {
         let pal = self.pal;
         let r = Rect::from_min_size(Pos2::new(header.max.x - 12.0 - 32.0 * (slot as f32 + 1.0), header.center().y - 14.0), Vec2::splat(28.0));
         let resp = ui.interact(r, ui.scope_id().with(("hdr", tip)), Sense::click());

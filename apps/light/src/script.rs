@@ -296,6 +296,28 @@ impl App {
                     None => self.fail(format!("run_tab_click: no visible run tab {sval:?}")),
                 }
             }
+            "assert_tasks" => {
+                self.refresh_tasks(true);
+                let file = step["file"].as_str().unwrap_or_default();
+                let expected: Vec<String> = step["value"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(String::from)).collect();
+                match self.tasks.files.iter().find(|f| f.rel == file) {
+                    Some(f) if f.tasks == expected => {}
+                    Some(f) => self.fail(format!("tasks of {file}: expected {expected:?}, got {:?}", f.tasks)),
+                    None => self.fail(format!("no tasks file {file:?} among {:?}", self.tasks.files.iter().map(|f| &f.rel).collect::<Vec<_>>())),
+                }
+            }
+            "task_click" => {
+                let file = step["file"].as_str().unwrap_or_default();
+                match self.tasks.rows.iter().find(|(rel, task, _)| rel == file && *task == sval).map(|(_, _, r)| r.center()) {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("task_click: no visible task {sval:?} of {file:?}")),
+                }
+            }
             "select_module_run" => {
                 if let Some((module, def)) = self.available_module_runs().into_iter().find(|(_, def)| def.name == sval) {
                     self.run_config = crate::app_run::RunConfig::Module(module, def.name);
@@ -479,7 +501,7 @@ impl App {
                     let result = match op.as_str() {
                         "block_save" => std::fs::remove_file(&path).and_then(|()| std::fs::create_dir(&path)),
                         "unblock_save" => std::fs::remove_dir(&path).and_then(|()| std::fs::write(&path, &sval)),
-                        _ => std::fs::write(&path, &sval),
+                        _ => path.parent().map_or(Ok(()), std::fs::create_dir_all).and_then(|()| std::fs::write(&path, &sval)),
                     };
                     if let Err(error) = result { self.fail(format!("{op}: {}: {error}", path.display())); }
                 } else { self.fail(format!("{op}: missing path")); }
@@ -1038,6 +1060,7 @@ impl App {
                     Some(LeftTool::Project) => "project",
                     Some(LeftTool::Structure) => "structure",
                     Some(LeftTool::Commit) => "commit",
+                    Some(LeftTool::Tasks) => "tasks",
                     None => "none",
                 };
                 if name != sval {

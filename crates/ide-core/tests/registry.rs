@@ -411,3 +411,16 @@ fn every_run_command_names_a_language_and_a_known_placeholder() {
         }
     }
 }
+
+#[test]
+fn package_scripts_and_make_targets_are_tasks() {
+    let module = |id: &str| manifests().into_iter().find(|m| m.id == id).unwrap();
+    let npm = &module("javascript").tasks[0];
+    assert!(npm.holds("package.json") && npm.skip.contains(&"node_modules".to_string()));
+    assert_eq!(npm.tasks_in(r#"{"name":"app","scripts":{"dev":"vite","test":"vitest run"}}"#), ["dev", "test"]);
+    assert_eq!(npm.command_line("test", "/p/package.json", "/p", true), "npm run \"test\"");
+    let make = &module("shell-make").tasks[0];
+    assert!(make.holds("Makefile") && make.holds("GNUmakefile"));
+    let mk = "CC := gcc\nOBJS = a.o\n.PHONY: all clean\nall: bin/app\nbin/app: $(OBJS)\n\t$(CC) -o $@ $^\n%.o: %.c\n\t$(CC) -c $<\nclean:\n\trm -f bin/app\ninstall:: all\n";
+    assert_eq!(make.tasks_in(mk), ["all", "clean"], "assignments, special and pattern rules are not tasks to run");
+}

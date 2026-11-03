@@ -1134,4 +1134,8 @@ pub const RU: &[(&str, &str)] = &[
     ("Clear (Ctrl+L)", "Очистить (Ctrl+L)"),
     ("Stop running command (Ctrl+C)", "Остановить команду (Ctrl+C)"),
     ("New shell", "Новая оболочка"),
+    ("Tasks", "Задачи"),
+    ("Tasks (Alt+2)", "Задачи (Alt+2)"),
+    ("No tasks: the files of the project define none that the modules that are on know of (package.json scripts, make targets).", "Задач нет: файлы проекта не задают таких, которые знают включённые модули (скрипты package.json, цели make)."),
+    ("Run '{}'", "Запустить «{}»"),
 ];

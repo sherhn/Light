@@ -23,6 +23,8 @@ pub enum LeftTool {
     Structure,
     /// The Commit window: changed files, commit message, buttons.
     Commit,
+    /// The tasks the project's files define (package.json scripts, make targets).
+    Tasks,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

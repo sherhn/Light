@@ -61,6 +61,64 @@ impl CheckDef {
     }
 }
 
+/// Where the tasks of a project are written down - the `scripts` of a package.json, the targets of a makefile - and
+/// the command that runs one. The Tasks window lists them for every file of the project with one of `files` names.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct TaskDef {
+    /// What the tasks are called in the Tasks window (`npm`, `make`).
+    pub name: String,
+    /// The file names that hold tasks (`package.json`), compared without regard to case.
+    pub files: Vec<String>,
+    /// The tasks are the members of this object of a JSON file (`scripts`)...
+    pub json: String,
+    /// ...or the matches of this regular expression (with a group `name`) over the file's text.
+    pub pattern: String,
+    /// A shell command line with `{task}` (the task's name), `{file}` and `{dir}` (the file holding the tasks and its
+    /// folder, as the shell sees them); it runs in `{dir}`.
+    pub command: String,
+    /// A different command line for a project that runs on Windows (empty: the same one).
+    pub windows: String,
+    /// Folders whose files never hold the project's own tasks (`node_modules`): they are not looked in.
+    pub skip: Vec<String>,
+}
+
+impl TaskDef {
+    /// The names of the tasks that `text` (the content of one of the `files`) defines, in the order they are written.
+    /// Names a command line could not carry safely (quotes, line breaks) are left out.
+    pub fn tasks_in(&self, text: &str) -> Vec<String> {
+        let mut names: Vec<String> = if !self.json.is_empty() {
+            let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else { return vec![] };
+            let Some(object) = value.get(&self.json).and_then(|v| v.as_object()) else { return vec![] };
+            // serde_json keeps the members sorted: the file says in which order they come
+            let from = text.find(&format!("\"{}\"", self.json)).unwrap_or(0);
+            let mut keyed: Vec<(usize, String)> = object.keys().map(|k| {
+                let quoted = serde_json::to_string(k).unwrap_or_default();
+                (text[from..].find(&quoted).map_or(usize::MAX, |i| from + i), k.clone())
+            }).collect();
+            keyed.sort();
+            keyed.into_iter().map(|(_, k)| k).collect()
+        } else {
+            let Ok(re) = regex::Regex::new(&self.pattern) else { return vec![] };
+            re.captures_iter(text).filter_map(|c| c.name("name").map(|m| m.as_str().to_string())).collect()
+        };
+        let mut seen = std::collections::HashSet::new();
+        names.retain(|n| !n.trim().is_empty() && !n.contains(['"', '\n', '\r', '`', '$', '%']) && seen.insert(n.clone()));
+        names
+    }
+
+    /// Is `file_name` one of the files that hold these tasks?
+    pub fn holds(&self, file_name: &str) -> bool {
+        self.files.iter().any(|f| f.eq_ignore_ascii_case(file_name))
+    }
+
+    /// The command line that runs `task` of the file `file` in `dir` (see [`RunDef::command_line`]).
+    pub fn command_line(&self, task: &str, file: &str, dir: &str, windows: bool) -> String {
+        let template = if windows && !self.windows.is_empty() { &self.windows } else { &self.command };
+        template.replace("{task}", task).replace("{file}", file).replace("{dir}", dir)
+    }
+}
+
 /// A group of tools a module wants in the project's Linux (see the developer tools on the Linux page).
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
@@ -125,6 +183,8 @@ pub struct Manifest {
     pub tools: Vec<ToolDef>,
     pub detect: Detect,
     pub templates: Vec<Template>,
+    /// Tasks the project's files define (see [`TaskDef`]).
+    pub tasks: Vec<TaskDef>,
 }
 
 impl Manifest {
@@ -158,6 +218,17 @@ impl Manifest {
                 return Err(format!("{}: the check {:?} is for the unknown language {:?}", self.id, c.name, c.language));
             }
             crate::modules::check::compile(&c.pattern).map_err(|e| format!("{}: the check {:?}: {e}", self.id, c.name))?;
+        }
+        for t in &self.tasks {
+            if t.files.is_empty() || t.command.trim().is_empty() || t.json.is_empty() == t.pattern.is_empty() {
+                return Err(format!("{}: the tasks {:?} need files, a command and either json or a pattern", self.id, t.name));
+            }
+            if !t.pattern.is_empty() {
+                let re = regex::Regex::new(&t.pattern).map_err(|e| format!("{}: the tasks {:?}: {e}", self.id, t.name))?;
+                if !re.capture_names().any(|n| n == Some("name")) {
+                    return Err(format!("{}: the tasks {:?}: the pattern has no group `name`", self.id, t.name));
+                }
+            }
         }
         Ok(())
     }
@@ -219,6 +290,22 @@ mod tests {
         assert!(err(r#"{"id":"x","name":"X","version":"1.0.0","run":[{"language":"nope","name":"r","command":"c"}]}"#).contains("unknown language"));
         // a built-in module has no languages of its own to run
         assert!(Manifest::parse(r#"{"id":"lisp","name":"Lisp","version":"1.0.0","builtin":"lisp","run":[{"language":"lisp","name":"r","command":"c"}]}"#).is_ok());
+    }
+
+    #[test]
+    fn tasks_come_from_json_members_or_a_pattern_in_their_order() {
+        let npm = TaskDef { name: "npm".into(), files: vec!["package.json".into()], json: "scripts".into(), command: "npm --prefix \"{dir}\" run \"{task}\"".into(), ..Default::default() };
+        let package = r#"{"name":"x","scripts":{"test":"vitest","build":"vite build","lint:fix":"eslint .","bad\"name":"x"},"devDependencies":{"build":"1"}}"#;
+        assert_eq!(npm.tasks_in(package), ["test", "build", "lint:fix"]);
+        assert!(npm.tasks_in("{not json").is_empty() && npm.tasks_in(r#"{"scripts":[]}"#).is_empty());
+        assert!(npm.holds("Package.JSON") && !npm.holds("package-lock.json"));
+        assert_eq!(npm.command_line("build", "/p/web/package.json", "/p/web", false), "npm --prefix \"/p/web\" run \"build\"");
+        let make = TaskDef { name: "make".into(), files: vec!["Makefile".into()], pattern: r"(?m)^(?P<name>[A-Za-z0-9_][\w.-]*)[ \t]*:(?:[^=]|$)".into(), command: "make {task}".into(), ..Default::default() };
+        assert_eq!(make.tasks_in("all: app\nCC := gcc\napp: main.o\n\tcc -o app\nclean:\n\trm app\nall: again\n"), ["all", "app", "clean"]);
+        let module = |t: &str| Manifest::parse(&format!(r#"{{"id":"x","name":"X","version":"1.0.0","tasks":[{t}]}}"#));
+        assert!(module(r#"{"name":"npm","files":["package.json"],"json":"scripts","command":"npm run {task}"}"#).is_ok());
+        assert!(module(r#"{"name":"npm","files":["package.json"],"command":"npm run {task}"}"#).unwrap_err().contains("either json or a pattern"));
+        assert!(module(r#"{"name":"m","files":["Makefile"],"pattern":"^([a-z]+):","command":"make"}"#).unwrap_err().contains("group `name`"));
     }
 
     #[test]

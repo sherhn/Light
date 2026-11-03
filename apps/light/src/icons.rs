@@ -90,6 +90,8 @@ pub enum Icon {
     Moon,
     /// A file of no particular kind.
     Blank,
+    /// The Tasks window (a list of things to run).
+    Tasks,
 }
 
 pub fn glyph(icon: Icon) -> Option<char> {
@@ -165,6 +167,7 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::Sun => l::SUN,
         Icon::Moon => l::MOON,
         Icon::Blank => l::FILE,
+        Icon::Tasks => l::LIST_VIDEO,
     })
 }
 

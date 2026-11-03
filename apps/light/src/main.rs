@@ -4,6 +4,7 @@
 
 mod app;
 mod app_check;
+mod app_tasks;
 mod app_scenario;
 mod ui_scenarios;
 mod app_env;

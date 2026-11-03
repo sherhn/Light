@@ -1,5 +1,5 @@
 {
-  "version": "1.1.2",
+  "version": "1.2.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
@@ -386,6 +386,18 @@
     }
   ],
   "tools": [],
+  "tasks": [
+    {
+      "name": "make",
+      "files": [
+        "Makefile",
+        "makefile",
+        "GNUmakefile"
+      ],
+      "pattern": "(?m)^(?P<name>[A-Za-z0-9_][\\w.-]*)[ \\t]*:(?:[^=:]|$)",
+      "command": "make {task}"
+    }
+  ],
   "detect": {
     "extensions": [
       "sh",

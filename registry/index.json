@@ -407,7 +407,7 @@
     {
       "id": "javascript",
       "name": "JavaScript",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "category": "Languages",
       "summary": "JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
       "cover": "cover.png",
@@ -415,8 +415,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 13681,
-          "sha256": "e8f08cb61d8ef8c0d85ee3f8d772b05c7bb5e4333a49f0708444a514a8e0e883"
+          "size": 13892,
+          "sha256": "85ff164996e1ec9f6c6f272d5de3416a9feaec6367f3f30fa8679f1359049c92"
         },
         {
           "name": "LICENSE",
@@ -452,7 +452,7 @@
     {
       "id": "shell-make",
       "name": "Shell and Make",
-      "version": "1.1.2",
+      "version": "1.2.0",
       "category": "Languages",
       "summary": "Shell scripts, makefiles and the usual configuration files: highlighting, comments and an outline of functions and targets.",
       "cover": "cover.png",
@@ -460,8 +460,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 9294,
-          "sha256": "760c7f4f7cd10d845160ae9b4450f845463bf443c993a326db5a2261396db03c"
+          "size": 9540,
+          "sha256": "26404eb527b6d41b339d6a70da35f716f44816d7b48822927929c994bd7c8746"
         },
         {
           "name": "LICENSE",
