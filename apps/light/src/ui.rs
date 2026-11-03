@@ -269,6 +269,7 @@ impl App {
         let breakpoint_lane = self.debuggable(idx);
         let breakpoints = self.breakpoint_marks(idx);
         let coverage = self.coverage_lines(idx);
+        let annotations = self.blame_annotations(idx);
         let editor_on = focused && self.editor_active(ctx);
         let cfg = ViewCfg {
             pal: &self.pal,
@@ -288,6 +289,7 @@ impl App {
             breakpoint_lane,
             breakpoints: &breakpoints,
             coverage: &coverage,
+            annotations: &annotations,
         };
         let mut view = match (own_view, self.split.as_mut()) {
             (true, Some(sp)) => std::mem::take(&mut sp.view),
@@ -318,6 +320,9 @@ impl App {
             }
             if let Some((line, pos)) = out.breakpoint_menu {
                 self.edit_breakpoint(idx, line, pos);
+            }
+            if let Some(line) = out.annotation_click {
+                self.show_blamed_commit(idx, line);
             }
             let rects = out.icon_rects.clone();
             ctx.data_mut(|d| d.insert_temp(egui::Id::unique(crate::gutter::ICON_RECTS_ID), rects));

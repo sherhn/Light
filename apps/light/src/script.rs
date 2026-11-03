@@ -564,6 +564,68 @@ impl App {
                     }
                 }
             }
+            "git_click" => {
+                // a row or button of the Git window's views (`log:subject`, `history:subject`, `stash:pop:message`,
+                // `file:path`...), a tab of it (`stashes`, `history`, `compare`), or of the rebase dialog (`0:reword`, `start`)
+                let id = if matches!(self.popup, Popup::Rebase(_)) { "rebase_rects" } else { "git_tab_rects" };
+                let mut rects: Vec<(String, egui::Rect)> = ctx.data(|d| d.get_temp::<Vec<(String, egui::Rect)>>(egui::Id::unique(id))).unwrap_or_default();
+                if id == "git_tab_rects" {
+                    rects.extend(self.git_tools.rows.iter().cloned());
+                }
+                let right = step["right"].as_bool().unwrap_or(false);
+                let button = if right { egui::PointerButton::Secondary } else { egui::PointerButton::Primary };
+                match rects.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("git_click: no {sval:?} among {:?}", rects.iter().map(|(k, _)| k).collect::<Vec<_>>())),
+                }
+            }
+            "assert_blame" => {
+                let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
+                let ann = self.blame_annotations(self.active);
+                match ann.get(line) {
+                    Some((text, _)) if text.contains(&sval) => {}
+                    Some((text, _)) => self.fail(format!("assert_blame: line {}: {text:?} has no {sval:?}", line + 1)),
+                    None if sval == "none" => {}
+                    None => self.fail(format!("assert_blame: no blame on line {} ({} lines)", line + 1, ann.len())),
+                }
+            }
+            "assert_stashes" => {
+                let n = step["count"].as_u64().unwrap_or(0) as usize;
+                if self.git_tools.stashes.len() != n {
+                    self.fail(format!("assert_stashes: {} stashes, expected {n}: {:?}", self.git_tools.stashes.len(), self.git_tools.stashes));
+                }
+            }
+            "stash_set" => {
+                if let Popup::Stash { message, untracked, .. } = &mut self.popup {
+                    if let Some(m) = step["message"].as_str() { *message = m.to_string(); }
+                    if let Some(u) = step["untracked"].as_bool() { *untracked = u; }
+                } else { self.fail("stash_set: the stash dialog is not open".into()); }
+            }
+            "rebase_set" => {
+                // {"row": n, "message": "..."}: the new message of a reworded commit
+                if let Popup::Rebase(st) = &mut self.popup {
+                    let n = step["row"].as_u64().unwrap_or(0) as usize;
+                    if let (Some(row), Some(m)) = (st.rows.get_mut(n), step["message"].as_str()) { row.message = m.to_string(); }
+                } else { self.fail("rebase_set: the rebase dialog is not open".into()); }
+            }
+            "git_open_rebase" => {
+                // the rebase dialog from the log's commit with this subject (what its menu does)
+                match self.git.log.iter().find(|c| c.subject == sval).cloned() {
+                    Some(c) => self.open_rebase(&c.hash, &format!("{}  {}", c.short, c.subject)),
+                    None => self.fail(format!("git_open_rebase: no commit {sval:?}")),
+                }
+            }
+            "git_cherry_pick" | "git_revert" => {
+                match self.git.log.iter().find(|c| c.subject == sval).cloned() {
+                    Some(c) => if op == "git_cherry_pick" { self.git_cherry_pick(&c.hash, &c.subject) } else { self.git_revert(&c.hash, &c.subject) },
+                    None => self.fail(format!("{op}: no commit {sval:?}")),
+                }
+            }
             "assert_tasks" => {
                 self.refresh_tasks(true);
                 let file = step["file"].as_str().unwrap_or_default();
@@ -1176,6 +1238,8 @@ impl App {
                     Popup::Scenarios(_) => "scenarios",
                     Popup::Conflicts => "conflicts",
                     Popup::Inspector(_) => "inspector",
+                    Popup::Rebase(_) => "rebase",
+                    Popup::Stash { .. } => "stash",
                     Popup::NewBranch { .. } => "new_branch",
                     Popup::LocalCommit { .. } => "local_commit",
                 };

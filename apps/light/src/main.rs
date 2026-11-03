@@ -11,6 +11,7 @@ mod app_conflicts;
 mod app_debug;
 mod app_lisp_tools;
 mod app_coverage;
+mod app_git_tools;
 mod ui_debug;
 mod gutter;
 mod app_scenario;

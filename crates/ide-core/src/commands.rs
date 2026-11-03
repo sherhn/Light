@@ -229,6 +229,10 @@ cmds! {
     "git.new_branch", "New Branch...", Git, [];
     "git.merge", "Merge into Current Branch...", Git, [];
     "git.resolve", "Resolve Conflicts...", Git, [];
+    "git.blame", "Annotate with Git Blame", Git, [];
+    "git.file_history", "Show History for File", Git, [];
+    "git.stash", "Stash Changes...", Git, [];
+    "git.compare", "Compare with Branch...", Git, [];
     "git.merge_continue", "Continue Merge", Git, [];
     "git.merge_abort", "Abort Merge", Git, [];
     "git.diff", "Show Diff", Git, ["Ctrl+Alt+Shift+D"];

@@ -106,7 +106,7 @@ impl App {
             });
             ui.menu_button(tr("Refactor"), |ui| self.menu_items(ui, ctx, &["refactor.rename"]));
             ui.menu_button(tr("Git"), |ui| {
-                self.menu_items(ui, ctx, &["git.commit", "git.local_commit", "git.reset_base", "git.push", "git.pull", "-", "git.branches", "git.new_branch", "git.merge", "git.resolve", "-", "git.diff", "git.rollback", "git.stage_file", "-", "git.refresh", "git.init"]);
+                self.menu_items(ui, ctx, &["git.commit", "git.local_commit", "git.reset_base", "git.push", "git.pull", "-", "git.branches", "git.new_branch", "git.merge", "git.compare", "git.resolve", "-", "git.blame", "git.file_history", "git.stash", "-", "git.diff", "git.rollback", "git.stage_file", "-", "git.refresh", "git.init"]);
             });
             ui.menu_button(tr("Run"), |ui| self.menu_items(ui, ctx, &["run.run_file", "run.coverage", "run.compile_file", "run.stop", "-", "debug.start", "debug.breakpoint", "debug.resume", "debug.step_over", "debug.step_into", "debug.step_out", "debug.stop", "-", "run.load_system", "run.test_system", "-", "run.scenarios"]));
             ui.menu_button(tr("Tools"), |ui| self.menu_items(ui, ctx, &["repl.eval", "repl.eval_last", "repl.load_file", "repl.restart", "repl.clear", "repl.focus", "-", "repl.inspect", "repl.who_calls", "repl.who_references", "repl.who_macroexpands", "repl.trace", "-", "view.terminal"]));
@@ -801,7 +801,9 @@ fn command_icon(id: &str) -> Option<Icon> {
         "git.push" => Icon::ArrowUp,
         "git.pull" => Icon::ArrowDown,
         "git.branches" | "git.new_branch" => Icon::Branch,
-        "git.merge" | "git.resolve" => Icon::Merge,
+        "git.merge" | "git.resolve" | "git.compare" => Icon::Merge,
+        "git.blame" | "git.file_history" => Icon::History,
+        "git.stash" => Icon::Package,
         "git.diff" => Icon::FileDiff,
         "git.stage_file" => Icon::Plus,
         "git.init" => Icon::FolderGit,

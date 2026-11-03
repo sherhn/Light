@@ -639,6 +639,10 @@ impl App {
             "git.merge" => self.open_merge_palette(),
             "git.resolve" => self.popup = Popup::Conflicts,
             "git.merge_continue" => self.git_merge_continue(),
+            "git.blame" => self.toggle_blame(),
+            "git.file_history" => self.show_file_history(),
+            "git.stash" => self.popup = Popup::Stash { message: String::new(), untracked: true, just_opened: true },
+            "git.compare" => self.open_compare_palette(),
             "git.merge_abort" => self.git_merge_abort(),
             "git.new_branch" => self.popup = Popup::NewBranch { input: String::new(), just_opened: true },
             "git.diff" => {

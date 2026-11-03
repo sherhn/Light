@@ -59,6 +59,8 @@ impl App {
         self.draw_info_dialogs(ctx);
         self.draw_conflicts_dialog(ctx);
         self.draw_inspector(ctx);
+        self.draw_rebase_dialog(ctx);
+        self.draw_stash_dialog(ctx);
         self.draw_completion(ctx);
         self.draw_hint(ctx);
         self.draw_hover(ctx);
@@ -229,6 +231,7 @@ impl App {
                     }
                     PTarget::Branch(b) => self.git_checkout(&b),
                     PTarget::Merge(b) => self.git_merge(&b),
+                    PTarget::Compare(b) => self.git_compare(&b),
                 }
             }
         }

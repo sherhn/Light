@@ -136,6 +136,13 @@ impl App {
             self.git.changes_truncated = snap.truncated;
             self.git.upstream = snap.upstream;
             self.git.merge = snap.merge;
+            // what blame shows follows the commits and the saves
+            if !self.git_tools.blame.is_empty() {
+                self.refresh_blame();
+            }
+            if self.git.tab == GitTab::Stashes {
+                self.refresh_stashes();
+            }
             // new commits on the remote: say so once (and again only when there are more of them)
             let behind = self.commits_to_pull();
             if behind > self.git.told_behind

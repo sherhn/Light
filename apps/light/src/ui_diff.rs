@@ -70,6 +70,7 @@ impl App {
         let (rel, kind, unified, binary) = (tab.rel.clone(), tab.kind, tab.unified, tab.binary);
         let (added, removed, n_hunks, cur) = (tab.sbs.added, tab.sbs.removed, tab.hunk_count(), tab.cur);
         let base_label = tab.base_label.clone();
+        let new_label = if tab.new_label.is_empty() { tr("Working copy").to_string() } else { tab.new_label.clone() };
         let can_open = tab.abs.is_file();
         let kind_color = self.git_color(kind);
         let mono = FontId::monospace((self.settings.font_size - 0.5).max(9.0));
@@ -154,7 +155,7 @@ impl App {
             let half_head = (hr.width() - 1.0) / 2.0;
             let lbl = crate::ui_chrome::elide(&base_label, 44);
             ui.painter().text(pos2(hr.min.x + NUM_W + 8.0, hr.center().y), Align2::LEFT_CENTER, lbl, fonts::semibold(12.0), pal.text_dim);
-            ui.painter().text(pos2(hr.min.x + half_head + 1.0 + NUM_W + 8.0, hr.center().y), Align2::LEFT_CENTER, tr("Working copy"), fonts::semibold(12.0), pal.text_dim);
+            ui.painter().text(pos2(hr.min.x + half_head + 1.0 + NUM_W + 8.0, hr.center().y), Align2::LEFT_CENTER, crate::ui_chrome::elide(&new_label, 44), fonts::semibold(12.0), pal.text_dim);
             self.draw_side_rows(ui, idx, &mono, cw);
         }
 

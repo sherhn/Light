@@ -32,6 +32,10 @@ pub struct DiffTab {
     pub cur: Option<usize>,
     /// Display row to bring to the top region of the view on the next frame.
     pub scroll_to: Option<usize>,
+    /// Two versions of the file chosen once (a commit of its history, another branch): nothing is read again, and the
+    /// right side is called `new_label` instead of the working copy.
+    pub fixed: bool,
+    pub new_label: String,
     /// What `new` was read from: (revision of the open document, or 0) and the file's mtime.
     new_stamp: (u64, Option<SystemTime>),
     /// What `old` was read for: HEAD hash and base label.
@@ -54,6 +58,8 @@ impl DiffTab {
             unified: true,
             cur: None,
             scroll_to: None,
+            fixed: false,
+            new_label: String::new(),
             new_stamp: (0, None),
             old_key: String::new(),
             checked_at: -100.0,
@@ -126,6 +132,11 @@ impl App {
         };
         let label = self.base_label();
         let tab = self.docs[idx].diff.as_mut().expect("diff tab");
+        if tab.fixed {
+            tab.fixed = false;
+            tab.new_label.clear();
+            tab.rel.clear();
+        }
         if tab.rel != rel {
             tab.rel = rel.to_string();
             tab.abs = abs;
@@ -148,7 +159,7 @@ impl App {
     /// Bring the diff tab's texts up to date with the working file and the diff base.
     pub fn refresh_diff(&mut self, idx: usize, force: bool) {
         let Some(tab) = self.docs.get(idx).and_then(|d| d.diff.as_deref()) else { return };
-        if tab.rel.is_empty() || (!force && self.now - tab.checked_at < RECHECK_SECS) {
+        if tab.rel.is_empty() || tab.fixed || (!force && self.now - tab.checked_at < RECHECK_SECS) {
             return;
         }
         let abs = tab.abs.clone();
@@ -186,6 +197,32 @@ impl App {
             t.checked_at = now;
             t.set_texts(old, new);
         }
+    }
+
+    /// The diff tab with two versions of a file chosen once: `old` (called `old_label`) and `new` (`new_label`).
+    pub fn open_fixed_diff(&mut self, rel: &str, old: String, new: String, old_label: String, new_label: String) {
+        let abs = self.vcs_root().map(|r| r.join(rel)).unwrap_or_default();
+        let idx = match self.diff_doc_index() {
+            Some(i) => i,
+            None => {
+                self.docs.push(Doc::diff_tab());
+                self.docs.len() - 1
+            }
+        };
+        if let Some(tab) = self.docs[idx].diff.as_mut() {
+            tab.rel = rel.to_string();
+            tab.abs = abs;
+            tab.kind = ChangeKind::Modified;
+            tab.base_label = old_label;
+            tab.new_label = new_label;
+            tab.fixed = true;
+            tab.binary = false;
+            tab.cur = None;
+            tab.set_texts(old.replace("\r\n", "\n"), new.replace("\r\n", "\n"));
+            tab.cur = (!tab.sbs.hunks.is_empty()).then_some(0);
+            tab.scroll_to = tab.sbs.hunks.first().map(|h| h.0);
+        }
+        self.show_doc(idx);
     }
 
     /// Move to the next (`delta` > 0) or previous difference of the active diff tab.

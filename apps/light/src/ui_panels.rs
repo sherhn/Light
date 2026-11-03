@@ -1432,7 +1432,14 @@ impl App {
         ui.horizontal(|ui| {
             ui.add_space(12.0);
             let local_n = self.git.local.as_ref().map_or(0, |l| l.commits().len());
-            let tabs = [(GitTab::Log, tr("Log").to_string()), (GitTab::Local, i18n::fmt("Local ({})", &[&local_n]))];
+            let mut tabs = vec![(GitTab::Log, tr("Log").to_string()), (GitTab::Local, i18n::fmt("Local ({})", &[&local_n])), (GitTab::Stashes, tr("Stashes").to_string())];
+            if let Some((rel, _)) = &self.git_tools.history {
+                tabs.push((GitTab::History, i18n::fmt("History: {}", &[&rel.rsplit('/').next().unwrap_or(rel)])));
+            }
+            if let Some(c) = &self.git_tools.comparison {
+                tabs.push((GitTab::Compare, i18n::fmt("Compare: {}", &[&c.other])));
+            }
+            let mut switched = None;
             for (t, label) in tabs {
                 let active = self.git.tab == t;
                 let g = ui.painter().layout_no_wrap(label.clone(), fonts::ui(13.0), pal.text);
@@ -1444,7 +1451,19 @@ impl App {
                 }
                 ui.painter().text(r.center(), egui::Align2::CENTER_CENTER, label, fonts::ui(13.0), if active { pal.text } else { pal.text_dim });
                 if resp.clicked() {
-                    self.git.tab = t;
+                    switched = Some(t);
+                }
+                ui.data_mut(|d| {
+                    let mut v: Vec<(String, Rect)> = d.get_temp(egui::Id::unique("git_tab_rects")).unwrap_or_default();
+                    v.retain(|(k, _)| *k != format!("{t:?}").to_lowercase());
+                    v.push((format!("{t:?}").to_lowercase(), r));
+                    d.insert_temp(egui::Id::unique("git_tab_rects"), v);
+                });
+            }
+            if let Some(t) = switched {
+                self.git.tab = t;
+                if t == GitTab::Stashes {
+                    self.refresh_stashes();
                 }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1461,6 +1480,9 @@ impl App {
         match self.git.tab {
             GitTab::Log => self.draw_git_log(ui),
             GitTab::Local => self.draw_local_commits(ui),
+            GitTab::History => self.draw_file_history(ui),
+            GitTab::Stashes => self.draw_stashes(ui),
+            GitTab::Compare => self.draw_comparison(ui),
         }
     }
 
@@ -1479,6 +1501,8 @@ impl App {
         let cols = graph.iter().map(|g| g.width).max().unwrap_or(1).clamp(1, MAX_LANES);
         let head = self.git.head.clone();
         let mut show: Option<usize> = None;
+        let mut menu_action: Option<crate::app_git_tools::AppAction> = None;
+        let mut rows = Vec::new();
         let row_h = ROW_H + 2.0;
         egui::ScrollArea::vertical().id_salt("git_log").auto_shrink([false, false]).show_rows_fading(ui, row_h, log.len(), |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
@@ -1526,11 +1550,21 @@ impl App {
                     tx = ref_chip(ui.painter(), &pal, Pos2::new(tx, cy), name) + 6.0;
                 }
                 ui.painter().text(Pos2::new(r.max.x - 12.0, cy), egui::Align2::RIGHT_CENTER, format!("{}   {}", c.author, c.when), fonts::ui(12.0), pal.text_dim);
+                rows.push((format!("log:{}", c.subject), r));
                 if resp.clicked() {
                     show = Some(i);
                 }
+                widgets::context_popup(&resp, &pal).show(|ui| {
+                    if let Some(a) = self.commit_menu(ui, c) {
+                        menu_action = Some(a);
+                    }
+                });
             }
         });
+        self.git_tools.rows = rows;
+        if let Some(a) = menu_action {
+            a(self);
+        }
         self.git.graph = graph;
         if let Some(i) = show {
             self.git_show_commit(i);

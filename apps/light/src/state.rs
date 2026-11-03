@@ -55,6 +55,11 @@ pub struct Split {
 pub enum GitTab {
     Log,
     Local,
+    /// The history of one file.
+    History,
+    Stashes,
+    /// The current branch next to another.
+    Compare,
 }
 
 pub struct GitSnapshot {
@@ -299,6 +304,8 @@ pub enum PTarget {
     Branch(String),
     /// A branch to merge into the current one.
     Merge(String),
+    /// A branch to compare the current one with.
+    Compare(String),
 }
 
 #[derive(Clone, Debug)]
@@ -491,6 +498,10 @@ pub enum Popup {
     Conflicts,
     /// The Lisp inspector.
     Inspector(Box<crate::app_lisp_tools::InspectorState>),
+    /// An interactive rebase being prepared.
+    Rebase(Box<crate::app_git_tools::RebaseState>),
+    /// Put the changes aside: the stash's message, and whether the new files go too.
+    Stash { message: String, untracked: bool, just_opened: bool },
 }
 
 /// The scenarios being edited: a working copy, and the commands of each as one text.

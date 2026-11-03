@@ -475,6 +475,230 @@ impl Repo {
     }
 }
 
+/// Who last changed a line, and in which commit.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BlameLine {
+    pub hash: String,
+    pub author: String,
+    /// Seconds since the epoch, of the author's commit.
+    pub time: i64,
+    pub summary: String,
+}
+
+impl BlameLine {
+    /// A line that is not committed yet.
+    pub fn uncommitted(&self) -> bool {
+        self.hash.chars().all(|c| c == '0')
+    }
+}
+
+/// A stash entry.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Stash {
+    /// `stash@{0}`
+    pub name: String,
+    pub message: String,
+    pub when: String,
+}
+
+/// What an interactive rebase does with a commit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RebaseAction {
+    Pick,
+    /// Keep it with a new message.
+    Reword,
+    /// Melt it into the commit before it, with both messages.
+    Squash,
+    /// Melt it into the commit before it, keeping that one's message.
+    Fixup,
+    Drop,
+}
+
+/// A commit of an interactive rebase, in the order the commits are to be.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RebaseStep {
+    pub hash: String,
+    pub action: RebaseAction,
+    /// The new message of a reworded commit.
+    pub message: String,
+}
+
+impl Repo {
+    /// Who last changed every line of `rel`, as committed (line `n` of the result is line `n + 1` of the file).
+    pub fn blame(&self, rel: &str) -> Result<Vec<BlameLine>, String> {
+        let out = self.run(&["blame", "--porcelain", "--", rel])?;
+        let mut commits: std::collections::HashMap<String, (String, i64, String)> = std::collections::HashMap::new();
+        let mut lines = Vec::new();
+        let mut current = String::new();
+        for line in out.lines() {
+            if let Some(content) = line.strip_prefix('\t') {
+                let _ = content;
+                let (author, time, summary) = commits.get(&current).cloned().unwrap_or_default();
+                lines.push(BlameLine { hash: current.clone(), author, time, summary });
+            } else if let Some(rest) = line.strip_prefix("author ") {
+                commits.entry(current.clone()).or_default().0 = rest.to_string();
+            } else if let Some(rest) = line.strip_prefix("author-time ") {
+                commits.entry(current.clone()).or_default().1 = rest.trim().parse().unwrap_or(0);
+            } else if let Some(rest) = line.strip_prefix("summary ") {
+                commits.entry(current.clone()).or_default().2 = rest.to_string();
+            } else if line.len() >= 40 && line[..40].chars().all(|c| c.is_ascii_hexdigit()) {
+                current = line[..40].to_string();
+            }
+        }
+        Ok(lines)
+    }
+
+    /// The newest `n` commits that changed `rel`, following it through renames.
+    pub fn file_log(&self, rel: &str, n: usize) -> Vec<Commit> {
+        let fmt = "--format=%H%x1f%h%x1f%an%x1f%ar%x1f%P%x1f%D%x1f%s";
+        let count = format!("-n{n}");
+        let Ok(out) = self.run(&["log", &count, "--follow", fmt, "--", rel]) else { return vec![] };
+        parse_log(&out)
+    }
+
+    /// The content of `rel` in commit `rev` (`None` when it is not there).
+    pub fn file_at(&self, rev: &str, rel: &str) -> Option<String> {
+        self.run(&["show", &format!("{rev}:{rel}")]).ok()
+    }
+
+    /// The path `rel` had in commit `rev` (it may have been renamed since).
+    pub fn path_at(&self, rev: &str, rel: &str) -> String {
+        self.run(&["log", "-1", "--follow", "--name-only", "--format=", rev, "--", rel]).ok().and_then(|o| o.lines().find(|l| !l.trim().is_empty()).map(String::from)).unwrap_or_else(|| rel.to_string())
+    }
+
+    pub fn stashes(&self) -> Vec<Stash> {
+        let Ok(out) = self.run(&["stash", "list", "--format=%gd%x1f%s%x1f%cr"]) else { return vec![] };
+        out.lines().filter_map(|l| {
+            let mut p = l.split('\u{1f}');
+            Some(Stash { name: p.next()?.to_string(), message: p.next().unwrap_or_default().to_string(), when: p.next().unwrap_or_default().to_string() })
+        }).collect()
+    }
+
+    /// Put the changes aside (`untracked`: the new files too); the working tree is as at HEAD after it.
+    pub fn stash_save(&self, message: &str, untracked: bool) -> Result<String, String> {
+        let mut args = vec!["stash", "push"];
+        if untracked {
+            args.push("--include-untracked");
+        }
+        if !message.trim().is_empty() {
+            args.extend(["-m", message.trim()]);
+        }
+        let out = self.run(&args)?;
+        if out.contains("No local changes to save") { Err("No local changes to save".into()) } else { Ok(out.trim().to_string()) }
+    }
+
+    /// `apply`, `pop` or `drop` the stash `name`.
+    pub fn stash_do(&self, verb: &str, name: &str) -> Result<String, String> {
+        if !matches!(verb, "apply" | "pop" | "drop") {
+            return Err(format!("unknown stash action {verb}"));
+        }
+        self.run(&["stash", verb, name]).map(|s| s.lines().last().unwrap_or_default().trim().to_string())
+    }
+
+    /// Put the changes of commit `hash` on the current branch. Conflicts stop it ([`MergeKind::CherryPick`]).
+    pub fn cherry_pick(&self, hash: &str) -> Result<String, String> {
+        self.run_quiet_editor(&["cherry-pick", hash]).map(|s| s.lines().next().unwrap_or_default().trim().to_string())
+    }
+
+    /// A new commit that undoes commit `hash`. Conflicts stop it ([`MergeKind::Revert`]).
+    pub fn revert(&self, hash: &str) -> Result<String, String> {
+        self.run_quiet_editor(&["revert", "--no-edit", hash]).map(|s| s.lines().next().unwrap_or_default().trim().to_string())
+    }
+
+    /// The commits of `other` that the current branch does not have, and the other way round, the newest first.
+    pub fn compare(&self, other: &str, n: usize) -> (Vec<Commit>, Vec<Commit>) {
+        let fmt = "--format=%H%x1f%h%x1f%an%x1f%ar%x1f%P%x1f%D%x1f%s";
+        let count = format!("-n{n}");
+        let theirs = self.run(&["log", &count, fmt, &format!("HEAD..{other}")]).map(|o| parse_log(&o)).unwrap_or_default();
+        let ours = self.run(&["log", &count, fmt, &format!("{other}..HEAD")]).map(|o| parse_log(&o)).unwrap_or_default();
+        (theirs, ours)
+    }
+
+    /// The files that differ between the current branch and `other` (since they parted): (path, change).
+    pub fn compare_files(&self, other: &str) -> Vec<(String, ChangeKind)> {
+        let Ok(out) = self.run(&["diff", "--name-status", "-z", &format!("HEAD...{other}")]) else { return vec![] };
+        let mut parts = out.split('\0').filter(|s| !s.is_empty());
+        let mut v = Vec::new();
+        while let Some(status) = parts.next() {
+            let kind = match status.chars().next() {
+                Some('A') => ChangeKind::Added,
+                Some('D') => ChangeKind::Deleted,
+                Some('R') | Some('C') => {
+                    parts.next();
+                    ChangeKind::Renamed
+                }
+                _ => ChangeKind::Modified,
+            };
+            if let Some(path) = parts.next() {
+                v.push((path.to_string(), kind));
+            }
+        }
+        v
+    }
+
+    /// The commits after `base` up to HEAD, the oldest first (what an interactive rebase onto `base` goes through).
+    pub fn commits_since(&self, base: &str) -> Vec<Commit> {
+        let fmt = "--format=%H%x1f%h%x1f%an%x1f%ar%x1f%P%x1f%D%x1f%s";
+        self.run(&["log", "--reverse", "--topo-order", fmt, &format!("{base}..HEAD")]).map(|o| parse_log(&o)).unwrap_or_default()
+    }
+
+    /// Rebase the current branch onto `base`, doing with every commit what `steps` say, in their order. A reword gets
+    /// its new message without an editor; conflicts stop it ([`MergeKind::Rebase`]).
+    pub fn rebase_interactive(&self, base: &str, steps: &[RebaseStep]) -> Result<String, String> {
+        if steps.first().is_some_and(|s| matches!(s.action, RebaseAction::Squash | RebaseAction::Fixup)) {
+            return Err("the first commit cannot be melted into the one before it".into());
+        }
+        // the list git would put in an editor, written beforehand; its "editor" copies it over git's own
+        let git_path = |name: &str| self.run(&["rev-parse", "--git-path", name]).map(|p| p.trim().to_string());
+        let todo_rel = git_path("light-rebase-todo")?;
+        let local = |rel: &str| match crate::wsl::wsl_path(&self.root) {
+            Some(w) if rel.starts_with('/') => self.root.join(rel.strip_prefix(w.linux.trim_end_matches('/')).unwrap_or(rel).trim_start_matches('/')),
+            _ if Path::new(rel).is_absolute() => PathBuf::from(rel),
+            _ => self.root.join(rel),
+        };
+        let mut todo = String::new();
+        for (n, s) in steps.iter().enumerate() {
+            let verb = match s.action {
+                RebaseAction::Pick | RebaseAction::Reword => "pick",
+                RebaseAction::Squash => "squash",
+                RebaseAction::Fixup => "fixup",
+                RebaseAction::Drop => "drop",
+            };
+            todo.push_str(&format!("{verb} {}\n", s.hash));
+            if s.action == RebaseAction::Reword {
+                let msg_rel = git_path(&format!("light-rebase-message-{n}"))?;
+                std::fs::write(local(&msg_rel), &s.message).map_err(|e| e.to_string())?;
+                todo.push_str(&format!("exec git commit --amend --only --allow-empty -q -F '{}'\n", msg_rel.replace('\'', "")));
+            }
+        }
+        std::fs::write(local(&todo_rel), todo).map_err(|e| e.to_string())?;
+        let editor = format!("cp '{}'", todo_rel.replace('\'', ""));
+        let result = self.run_quiet_editor(&["-c", &format!("sequence.editor={editor}"), "rebase", "-i", base]);
+        let _ = std::fs::remove_file(local(&todo_rel));
+        for n in 0..steps.len() {
+            if let Ok(m) = git_path(&format!("light-rebase-message-{n}")) {
+                let _ = std::fs::remove_file(local(&m));
+            }
+        }
+        result.map(|s| s.lines().last().unwrap_or_default().trim().to_string())
+    }
+}
+
+fn parse_log(out: &str) -> Vec<Commit> {
+    out.lines()
+        .filter_map(|l| {
+            let mut p = l.split('\u{1f}');
+            let hash: String = p.next()?.into();
+            let short = p.next()?.into();
+            let author = p.next()?.into();
+            let when = p.next()?.into();
+            let parents = p.next()?.split_whitespace().map(String::from).collect();
+            let refs = p.next()?.split(", ").filter(|r| !r.is_empty()).map(String::from).collect();
+            Some(Commit { hash, short, author, when, subject: p.next().unwrap_or("").into(), parents, refs })
+        })
+        .collect()
+}
+
 /// An operation of Git that can stop for conflicts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MergeKind {
@@ -515,6 +739,80 @@ mod tests {
         std::fs::write(d.path().join("a.txt"), "one\ntwo from main\nthree\n").unwrap();
         r.commit("main", &["a.txt".into()]).ok()?;
         Some((d, r))
+    }
+
+    #[test]
+    fn blame_history_stash_cherry_pick_revert_and_compare() {
+        let Some((d, r)) = diverged() else { return };
+        // blame: the line main changed is main's, the others the first commit's
+        let blame = r.blame("a.txt").unwrap();
+        assert_eq!(blame.len(), 3);
+        assert_eq!(blame[1].summary, "main");
+        assert_eq!(blame[0].summary, "base");
+        assert!(blame[0].time > 0 && blame[0].author == "Tester" && !blame[0].uncommitted());
+        // the history of the file, the newest first, and its content then
+        let log = r.file_log("a.txt", 10);
+        assert_eq!(log.iter().map(|c| c.subject.as_str()).collect::<Vec<_>>(), ["main", "base"]);
+        assert_eq!(r.file_at(&log[1].hash, "a.txt").as_deref(), Some("one\ntwo\nthree\n"));
+        assert_eq!(r.path_at(&log[1].hash, "a.txt"), "a.txt");
+        // what the other branch has that this one has not
+        let (theirs, ours) = r.compare("feature", 50);
+        assert_eq!((theirs.len(), ours.len(), theirs[0].subject.as_str()), (1, 1, "feature"));
+        assert_eq!(r.compare_files("feature"), [("a.txt".to_string(), ChangeKind::Modified)]);
+        // stash: put aside, listed, back
+        std::fs::write(d.path().join("a.txt"), "one\ntwo from main\nthree\nfour\n").unwrap();
+        std::fs::write(d.path().join("new.txt"), "new\n").unwrap();
+        r.stash_save("work in progress", true).unwrap();
+        assert!(!d.path().join("new.txt").exists());
+        let stashes = r.stashes();
+        assert_eq!((stashes.len(), stashes[0].name.as_str()), (1, "stash@{0}"));
+        assert!(stashes[0].message.contains("work in progress"), "{:?}", stashes[0]);
+        assert!(r.stash_save("", false).is_err(), "nothing to put aside");
+        r.stash_do("pop", "stash@{0}").unwrap();
+        assert!(d.path().join("new.txt").exists() && r.stashes().is_empty());
+        r.stash_save("again", true).unwrap();
+        r.stash_do("drop", "stash@{0}").unwrap();
+        assert!(r.stashes().is_empty() && r.stash_do("rm", "stash@{0}").is_err());
+        // cherry-pick of a commit that touches another file, then its revert
+        r.checkout("feature").unwrap();
+        std::fs::write(d.path().join("b.txt"), "b\n").unwrap();
+        r.commit("add b", &["b.txt".into()]).unwrap();
+        let b = r.head_hash().unwrap();
+        r.checkout("main").unwrap();
+        r.cherry_pick(&b).unwrap();
+        assert_eq!(std::fs::read_to_string(d.path().join("b.txt")).unwrap(), "b\n");
+        assert_eq!(r.log(1)[0].subject, "add b");
+        r.revert(&r.head_hash().unwrap()).unwrap();
+        assert!(!d.path().join("b.txt").exists());
+        assert!(r.log(1)[0].subject.starts_with("Revert"));
+        // cherry-picking the conflicting commit stops
+        assert!(r.cherry_pick("feature~1").is_err());
+        assert_eq!(r.merge_state(), Some(MergeKind::CherryPick));
+        r.merge_abort(MergeKind::CherryPick).unwrap();
+    }
+
+    #[test]
+    fn an_interactive_rebase_rewords_squashes_drops_and_reorders() {
+        let Some((d, r)) = repo() else { return };
+        r.run(&["config", "core.autocrlf", "false"]).unwrap();
+        for (file, msg) in [("a", "first"), ("b", "second"), ("c", "third"), ("d", "fourth"), ("e", "fifth")] {
+            std::fs::write(d.path().join(file), file).unwrap();
+            r.commit(msg, &[file.to_string()]).unwrap();
+        }
+        let base = r.log(5)[4].hash.clone();
+        let since = r.commits_since(&base);
+        assert_eq!(since.iter().map(|c| c.subject.as_str()).collect::<Vec<_>>(), ["second", "third", "fourth", "fifth"]);
+        let step = |i: usize, action, message: &str| RebaseStep { hash: since[i].hash.clone(), action, message: message.into() };
+        // fifth moves first and is reworded, third melts into second, fourth goes
+        let steps = [step(3, RebaseAction::Reword, "fifth, reworded\n"), step(0, RebaseAction::Pick, ""), step(1, RebaseAction::Fixup, ""), step(2, RebaseAction::Drop, "")];
+        r.rebase_interactive(&base, &steps).unwrap();
+        assert_eq!(r.merge_state(), None);
+        let subjects: Vec<String> = r.log(10).into_iter().map(|c| c.subject).collect();
+        assert_eq!(subjects, ["second", "fifth, reworded", "first"]);
+        assert!(!d.path().join("d").exists() && d.path().join("c").exists() && d.path().join("e").exists());
+        assert!(r.rebase_interactive(&base, &[step(0, RebaseAction::Squash, "")]).is_err(), "nothing before it to melt into");
+        let leftovers: Vec<_> = std::fs::read_dir(d.path().join(".git")).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().starts_with("light-rebase")).collect();
+        assert!(leftovers.is_empty(), "the lists written for git are gone");
     }
 
     #[test]

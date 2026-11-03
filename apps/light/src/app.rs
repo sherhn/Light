@@ -81,6 +81,8 @@ pub struct App {
     pub debug: crate::app_debug::DebugState,
     /// The last code coverage report.
     pub coverage: crate::app_coverage::CoverageState,
+    /// Blame, the history of a file, stashes, the comparison of branches.
+    pub git_tools: crate::app_git_tools::GitTools,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -199,6 +201,7 @@ impl App {
             gutter_menu: None,
             debug: Default::default(),
             coverage: Default::default(),
+            git_tools: Default::default(),
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -415,6 +418,7 @@ impl App {
         self.stop_debug();
         self.debug = Default::default();
         self.coverage = Default::default();
+        self.git_tools = Default::default();
         self.modules_banner_dismissed = false;
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder
