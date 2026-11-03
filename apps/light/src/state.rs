@@ -36,6 +36,7 @@ pub enum BottomTool {
     Git,
     Terminal,
     Debug,
+    Coverage,
 }
 
 /// The editor area divided into two panes. The focused pane shows `docs[active]`; the other one shows the

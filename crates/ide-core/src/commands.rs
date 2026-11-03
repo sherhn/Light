@@ -186,6 +186,7 @@ cmds! {
     "run.show_in_browser", "Show in browser", Run, [];
     "run.compile_file", "Compile Current File", Run, ["Ctrl+F9"];
     "run.stop", "Stop", Run, ["Ctrl+F2"];
+    "run.coverage", "Run with Coverage", Run, [];
     "debug.start", "Debug Current File", Run, ["Shift+F9"];
     "debug.breakpoint", "Toggle Breakpoint", Run, ["Ctrl+F8"];
     "debug.resume", "Resume Program", Run, ["F9"];

@@ -395,7 +395,7 @@ fn every_run_command_names_a_language_and_a_known_placeholder() {
     for m in manifests() {
         for r in &m.run {
             for cmd in [&r.command, &r.windows] {
-                let stripped = cmd.replace("{file}", "").replace("{dir}", "").replace("{name}", "").replace("{stem}", "").replace("{image}", "");
+                let stripped = cmd.replace("{file}", "").replace("{dir}", "").replace("{name}", "").replace("{stem}", "").replace("{image}", "").replace("{report_dir}", "").replace("{report}", "");
                 assert!(!stripped.contains('{') && !stripped.contains('}'), "{}: {cmd}", m.id);
             }
             assert!(!r.command.is_empty() && !r.name.is_empty());
@@ -505,5 +505,23 @@ fn c_and_cpp_have_cmake_tasks_ctest_tests_gdb_and_memory_checks() {
     let launch = ide_core::dap::fill(&gdb.launch, &[("dir", "/p"), ("stem", "main"), ("exe", "")]);
     assert_eq!(launch["program"].as_str(), Some("/p/main"));
     let names: Vec<&str> = module.run.iter().filter(|r| r.language == "cpp").map(|r| r.name.as_str()).collect();
-    assert_eq!(names, ["Compile and run file", "Run with AddressSanitizer", "Run under Valgrind"]);
+    assert_eq!(names, ["Compile and run file", "Run with coverage", "Run with AddressSanitizer", "Run under Valgrind"]);
+    let cov = module.run.iter().find(|r| r.language == "c" && r.coverage == "gcov-json").unwrap();
+    assert!(cov.command.contains("--coverage") && cov.command.contains("gcov --json-format --stdout") && cov.command.contains("{report}") && cov.windows.contains("cd /d"));
+}
+
+#[test]
+fn node_test_and_jest_measure_coverage_into_the_report() {
+    use ide_core::testing;
+    let module = manifests().into_iter().find(|m| m.id == "javascript").unwrap();
+    let (vitest, jest, node) = (&module.tests[0], &module.tests[1], &module.tests[2]);
+    assert!(vitest.coverage.is_empty(), "Vitest needs a coverage package of its own");
+    assert_eq!((jest.coverage.as_str(), node.coverage.as_str()), ("lcov", "lcov"));
+    let items = testing::find(node, "test('adds', () => {});
+");
+    let line = testing::command_line_for(node, Some(&items[0]), "/p/a.test.mjs", "/p", "/p", false, true);
+    assert!(line.contains("--experimental-test-coverage") && line.contains("--test-reporter-destination=\"{report}\"") && line.contains("--test-name-pattern=\"^adds$\""), "{line}");
+    let line = testing::command_line_for(jest, None, "/p/a.test.js", "/p", "/p", false, true);
+    assert!(line.contains("--coverageDirectory=\"{report_dir}\"") && !line.contains(" -t "), "{line}");
+    assert_eq!(testing::command_line_for(node, None, "/p/a.test.mjs", "/p", "/p", false, false), testing::command_line(node, None, "/p/a.test.mjs", "/p", "/p", false));
 }

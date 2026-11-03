@@ -60,5 +60,15 @@
   {"op": "frames", "value": 2},
   {"op": "wait", "what": "debug_idle", "timeout": 60},
   {"op": "assert_debug_console", "value": "total 6"},
+  {"op": "log", "value": "coverage of a C++ program through gcov's JSON"},
+  {"op": "select_module_run", "value": "Run with coverage"},
+  {"op": "command", "value": "run.run_file"},
+  {"op": "frames", "value": 2},
+  {"op": "wait", "what": "run_done", "timeout": 300},
+  {"op": "wait", "what": "coverage", "timeout": 30},
+  {"op": "frames", "value": 3},
+  {"op": "assert_coverage", "file": "main.cpp", "value": "100%"},
+  {"op": "assert_coverage", "lines": [[3, true], [9, true]]},
+  {"op": "screenshot", "path": "E:/light-e2e-tmp/cpp_coverage.png"},
   {"op": "quit"}
 ]

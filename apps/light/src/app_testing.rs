@@ -122,14 +122,24 @@ impl App {
         let Some(path) = self.docs[idx].path.clone() else { return vec![] };
         let Some(item) = file.items.iter().find(|i| i.line == line && i.runnable()) else { return vec![] };
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        vec![
-            (Icon::Play, i18n::fmt("Run '{}'", &[&item.name]), GutterAction::RunTests(path.clone(), Some(item.clone()))),
-            (Icon::Play, i18n::fmt("Run all tests in '{}'", &[&name]), GutterAction::RunTests(path, None)),
-        ]
+        let mut actions = vec![
+            (Icon::Play, i18n::fmt("Run '{}'", &[&item.name]), GutterAction::RunTests(path.clone(), Some(item.clone()), false)),
+            (Icon::Play, i18n::fmt("Run all tests in '{}'", &[&name]), GutterAction::RunTests(path.clone(), None, false)),
+        ];
+        if !file.def.coverage.is_empty() {
+            actions.push((Icon::Coverage, i18n::fmt("Run '{}' with Coverage", &[&item.name]), GutterAction::RunTests(path.clone(), Some(item.clone()), true)));
+            actions.push((Icon::Coverage, i18n::fmt("Run all tests in '{}' with Coverage", &[&name]), GutterAction::RunTests(path, None, true)));
+        }
+        actions
     }
 
     /// Run `item` of the test file `path` (or all of its tests) in a Run tab of its own.
     pub fn run_tests(&mut self, path: &Path, item: Option<&TestItem>) {
+        self.run_tests_with(path, item, false);
+    }
+
+    /// [`App::run_tests`], measuring code coverage when `coverage` (and the framework can).
+    pub fn run_tests_with(&mut self, path: &Path, item: Option<&TestItem>, coverage: bool) {
         self.save_all();
         let text = match self.docs.iter().find(|d| d.path.as_deref() == Some(path)) {
             Some(d) => d.ed.text().to_string(),
@@ -153,12 +163,19 @@ impl App {
         };
         let t = self.wsl_target();
         let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
-        let line = testing::command_line(&def, item.as_ref(), &shell_path(path, t.as_ref()), &shell_path(&dir, t.as_ref()), &shell_path(&root, t.as_ref()), t.is_none());
+        let coverage = coverage && !def.coverage.is_empty();
+        let mut line = testing::command_line_for(&def, item.as_ref(), &shell_path(path, t.as_ref()), &shell_path(&dir, t.as_ref()), &shell_path(&root, t.as_ref()), t.is_none(), coverage);
         let env: Vec<(String, String)> = def.env.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-        let launch = shell_launch(&line, &root, t.as_ref(), &env);
         let file_name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        let title = format!("{}: {}", def.name, item.as_ref().map_or(file_name, |i| i.name.clone()));
-        let key = format!("test:{}:{}", path.display(), item.as_ref().map_or("*", |i| i.full.as_str()));
+        let title = format!("{}{}: {}", if coverage { tr("Coverage of ") } else { "" }, def.name, item.as_ref().map_or(file_name, |i| i.name.clone()));
+        let key = format!("{}:{}:{}", if coverage { "test-coverage" } else { "test" }, path.display(), item.as_ref().map_or("*", |i| i.full.as_str()));
+        if coverage {
+            match self.prepare_coverage(&key, &def.coverage, &line, &root, &title) {
+                Some(l) => line = l,
+                None => return,
+            }
+        }
+        let launch = shell_launch(&line, &root, t.as_ref(), &env);
         if self.start_run(key, title.clone(), launch, &title, root, t) {
             self.run_request = Some(RunRequest::Test(Box::new(def), path.to_path_buf(), item));
         }

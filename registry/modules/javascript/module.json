@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "cover": "cover.png",
   "license": "MIT",
   "author": "Light contributors",
@@ -597,7 +597,10 @@
         "FORCE_COLOR": "0"
       },
       "failed": "(?m)^\\s*● (?P<name>.+?)$",
-      "result_separator": " › "
+      "result_separator": " › ",
+      "coverage": "lcov",
+      "coverage_command": "npx jest --runTestsByPath \"{file}\" -t \"{test}\" --coverage --coverageReporters=lcov --coverageReporters=text-summary --coverageDirectory=\"{report_dir}\"",
+      "coverage_file_command": "npx jest --runTestsByPath \"{file}\" --coverage --coverageReporters=lcov --coverageReporters=text-summary --coverageDirectory=\"{report_dir}\""
     },
     {
       "name": "node:test",
@@ -612,7 +615,10 @@
       "command": "node --test --test-reporter=tap --test-name-pattern=\"{test}\" \"{file}\"",
       "file_command": "node --test --test-reporter=tap \"{file}\"",
       "passed": "(?m)^\\s*ok \\d+ - (?P<name>.+?)(?: # .*)?$",
-      "failed": "(?m)^\\s*not ok \\d+ - (?P<name>.+?)(?: # .*)?$"
+      "failed": "(?m)^\\s*not ok \\d+ - (?P<name>.+?)(?: # .*)?$",
+      "coverage": "lcov",
+      "coverage_command": "node --test --experimental-test-coverage --test-reporter=tap --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=\"{report}\" --test-name-pattern=\"{test}\" \"{file}\"",
+      "coverage_file_command": "node --test --experimental-test-coverage --test-reporter=tap --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=\"{report}\" \"{file}\""
     }
   ],
   "debug": [

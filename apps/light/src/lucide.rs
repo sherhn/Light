@@ -76,3 +76,4 @@ pub const PAUSE: char = '\u{e12e}';
 pub const REDO_DOT: char = '\u{e450}';
 pub const ARROW_DOWN_TO_DOT: char = '\u{e44d}';
 pub const ARROW_UP_FROM_DOT: char = '\u{e44e}';
+pub const SHIELD_CHECK: char = '\u{e1ff}';

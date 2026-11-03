@@ -81,6 +81,7 @@ impl App {
             "debug_paused" => self.debug.status == crate::app_debug::DebugStatus::Paused && self.debug.stopped.as_ref().is_some_and(|s| !s.frames.is_empty() && !s.scopes.is_empty()) && !self.debug.variables.is_empty(),
             "debug_idle" => self.debug.status == crate::app_debug::DebugStatus::Idle,
             "lisp_debugger" => !self.repl.debuggers.is_empty(),
+            "coverage" => !self.coverage.files.is_empty(),
             "debug_disassembly" => !self.debug.disassembly.is_empty() || !self.debug.view_note.is_empty(),
             "debug_memory" => self.debug.memory.is_some() || !self.debug.view_note.is_empty(),
             "lisp_locals" => self.repl.debuggers.last().is_some_and(|d| !d.locals.is_empty()),
@@ -541,6 +542,26 @@ impl App {
                         if let Some(p) = step["part"].as_str() && !st.parts.iter().any(|(l, v)| format!("{l} {v}") == p) { self.fail(format!("assert_inspector: no part {p:?} in {:?}", st.parts)); }
                     }
                     _ => self.fail("assert_inspector: the inspector is not open".into()),
+                }
+            }
+            "assert_coverage" => {
+                // {"file": relative path, "value": "75%"} or {"lines": [[line, true|false], ...]} of the active document
+                if let Some(file) = step["file"].as_str() {
+                    let root = self.project_root().map(std::path::Path::to_path_buf).unwrap_or_default();
+                    match self.coverage.files.iter().find(|(p, _)| p.strip_prefix(&root).is_ok_and(|r| r.to_string_lossy().replace('\\', "/") == file)) {
+                        Some((_, f)) => {
+                            let got = format!("{}%", (f.ratio() * 100.0).round() as u32);
+                            if !sval.is_empty() && got != sval { self.fail(format!("assert_coverage: {file} is {got}, expected {sval}")); }
+                        }
+                        None => self.fail(format!("assert_coverage: no {file:?} among {:?}", self.coverage.files.iter().map(|(p, _)| p.display().to_string()).collect::<Vec<_>>())),
+                    }
+                }
+                if let Some(lines) = step["lines"].as_array() {
+                    let got = self.coverage_lines(self.active);
+                    for l in lines {
+                        let (n, ran) = (l[0].as_u64().unwrap_or(0) as usize, l[1].as_bool().unwrap_or(false));
+                        if !got.contains(&(n.saturating_sub(1), ran)) { self.fail(format!("assert_coverage: line {n} {} expected; got {got:?}", if ran { "ran" } else { "did not run" })); }
+                    }
                 }
             }
             "assert_tasks" => {
@@ -1299,6 +1320,7 @@ impl App {
                     Some(BottomTool::Git) => "git",
                     Some(BottomTool::Terminal) => "terminal",
                     Some(BottomTool::Debug) => "debug",
+                    Some(BottomTool::Coverage) => "coverage",
                     None => "none",
                 };
                 if name != sval {

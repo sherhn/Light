@@ -247,9 +247,18 @@ impl App {
             None => (file.display().to_string().replace('\\', "/"), dir.display().to_string().replace('\\', "/")),
         };
         let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        let line = def.command_line(&file_s, &dir_s, t.is_none());
+        let mut line = def.command_line(&file_s, &dir_s, t.is_none());
+        // a run that measures coverage has a tab of its own and a folder for its report
+        let key = if def.coverage.is_empty() { format!("file:{}", file.display()) } else { format!("coverage:{}", file.display()) };
+        let title = format!("{} '{}'", def.name, name);
+        if !def.coverage.is_empty() {
+            match self.prepare_coverage(&key, &def.coverage, &line, &root, &title) {
+                Some(l) => line = l,
+                None => return,
+            }
+        }
         let launch = shell_launch(&line, &root, t.as_ref(), &[]);
-        if self.start_run(format!("file:{}", file.display()), format!("{} '{}'", def.name, name), launch, &def.name, root, t) {
+        if self.start_run(key, title, launch, &def.name, root, t) {
             self.run_request = Some(RunRequest::Language(def.clone(), file.to_path_buf()));
         }
     }

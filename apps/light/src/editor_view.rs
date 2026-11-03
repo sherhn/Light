@@ -77,6 +77,8 @@ pub struct ViewCfg<'a> {
     pub breakpoint_lane: bool,
     /// The 0-based lines with a breakpoint, and how each looks.
     pub breakpoints: &'a [(usize, BreakpointLook)],
+    /// What the last coverage report says of the lines: (0-based line, it ran).
+    pub coverage: &'a [(usize, bool)],
 }
 
 /// How a breakpoint is drawn next to its line number.
@@ -718,6 +720,19 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
         icons::paint(&gp, r, g.icon, g.color);
         out.icon_rects.push((g.line, r));
     }
+    // coverage: a bar at the right edge of the gutter, green where the line ran and red where it did not
+    for (line, ran) in cfg.coverage {
+        let row = row_of_line(*line);
+        if rows.get(row) != Some(*line) {
+            continue;
+        }
+        let y = gutter_rect.min.y + row as f32 * lh - state.scroll.y;
+        if y + lh < gutter_rect.min.y || y > gutter_rect.max.y {
+            continue;
+        }
+        let color = if *ran { pal.git_added.gamma_multiply(0.85) } else { pal.error.gamma_multiply(0.85) };
+        gp.rect_filled(Rect::from_min_size(Pos2::new(gutter_rect.max.x - 4.0, y + 1.0), Vec2::new(3.0, lh - 2.0)), CornerRadius::same(1), color);
+    }
     let mark_color = |k: MarkKind| match k {
         MarkKind::Added => pal.git_added,
         MarkKind::Modified => pal.git_modified,
@@ -896,7 +911,7 @@ mod scrollbar_tests {
         let mut editor = Editor::new(&"x".repeat(500), lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[], breakpoint_lane: false, breakpoints: &[] };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[], breakpoint_lane: false, breakpoints: &[], coverage: &[] };
         let mut track = Pos2::ZERO;
         for frame in 0..6 {
             let position = track + Vec2::new(if frame >= 3 { 80.0 } else { 0.0 }, 0.0);
@@ -961,7 +976,7 @@ mod problem_tests {
         let mut editor = Editor::new(text, lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[], breakpoint_lane: false, breakpoints: &[] };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[], breakpoint_lane: false, breakpoints: &[], coverage: &[] };
         let (mut tint, mut underline) = (false, false);
         for _ in 0..2 {
             let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(500.0, 200.0))), ..Default::default() }, |ui| {

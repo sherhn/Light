@@ -100,6 +100,8 @@ pub enum Icon {
     StepOver,
     StepInto,
     StepOut,
+    /// Code coverage.
+    Coverage,
 }
 
 pub fn glyph(icon: Icon) -> Option<char> {
@@ -182,6 +184,7 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::StepOver => l::REDO_DOT,
         Icon::StepInto => l::ARROW_DOWN_TO_DOT,
         Icon::StepOut => l::ARROW_UP_FROM_DOT,
+        Icon::Coverage => l::SHIELD_CHECK,
     })
 }
 

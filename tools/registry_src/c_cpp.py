@@ -92,14 +92,18 @@ DEBUG = [gdb("c", "cc", "gcc"), gdb("cpp", "c++", "g++", " -std=c++17")]
 
 # memory errors and leaks: the file built with the sanitizers, or run under Valgrind (in Linux)
 def checks(language, compiler, std=""):
+    # coverage: built with gcov's counters in the report's folder, run, and the counts read as gcov's JSON
+    build = compiler + " --coverage -O0" + std + ' -c "{file}" -o "{report_dir}/{stem}.o" && ' + compiler + ' --coverage "{report_dir}/{stem}.o" -o "{report_dir}/{stem}" && "{report_dir}/{stem}"'
+    gcov = 'gcov --json-format --stdout "{stem}.o" > "{report}"'
     return [
+        dict(language=language, name="Run with coverage", coverage="gcov-json", command=build + '; cd "{report_dir}" && ' + gcov, windows=build + ' & cd /d "{report_dir}" && ' + gcov),
         dict(language=language, name="Run with AddressSanitizer", command=compiler + " -g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined" + std + ' "{file}" -o "{dir}/{stem}-asan" && "{dir}/{stem}-asan"'),
         dict(language=language, name="Run under Valgrind", command=compiler + " -g -O0" + std + ' "{file}" -o "{dir}/{stem}" && valgrind --leak-check=full --error-exitcode=1 "{dir}/{stem}"'),
     ]
 
 
 MODULE = module(
-    version="1.2.0",
+    version="1.3.0",
     id="c-cpp",
     name="C and C++",
     category="Languages",

@@ -14,8 +14,8 @@ use crate::widgets;
 /// What a row of the gutter menu does.
 #[derive(Clone, Debug, PartialEq)]
 pub enum GutterAction {
-    /// Run a test or suite of the file (none: every test of the file).
-    RunTests(PathBuf, Option<ide_core::testing::TestItem>),
+    /// Run a test or suite of the file (none: every test of the file), measuring coverage or not.
+    RunTests(PathBuf, Option<ide_core::testing::TestItem>, bool),
     /// Send the request on a line of a `.http` file, with an environment.
     SendRequest(PathBuf, usize, Option<String>),
 }
@@ -62,7 +62,7 @@ impl App {
 
     pub fn do_gutter_action(&mut self, action: GutterAction) {
         match action {
-            GutterAction::RunTests(path, item) => self.run_tests(&path, item.as_ref()),
+            GutterAction::RunTests(path, item, coverage) => self.run_tests_with(&path, item.as_ref(), coverage),
             GutterAction::SendRequest(path, line, env) => self.send_request(&path, line, env.as_deref()),
         }
     }

@@ -21,6 +21,9 @@ pub struct RunDef {
     pub command: String,
     /// A different command line for a project that runs on Windows (empty: the same one).
     pub windows: String,
+    /// The run measures code coverage: the format of the report (see [`crate::coverage::FORMATS`]) it writes to
+    /// `{report}` (in the folder `{report_dir}`, which the IDE makes for the run).
+    pub coverage: String,
 }
 
 impl RunDef {
@@ -57,7 +60,7 @@ pub struct CheckDef {
 impl CheckDef {
     /// The command line that checks `file` (see [`RunDef::command_line`]).
     pub fn command_line(&self, file: &str, dir: &str, windows: bool) -> String {
-        RunDef { language: self.language.clone(), name: self.name.clone(), command: self.command.clone(), windows: self.windows.clone() }.command_line(file, dir, windows)
+        RunDef { language: self.language.clone(), name: self.name.clone(), command: self.command.clone(), windows: self.windows.clone(), coverage: String::new() }.command_line(file, dir, windows)
     }
 }
 
@@ -188,6 +191,11 @@ pub struct TestDef {
     pub passed: String,
     pub failed: String,
     pub result_separator: String,
+    /// Running the tests with code coverage: the report's format and the command lines (with `{report}` and
+    /// `{report_dir}` as a run command's that measures coverage).
+    pub coverage: String,
+    pub coverage_command: String,
+    pub coverage_file_command: String,
 }
 
 /// A program the IDE downloads when it is first needed (after asking), checked against its SHA-256 and unpacked.
@@ -335,8 +343,16 @@ impl Manifest {
             }
             crate::modules::check::compile(&c.pattern).map_err(|e| format!("{}: the check {:?}: {e}", self.id, c.name))?;
         }
+        for r in self.run.iter().filter(|r| !r.coverage.is_empty()) {
+            if !crate::coverage::FORMATS.contains(&r.coverage.as_str()) {
+                return Err(format!("{}: the run command {:?}: unknown coverage format {:?}", self.id, r.name, r.coverage));
+            }
+        }
         for t in &self.tests {
             crate::testing::check(t).map_err(|e| format!("{}: the tests {:?}: {e}", self.id, t.name))?;
+            if !t.coverage.is_empty() && (!crate::coverage::FORMATS.contains(&t.coverage.as_str()) || t.coverage_command.trim().is_empty()) {
+                return Err(format!("{}: the tests {:?}: coverage needs a known format and a command", self.id, t.name));
+            }
             if let Some(l) = t.languages.iter().find(|l| !self.languages.iter().any(|x| x.id == **l)) {
                 return Err(format!("{}: the tests {:?} are for the unknown language {l:?}", self.id, t.name));
             }
@@ -392,7 +408,7 @@ mod tests {
 
     #[test]
     fn a_run_command_gets_the_file_filled_in() {
-        let r = RunDef { language: "c".into(), name: "Run".into(), command: "cc \"{file}\" -o \"{dir}/{stem}\" && ./{name}".into(), windows: "gcc \"{file}\" -o \"{dir}/{stem}.exe\"".into() };
+        let r = RunDef { language: "c".into(), name: "Run".into(), command: "cc \"{file}\" -o \"{dir}/{stem}\" && ./{name}".into(), windows: "gcc \"{file}\" -o \"{dir}/{stem}.exe\"".into(), ..Default::default() };
         assert_eq!(r.command_line("/home/u/p/main.c", "/home/u/p", false), "cc \"/home/u/p/main.c\" -o \"/home/u/p/main\" && ./main.c");
         assert_eq!(r.command_line("C:/p/main.c", "C:/p", true), "gcc \"C:/p/main.c\" -o \"C:/p/main.exe\"");
         // no Windows variant: the same line

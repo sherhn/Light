@@ -268,6 +268,7 @@ impl App {
         }
         let breakpoint_lane = self.debuggable(idx);
         let breakpoints = self.breakpoint_marks(idx);
+        let coverage = self.coverage_lines(idx);
         let editor_on = focused && self.editor_active(ctx);
         let cfg = ViewCfg {
             pal: &self.pal,
@@ -286,6 +287,7 @@ impl App {
             line_tints: &line_tints,
             breakpoint_lane,
             breakpoints: &breakpoints,
+            coverage: &coverage,
         };
         let mut view = match (own_view, self.split.as_mut()) {
             (true, Some(sp)) => std::mem::take(&mut sp.view),

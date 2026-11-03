@@ -50,7 +50,7 @@
     {
       "id": "c-cpp",
       "name": "C and C++",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "category": "Languages",
       "summary": "C, C++ and headers: highlighting, outline, run, CMake tasks, CTest tests, GDB debugging, sanitizers and Valgrind.",
       "cover": "cover.png",
@@ -58,8 +58,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 19424,
-          "sha256": "a59c2979367127a6e371322c9deb0bc8c65a58458143c422493812199239fce7"
+          "size": 20694,
+          "sha256": "5ad5a426f698f2333bfa71ee5412beee746cfc1f7ff55311505712a348b38ee2"
         },
         {
           "name": "LICENSE",
@@ -407,7 +407,7 @@
     {
       "id": "javascript",
       "name": "JavaScript",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "category": "Languages",
       "summary": "JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
       "cover": "cover.png",
@@ -415,8 +415,8 @@
       "files": [
         {
           "name": "module.json",
-          "size": 17566,
-          "sha256": "870e34a721721cd829e6a00a27d372385027942315d8811c08fbc73fb2abde91"
+          "size": 18413,
+          "sha256": "ba18163cd492acc03a4d37a715fcac5f416ada1ea5f85aa04bc755eed93b72a9"
         },
         {
           "name": "LICENSE",

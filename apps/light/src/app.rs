@@ -79,6 +79,8 @@ pub struct App {
     pub gutter_menu: Option<crate::gutter::GutterMenu>,
     /// The debugger: its session and the breakpoints.
     pub debug: crate::app_debug::DebugState,
+    /// The last code coverage report.
+    pub coverage: crate::app_coverage::CoverageState,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -196,6 +198,7 @@ impl App {
             testing: Default::default(),
             gutter_menu: None,
             debug: Default::default(),
+            coverage: Default::default(),
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -411,6 +414,7 @@ impl App {
         self.gutter_menu = None;
         self.stop_debug();
         self.debug = Default::default();
+        self.coverage = Default::default();
         self.modules_banner_dismissed = false;
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder
@@ -1232,6 +1236,7 @@ impl App {
             self.tests_finished(code);
             self.http_finished(code);
             self.debug_build_finished(code);
+            self.coverage_finished(code);
             // a scenario goes on with its next command
             self.scenario_after_exit(code);
         }

@@ -108,11 +108,20 @@ pub fn selector(def: &TestDef, item: &TestItem) -> String {
 /// The command line that runs `item` (or the whole file when there is none). `file`, `dir` and `root` are paths as the
 /// shell sees them.
 pub fn command_line(def: &TestDef, item: Option<&TestItem>, file: &str, dir: &str, root: &str, windows: bool) -> String {
+    command_line_for(def, item, file, dir, root, windows, false)
+}
+
+/// [`command_line`], or the one that measures code coverage (`coverage`; `{report}` and `{report_dir}` are left for
+/// the caller to fill in).
+pub fn command_line_for(def: &TestDef, item: Option<&TestItem>, file: &str, dir: &str, root: &str, windows: bool, coverage: bool) -> String {
     let pick = |own: &String, win: &String| if windows && !win.is_empty() { win.clone() } else { own.clone() };
-    let template = match item {
-        Some(_) => pick(&def.command, &def.windows),
-        None if !def.file_command.is_empty() => pick(&def.file_command, &def.windows_file_command),
-        None => pick(&def.command, &def.windows),
+    let template = match (item, coverage) {
+        (Some(_), true) => def.coverage_command.clone(),
+        (None, true) if !def.coverage_file_command.is_empty() => def.coverage_file_command.clone(),
+        (None, true) => def.coverage_command.clone(),
+        (Some(_), false) => pick(&def.command, &def.windows),
+        (None, false) if !def.file_command.is_empty() => pick(&def.file_command, &def.windows_file_command),
+        (None, false) => pick(&def.command, &def.windows),
     };
     let test = item.map(|i| selector(def, i)).unwrap_or_else(|| ".*".into());
     template.replace("{file}", file).replace("{dir}", dir).replace("{root}", root).replace("{test}", &test)

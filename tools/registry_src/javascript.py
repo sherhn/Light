@@ -31,11 +31,17 @@ TESTS = [
     dict(name="Jest", languages=["javascript", "jsx"], files=TEST_FILES, project_file="package.json", project_needs='"jest"',
          test=_declared("(?:it|test)"), suite=_declared("describe"), separator=" ",
          command='npx jest --runTestsByPath "{file}" -t "{test}"', file_command='npx jest --runTestsByPath "{file}"', env={"NO_COLOR": "1", "FORCE_COLOR": "0"},
-         failed=r"(?m)^\s*● (?P<name>.+?)$", result_separator=" › "),
+         failed=r"(?m)^\s*● (?P<name>.+?)$", result_separator=" › ",
+         # Jest measures coverage itself (istanbul)
+         coverage="lcov", coverage_command='npx jest --runTestsByPath "{file}" -t "{test}" --coverage --coverageReporters=lcov --coverageReporters=text-summary --coverageDirectory="{report_dir}"',
+         coverage_file_command='npx jest --runTestsByPath "{file}" --coverage --coverageReporters=lcov --coverageReporters=text-summary --coverageDirectory="{report_dir}"'),
     dict(name="node:test", languages=["javascript"], content=r"""from\s+['"]node:test['"]|require\(\s*['"]node:test['"]\s*\)""", project_file="package.json",
          test=_declared("(?:it|test)"), suite=_declared("(?:describe|suite)"), separator=" ",
          command='node --test --test-reporter=tap --test-name-pattern="{test}" "{file}"', file_command='node --test --test-reporter=tap "{file}"',
-         passed=r"(?m)^\s*ok \d+ - (?P<name>.+?)(?: # .*)?$", failed=r"(?m)^\s*not ok \d+ - (?P<name>.+?)(?: # .*)?$"),
+         passed=r"(?m)^\s*ok \d+ - (?P<name>.+?)(?: # .*)?$", failed=r"(?m)^\s*not ok \d+ - (?P<name>.+?)(?: # .*)?$",
+         # Node.js measures coverage itself: the TAP goes to the Run window, the LCOV to the report
+         coverage="lcov", coverage_command='node --test --experimental-test-coverage --test-reporter=tap --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination="{report}" --test-name-pattern="{test}" "{file}"',
+         coverage_file_command='node --test --experimental-test-coverage --test-reporter=tap --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination="{report}" "{file}"'),
 ]
 
 # Microsoft's JavaScript debugger, the one VS Code uses, as a debug adapter of its own: downloaded when it is first
@@ -48,7 +54,7 @@ DEBUG = [dict(name="Node.js", languages=["javascript", "jsx"], download=JS_DEBUG
 
 
 MODULE = module(
-    id="javascript", name="JavaScript", category="Languages", version="1.3.0",
+    id="javascript", name="JavaScript", category="Languages", version="1.4.0",
     summary="JavaScript/JSX, Node.js and npm: highlighting, completion, outline, folding, syntax checks, run, watch and tests.",
     description="JavaScript ES modules and CommonJS, JSX and package.json. Syntax coloring includes comments, strings, template literals, regular expressions, keywords and browser/Node builtins. Brace indentation and folding, function/class outline and completion. Node.js syntax checks, Run, Watch and node:test; package.json exposes npm install, start, dev, build, test and lint. Uses your Node.js/npm on Windows, macOS or Linux (including WSL). No files or dependencies are created until you explicitly run a command.",
     languages=[
