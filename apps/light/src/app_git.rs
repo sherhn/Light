@@ -116,6 +116,7 @@ impl App {
                 log: repo.as_ref().map(|r| r.log_all(200)).unwrap_or_default(),
                 truncated,
                 upstream: repo.as_ref().and_then(|r| r.upstream()),
+                merge: repo.as_ref().and_then(|r| r.merge_state()),
             };
             let _ = tx.send(snap);
         });
@@ -134,6 +135,7 @@ impl App {
             self.git.log = snap.log;
             self.git.changes_truncated = snap.truncated;
             self.git.upstream = snap.upstream;
+            self.git.merge = snap.merge;
             // new commits on the remote: say so once (and again only when there are more of them)
             let behind = self.commits_to_pull();
             if behind > self.git.told_behind

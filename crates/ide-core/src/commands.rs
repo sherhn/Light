@@ -212,6 +212,10 @@ cmds! {
     "git.pull", "Update Project (Pull)", Git, ["Ctrl+T"];
     "git.branches", "Branches...", Git, ["Ctrl+Shift+Backtick"];
     "git.new_branch", "New Branch...", Git, [];
+    "git.merge", "Merge into Current Branch...", Git, [];
+    "git.resolve", "Resolve Conflicts...", Git, [];
+    "git.merge_continue", "Continue Merge", Git, [];
+    "git.merge_abort", "Abort Merge", Git, [];
     "git.diff", "Show Diff", Git, ["Ctrl+Alt+Shift+D"];
     "git.rollback", "Rollback Changes...", Git, ["Ctrl+Alt+Z"];
     "git.local_commit", "Local Commit...", Git, ["Ctrl+Alt+K"];

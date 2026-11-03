@@ -611,6 +611,10 @@ impl App {
                 self.git_run_async("Update", |r| r.pull());
             }
             "git.branches" => self.open_branch_palette(),
+            "git.merge" => self.open_merge_palette(),
+            "git.resolve" => self.popup = Popup::Conflicts,
+            "git.merge_continue" => self.git_merge_continue(),
+            "git.merge_abort" => self.git_merge_abort(),
             "git.new_branch" => self.popup = Popup::NewBranch { input: String::new(), just_opened: true },
             "git.diff" => {
                 if let Some(rel) = self.current_rel_path() {

@@ -170,6 +170,7 @@ impl App {
         self.draw_env_banner(ui);
         self.draw_tools_banner(ui);
         self.draw_modules_banner(ui);
+        self.draw_merge_banner(ui);
         if self.docs.is_empty() {
             self.split = None;
             self.draw_welcome(ui, ctx);
@@ -232,6 +233,7 @@ impl App {
                 self.docs[idx].conflict = false;
             }
         }
+        self.draw_conflict_bar(ui, idx);
         self.draw_breadcrumbs(ui, idx);
         if focused {
             self.draw_find_bar(ui, ctx);
@@ -259,6 +261,7 @@ impl App {
         let find: Vec<(usize, usize)> = if focused && self.find.open { self.find.matches.clone() } else { vec![] };
         let git_marks: Vec<ide_core::diff::Mark> = App::git_marks(&mut self.docs[idx]).to_vec();
         let gutter_icons = self.gutter_icons(idx);
+        let line_tints = self.conflict_tints(idx);
         let editor_on = focused && self.editor_active(ctx);
         let cfg = ViewCfg {
             pal: &self.pal,
@@ -274,6 +277,7 @@ impl App {
             minimap: self.settings.minimap,
             doc_id: self.docs[idx].id,
             icons: &gutter_icons,
+            line_tints: &line_tints,
         };
         let mut view = match (own_view, self.split.as_mut()) {
             (true, Some(sp)) => std::mem::take(&mut sp.view),

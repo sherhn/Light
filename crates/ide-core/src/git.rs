@@ -384,6 +384,104 @@ impl Repo {
     pub fn diff_text(&self, path: &str) -> String {
         self.run(&["diff", "HEAD", "--", path]).unwrap_or_default()
     }
+
+    /// The operation that stopped for conflicts and waits to be continued or aborted, if any.
+    pub fn merge_state(&self) -> Option<MergeKind> {
+        let exists = |name: &str| self.run(&["rev-parse", "--git-path", name]).ok().map(|p| p.trim().to_string()).is_some_and(|p| {
+            let path = Path::new(&p);
+            let path = if path.is_absolute() { path.to_path_buf() } else { self.root.join(path) };
+            match crate::wsl::wsl_path(&self.root) {
+                // git in the distribution answers with Linux paths
+                Some(w) if p.starts_with('/') => self.root.join(p.strip_prefix(w.linux.trim_end_matches('/')).unwrap_or(&p).trim_start_matches('/')).exists(),
+                _ => path.exists(),
+            }
+        });
+        if exists("rebase-merge") || exists("rebase-apply") {
+            Some(MergeKind::Rebase)
+        } else if exists("MERGE_HEAD") {
+            Some(MergeKind::Merge)
+        } else if exists("CHERRY_PICK_HEAD") {
+            Some(MergeKind::CherryPick)
+        } else if exists("REVERT_HEAD") {
+            Some(MergeKind::Revert)
+        } else {
+            None
+        }
+    }
+
+    /// Merge `branch` into the current branch. Conflicts are an error that names them; the merge then waits for them
+    /// to be resolved ([`Repo::merge_state`]).
+    pub fn merge(&self, branch: &str) -> Result<String, String> {
+        match self.run(&["merge", "--no-edit", branch]) {
+            Ok(out) => Ok(out.lines().last().unwrap_or_default().trim().to_string()),
+            Err(e) => {
+                let conflicted: Vec<String> = self.status().into_iter().filter(|c| c.kind == ChangeKind::Conflicted).map(|c| c.path).collect();
+                if conflicted.is_empty() { Err(e) } else { Err(format!("conflicts in {}", conflicted.join(", "))) }
+            }
+        }
+    }
+
+    /// Resolve the conflicts of `path` by taking one side as a whole: `ours` (the current branch) or theirs.
+    pub fn take_side(&self, path: &str, ours: bool) -> Result<(), String> {
+        self.run(&["checkout", if ours { "--ours" } else { "--theirs" }, "--", path])?;
+        self.stage(&[path.to_string()])
+    }
+
+    /// The version of a conflicted file on one side: 1 the common base, 2 ours, 3 theirs.
+    pub fn stage_content(&self, path: &str, stage: u8) -> Option<String> {
+        self.run(&["show", &format!(":{stage}:{path}")]).ok()
+    }
+
+    /// Go on with the stopped operation once its conflicts are resolved (a merge is committed with its own message).
+    pub fn merge_continue(&self, kind: MergeKind) -> Result<String, String> {
+        let args: &[&str] = match kind {
+            MergeKind::Merge => &["commit", "--no-edit"],
+            MergeKind::Rebase => &["rebase", "--continue"],
+            MergeKind::CherryPick => &["cherry-pick", "--continue"],
+            MergeKind::Revert => &["revert", "--continue"],
+        };
+        self.run_quiet_editor(args).map(|s| s.lines().next().unwrap_or_default().trim().to_string())
+    }
+
+    /// Give the stopped operation up: the files are as they were before it.
+    pub fn merge_abort(&self, kind: MergeKind) -> Result<(), String> {
+        let verb = match kind {
+            MergeKind::Merge => "merge",
+            MergeKind::Rebase => "rebase",
+            MergeKind::CherryPick => "cherry-pick",
+            MergeKind::Revert => "revert",
+        };
+        self.run(&[verb, "--abort"]).map(|_| ())
+    }
+
+    /// `git` that may want an editor for a message: the message it proposes is taken as it is.
+    fn run_quiet_editor(&self, args: &[&str]) -> Result<String, String> {
+        let mut full = vec!["-c", "core.editor=true"];
+        full.extend_from_slice(args);
+        let mut cmd = git_command(&self.root);
+        cmd.env("GIT_EDITOR", "true").arg("-c").arg("color.ui=false").args(&full).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        if crate::wsl::wsl_path(&self.root).is_some() {
+            crate::wsl::pass_env(&mut cmd, &[("GIT_EDITOR".to_string(), "true".to_string())]);
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000 | 0x0000_4000);
+        }
+        let out = cmd.output().map_err(|e| format!("cannot run git: {e}"))?;
+        let text = String::from_utf8_lossy(&out.stdout).into_owned();
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        if out.status.success() { Ok(text) } else { Err(if err.is_empty() { text.trim().to_string() } else { err }) }
+    }
+}
+
+/// An operation of Git that can stop for conflicts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MergeKind {
+    Merge,
+    Rebase,
+    CherryPick,
+    Revert,
 }
 
 #[cfg(test)]
@@ -401,6 +499,61 @@ mod tests {
         r.run(&["config", "user.name", "Tester"]).ok()?;
         r.run(&["config", "commit.gpgsign", "false"]).ok()?;
         Some((d, r))
+    }
+
+    /// A repository where `main` and `feature` changed the same line of `a.txt`.
+    fn diverged() -> Option<(TempDir, Repo)> {
+        let (d, r) = repo()?;
+        r.run(&["config", "core.autocrlf", "false"]).ok()?;
+        r.run(&["checkout", "-q", "-b", "main"]).ok()?;
+        std::fs::write(d.path().join("a.txt"), "one\ntwo\nthree\n").unwrap();
+        r.commit("base", &["a.txt".into()]).ok()?;
+        r.create_branch("feature").ok()?;
+        std::fs::write(d.path().join("a.txt"), "one\nTWO from feature\nthree\n").unwrap();
+        r.commit("feature", &["a.txt".into()]).ok()?;
+        r.checkout("main").ok()?;
+        std::fs::write(d.path().join("a.txt"), "one\ntwo from main\nthree\n").unwrap();
+        r.commit("main", &["a.txt".into()]).ok()?;
+        Some((d, r))
+    }
+
+    #[test]
+    fn a_merge_with_conflicts_waits_and_is_continued_or_aborted() {
+        let Some((d, r)) = diverged() else { return };
+        assert_eq!(r.merge_state(), None);
+        let err = r.merge("feature").unwrap_err();
+        assert!(err.contains("a.txt"), "{err}");
+        assert_eq!(r.merge_state(), Some(MergeKind::Merge));
+        let text = std::fs::read_to_string(d.path().join("a.txt")).unwrap();
+        let c = crate::conflicts::find(&text);
+        assert_eq!((c.len(), c[0].ours.as_str(), c[0].theirs.as_str()), (1, "two from main\n", "TWO from feature\n"));
+        assert_eq!(r.stage_content("a.txt", 3).as_deref(), Some("one\nTWO from feature\nthree\n"));
+        assert_eq!(r.stage_content("a.txt", 1).as_deref(), Some("one\ntwo\nthree\n"));
+        // abort: as before the merge
+        r.merge_abort(MergeKind::Merge).unwrap();
+        assert_eq!(r.merge_state(), None);
+        assert_eq!(std::fs::read_to_string(d.path().join("a.txt")).unwrap(), "one\ntwo from main\nthree\n");
+        // again, taking their side, and the merge is committed
+        assert!(r.merge("feature").is_err());
+        r.take_side("a.txt", false).unwrap();
+        assert!(r.status().iter().all(|c| c.kind != ChangeKind::Conflicted));
+        r.merge_continue(MergeKind::Merge).unwrap();
+        assert_eq!(r.merge_state(), None);
+        assert_eq!(std::fs::read_to_string(d.path().join("a.txt")).unwrap(), "one\nTWO from feature\nthree\n");
+        assert_eq!(r.log(1)[0].parents.len(), 2, "a merge commit");
+    }
+
+    #[test]
+    fn a_rebase_that_stops_for_conflicts_goes_on_once_resolved() {
+        let Some((d, r)) = diverged() else { return };
+        r.checkout("feature").unwrap();
+        assert!(r.run(&["rebase", "main"]).is_err());
+        assert_eq!(r.merge_state(), Some(MergeKind::Rebase));
+        std::fs::write(d.path().join("a.txt"), "one\nboth\nthree\n").unwrap();
+        r.stage(&["a.txt".into()]).unwrap();
+        r.merge_continue(MergeKind::Rebase).unwrap();
+        assert_eq!(r.merge_state(), None);
+        assert_eq!(r.log(3).iter().map(|c| c.subject.as_str()).collect::<Vec<_>>(), ["feature", "main", "base"]);
     }
 
     #[test]

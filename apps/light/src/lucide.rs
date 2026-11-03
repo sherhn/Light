@@ -70,3 +70,4 @@ pub const SUN: char = '\u{e178}';
 pub const MOON: char = '\u{e11e}';
 pub const FILE: char = '\u{e0c0}';
 pub const LIST_VIDEO: char = '\u{e2e2}';
+pub const GIT_MERGE: char = '\u{e0e4}';

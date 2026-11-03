@@ -71,6 +71,8 @@ pub struct ViewCfg<'a> {
     pub doc_id: u64,
     /// Buttons next to the line numbers (run a test, send a request); a document with none has no room for them.
     pub icons: &'a [GutterIcon],
+    /// Lines with a background of their own (the two sides of a merge conflict): first and last 0-based line, colour.
+    pub line_tints: &'a [(usize, usize, Color32)],
 }
 
 /// A button in the gutter, next to the number of its line.
@@ -374,6 +376,9 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
             let x0 = origin.x;
             let ncols = line.chars().count();
 
+            if let Some((_, _, tint)) = cfg.line_tints.iter().find(|(a, b, _)| (*a..=*b).contains(&line_no)) {
+                painter.rect_filled(Rect::from_min_size(Pos2::new(text_rect.min.x, y), Vec2::new(rect.width().max(text_rect.width()), lh)), CornerRadius::ZERO, *tint);
+            }
             // current line highlight
             if line_no == caret_line && sel_s == sel_e {
                 painter.rect_filled(Rect::from_min_size(Pos2::new(text_rect.min.x, y), Vec2::new(rect.width().max(text_rect.width()), lh)), CornerRadius::ZERO, pal.current_line);
@@ -843,7 +848,7 @@ mod scrollbar_tests {
         let mut editor = Editor::new(&"x".repeat(500), lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[] };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers: &[], find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[] };
         let mut track = Pos2::ZERO;
         for frame in 0..6 {
             let position = track + Vec2::new(if frame >= 3 { 80.0 } else { 0.0 }, 0.0);
@@ -908,7 +913,7 @@ mod problem_tests {
         let mut editor = Editor::new(text, lisp_syntax::Dialect::CommonLisp);
         let mut state = ViewState::default();
         let mut folds = HashSet::new();
-        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[] };
+        let cfg = ViewCfg { pal: &pal, font_size: 14.0, line_numbers: true, whitespace: false, rainbow: false, focused: true, markers, find: &[], find_current: None, git_marks: &[], minimap: false, doc_id: 0, icons: &[], line_tints: &[] };
         let (mut tint, mut underline) = (false, false);
         for _ in 0..2 {
             let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(500.0, 200.0))), ..Default::default() }, |ui| {

@@ -63,6 +63,7 @@ pub struct GitSnapshot {
     pub log: Vec<Commit>,
     pub truncated: bool,
     pub upstream: Option<ide_core::git::Upstream>,
+    pub merge: Option<ide_core::git::MergeKind>,
 }
 
 pub struct GitState {
@@ -72,6 +73,8 @@ pub struct GitState {
     pub changes: Vec<Change>,
     pub branches: Vec<Branch>,
     pub log: Vec<Commit>,
+    /// The operation of git that stopped for conflicts (a merge, a rebase...).
+    pub merge: Option<ide_core::git::MergeKind>,
     /// Lane layout of `log` (the branch graph).
     pub graph: Vec<ide_core::graph::GraphRow>,
     pub rx: Option<Receiver<GitSnapshot>>,
@@ -112,6 +115,7 @@ impl Default for GitState {
             changes: vec![],
             branches: vec![],
             log: vec![],
+            merge: None,
             graph: vec![],
             rx: None,
             last_refresh: -100.0,
@@ -282,6 +286,8 @@ pub enum PTarget {
     Symbol { path: PathBuf, offset: usize },
     Offset(usize),
     Branch(String),
+    /// A branch to merge into the current one.
+    Merge(String),
 }
 
 #[derive(Clone, Debug)]
@@ -468,6 +474,8 @@ pub enum Popup {
     RenameFile { path: PathBuf, input: String, just_opened: bool },
     /// The editor of the project's run scenarios.
     Scenarios(Box<ScenariosState>),
+    /// The files a merge left in conflict.
+    Conflicts,
 }
 
 /// The scenarios being edited: a working copy, and the commands of each as one text.

@@ -335,6 +335,34 @@ impl App {
                     self.fail(format!("gutter icons: expected {want:?}, got {got:?}"));
                 }
             }
+            "conflict_click" => {
+                // a button of the Conflicts window (`ours:path`, `theirs:path`, `merge:path`) or of the bar over a file
+                // with conflicts (`ours`, `theirs`, `both`, `Mark as Resolved`)
+                let dialog = ctx.data(|d| d.get_temp::<Vec<(String, egui::Rect)>>(egui::Id::unique("conflicts_dialog_rects"))).unwrap_or_default();
+                let bar = ctx.data(|d| d.get_temp::<Vec<(&'static str, egui::Rect)>>(egui::Id::unique("conflict_bar_rects"))).unwrap_or_default();
+                let hit = if self.popup.is_open() { dialog.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) } else { bar.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) };
+                match hit {
+                    Some(pos) => {
+                        let s = self.script.as_mut().unwrap();
+                        s.pending.push(Event::PointerMoved(pos));
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+                        s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+                    }
+                    None => self.fail(format!("conflict_click: no button {sval:?}; dialog {:?}, bar {:?}", dialog.iter().map(|(k, _)| k).collect::<Vec<_>>(), bar.iter().map(|(k, _)| k).collect::<Vec<_>>())),
+                }
+            }
+            "assert_merge" => {
+                // the operation that waits ("merge", "rebase", "none") and how many files are in conflict
+                let state = match self.git.merge { Some(ide_core::git::MergeKind::Merge) => "merge", Some(ide_core::git::MergeKind::Rebase) => "rebase", Some(ide_core::git::MergeKind::CherryPick) => "cherry-pick", Some(ide_core::git::MergeKind::Revert) => "revert", None => "none" };
+                if state != sval {
+                    self.fail(format!("assert_merge: expected {sval:?}, got {state:?}"));
+                }
+                if let Some(n) = step["conflicted"].as_u64()
+                    && self.conflicted_files().len() as u64 != n
+                {
+                    self.fail(format!("assert_merge: expected {n} conflicted files, got {:?}", self.conflicted_files()));
+                }
+            }
             "assert_tasks" => {
                 self.refresh_tasks(true);
                 let file = step["file"].as_str().unwrap_or_default();
@@ -945,6 +973,7 @@ impl App {
                     Popup::Confirm { .. } => "confirm",
                     Popup::RenameFile { .. } => "rename_file",
                     Popup::Scenarios(_) => "scenarios",
+                    Popup::Conflicts => "conflicts",
                     Popup::NewBranch { .. } => "new_branch",
                     Popup::LocalCommit { .. } => "local_commit",
                 };

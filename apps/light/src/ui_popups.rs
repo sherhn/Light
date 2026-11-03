@@ -57,6 +57,7 @@ impl App {
         self.draw_local_view(ctx);
         self.draw_settings(ctx);
         self.draw_info_dialogs(ctx);
+        self.draw_conflicts_dialog(ctx);
         self.draw_completion(ctx);
         self.draw_hint(ctx);
         self.draw_hover(ctx);
@@ -226,6 +227,7 @@ impl App {
                         }
                     }
                     PTarget::Branch(b) => self.git_checkout(&b),
+                    PTarget::Merge(b) => self.git_merge(&b),
                 }
             }
         }

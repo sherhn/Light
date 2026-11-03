@@ -104,6 +104,23 @@ def run_one(script_path):
             web.mkdir(exist_ok=True)
             (web / "main.mjs").write_text('export const double = (x) => x * 2;\nconsole.log("javascript module ready", double(3));\n', encoding="utf-8")
             (web / "package.json").write_text(json.dumps({"name": "light-test", "private": True, "type": "module", "scripts": {"test": "node main.mjs", "build": "node main.mjs"}}), encoding="utf-8")
+        if "@merge_conflict" in text:
+            # `feature` and `main` changed the same lines of two files since they parted
+            def git(*args):
+                subprocess.run(["git", "-c", "commit.gpgsign=false", *args], cwd=proj, capture_output=True, check=True)
+            (proj / "notes").mkdir(exist_ok=True)
+            (proj / "notes/whole.txt").write_text("title\nbase line\nend\n", encoding="utf-8")
+            (proj / "notes/parts.txt").write_text("alpha\nfirst = base\nm1\nm2\nm3\nm4\nm5\nm6\nsecond = base\nomega\n", encoding="utf-8")
+            git("add", "-A")
+            git("commit", "-q", "-m", "notes")
+            git("checkout", "-q", "-b", "feature")
+            (proj / "notes/whole.txt").write_text("title\nfeature line\nend\n", encoding="utf-8")
+            (proj / "notes/parts.txt").write_text("alpha\nfirst = feature\nm1\nm2\nm3\nm4\nm5\nm6\nsecond = feature\nomega\n", encoding="utf-8")
+            git("commit", "-q", "-am", "feature work")
+            git("checkout", "-q", "main")
+            (proj / "notes/whole.txt").write_text("title\nmain line\nend\n", encoding="utf-8")
+            (proj / "notes/parts.txt").write_text("alpha\nfirst = main\nm1\nm2\nm3\nm4\nm5\nm6\nsecond = main\nomega\n", encoding="utf-8")
+            git("commit", "-q", "-am", "main work")
         if "@test_runners" in text:
             # a Vitest package and a Jest package, both using the node_modules the environment names
             for kind in ("vitest", "jest"):

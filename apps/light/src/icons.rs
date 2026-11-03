@@ -92,6 +92,8 @@ pub enum Icon {
     Blank,
     /// The Tasks window (a list of things to run).
     Tasks,
+    /// A merge of branches.
+    Merge,
 }
 
 pub fn glyph(icon: Icon) -> Option<char> {
@@ -168,6 +170,7 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::Moon => l::MOON,
         Icon::Blank => l::FILE,
         Icon::Tasks => l::LIST_VIDEO,
+        Icon::Merge => l::GIT_MERGE,
     })
 }
 
