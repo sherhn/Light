@@ -235,10 +235,7 @@ impl App {
                 if details && !row.is_dir && let Some(time) = row.modified {
                     let text = format!("{}  ·  {}", crate::file_info::size(row.size), crate::file_info::modified(time, now, offset));
                     let g = ui.painter().layout_no_wrap(text, fonts::ui(11.5), pal.text_dim.gamma_multiply(0.85));
-                    let right = r.max.x.min(ui.clip_rect().max.x) - 14.0;
-                    if right - g.size().x > name_end + 16.0 {
-                        ui.painter().galley(Pos2::new(right - g.size().x, r.center().y - g.size().y / 2.0), g, pal.text_dim);
-                    }
+                    ui.painter().galley(Pos2::new(name_end + 16.0, r.center().y - g.size().y / 2.0), g, pal.text_dim);
                 }
                 let resp = if dirty_dir { resp.on_hover_text(tr("Contains files with changes")) } else { resp.on_hover_text(row.path.display().to_string()) };
                 if resp.clicked() {

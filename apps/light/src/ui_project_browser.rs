@@ -706,23 +706,19 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
                     let color = if !item.is_dir { pal.text_dim.gamma_multiply(0.7) } else if item.project { pal.accent } else { pal.builtin.gamma_multiply(0.85) };
                     icons::paint(ui.painter(), Rect::from_center_size(Pos2::new(r.min.x + 16.0, r.center().y), Vec2::splat(16.0)), icon, color);
                     let name_color = if item.is_dir { pal.text } else { pal.text_dim.gamma_multiply(0.8) };
-                    let mut right = r.max.x - 10.0;
+                    let painter = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
+                    let name_end = painter.text(Pos2::new(r.min.x + 32.0, r.center().y), Align2::LEFT_CENTER, &item.name, fonts::ui(13.5), name_color).max.x;
+                    let mut next = name_end + 12.0;
+                    if item.project {
+                        let g = painter.layout_no_wrap(tr("project").to_string(), fonts::semibold(10.5), pal.accent);
+                        painter.galley(Pos2::new(next, r.center().y - g.size().y / 2.0), g.clone(), pal.accent);
+                        next += g.size().x + 12.0;
+                    }
                     if let Some(time) = item.modified {
                         let text = if item.is_dir { crate::file_info::modified(time, now, offset) } else { format!("{}  ·  {}", crate::file_info::size(item.size), crate::file_info::modified(time, now, offset)) };
-                        let g = ui.painter().layout_no_wrap(text, fonts::ui(11.5), pal.text_dim);
-                        right -= g.size().x;
-                        ui.painter().galley(Pos2::new(right, r.center().y - g.size().y / 2.0), g, pal.text_dim);
-                        right -= 12.0;
+                        let g = painter.layout_no_wrap(text, fonts::ui(11.5), pal.text_dim);
+                        painter.galley(Pos2::new(next, r.center().y - g.size().y / 2.0), g, pal.text_dim);
                     }
-                    if item.project {
-                        let g = ui.painter().layout_no_wrap(tr("project").to_string(), fonts::semibold(10.5), pal.accent);
-                        let chip = Rect::from_min_size(Pos2::new(right - g.size().x - 12.0, r.center().y - 9.0), Vec2::new(g.size().x + 12.0, 18.0));
-                        ui.painter().rect_filled(chip, CornerRadius::same(6), pal.accent.gamma_multiply(0.16));
-                        ui.painter().galley(chip.center() - g.size() / 2.0, g, pal.accent);
-                        right = chip.min.x - 8.0;
-                    }
-                    let name_rect = Rect::from_min_max(Pos2::new(r.min.x + 32.0, r.min.y), Pos2::new(right.max(r.min.x + 60.0), r.max.y));
-                    ui.painter().with_clip_rect(name_rect.intersect(ui.clip_rect())).text(Pos2::new(name_rect.min.x, r.center().y), Align2::LEFT_CENTER, &item.name, fonts::ui(13.5), name_color);
                     if item.is_dir {
                         if resp.clicked() {
                             ex.selected = Some(item.path.clone());
