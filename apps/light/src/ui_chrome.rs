@@ -13,6 +13,9 @@ use crate::icons::{self, Icon};
 use crate::state::*;
 use crate::widgets::{self, Pill, CRUMB_H, STATUS_H, TAB_H};
 
+#[derive(Clone, Copy, Default)]
+struct TabStripState { offset: f32, active: u64, width: f32, count: usize }
+
 impl App {
     fn menu_item(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, id: &str) {
         let Some(c) = commands::by_id(id) else { return };
@@ -463,7 +466,45 @@ impl App {
         let pal = self.pal;
         let (strip, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), TAB_H), Sense::hover());
         let font = fonts::ui(13.5);
-        let mut x = strip.min.x + 12.0;
+        let state_id = ui.scope_id().with("editor_tab_strip");
+        let mut state = ui.data(|d| d.get_temp::<TabStripState>(state_id)).unwrap_or_default();
+        let widths: Vec<f32> = self.docs.iter().map(|d| {
+            (80.0 + ui.painter().layout_no_wrap(d.name(), font.clone(), pal.text).size().x).min(280.0)
+        }).collect();
+        let overflow = widths.iter().sum::<f32>() + widths.len() as f32 * 2.0 + 24.0 > strip.width();
+        let viewport = Rect::from_min_max(strip.min, Pos2::new(strip.max.x - if overflow { 56.0 } else { 0.0 }, strip.max.y));
+        let widths: Vec<f32> = widths.into_iter().map(|w| w.min((viewport.width() - 24.0).max(1.0))).collect();
+        let content_width = widths.iter().sum::<f32>() + widths.len() as f32 * 2.0 + 24.0;
+        let max_offset = (content_width - viewport.width()).max(0.0);
+        let active_id = self.docs.get(self.active).map_or(0, |d| d.id);
+        if active_id != state.active || state.width != viewport.width() || state.count != self.docs.len() {
+            let left = 12.0 + widths.iter().take(self.active).map(|w| w + 2.0).sum::<f32>();
+            let right = left + widths.get(self.active).copied().unwrap_or(0.0);
+            if left < state.offset { state.offset = left - 12.0; }
+            if right > state.offset + viewport.width() { state.offset = right - viewport.width() + 12.0; }
+        }
+        if overflow {
+            for (n, icon, tip, enabled) in [(0, Icon::ChevronLeft, "Scroll tabs left", state.offset > 0.0), (1, Icon::ChevronRight, "Scroll tabs right", state.offset < max_offset)] {
+                let r = Rect::from_min_size(Pos2::new(viewport.right() + n as f32 * 28.0, strip.center().y - 14.0), Vec2::splat(28.0));
+                let resp = ui.interact(r, state_id.with(n), Sense::click()).on_hover_text(crate::i18n::tr_dyn(tip));
+                if resp.hovered() { ui.painter().rect_filled(r, CornerRadius::same(6), pal.hover); }
+                icons::paint(ui.painter(), r.shrink(6.0), icon, if enabled { pal.text } else { pal.text_dim.gamma_multiply(0.4) });
+                if enabled && resp.clicked() { state.offset += if n == 0 { -viewport.width() * 0.7 } else { viewport.width() * 0.7 }; }
+            }
+            if ui.rect_contains_pointer(strip) {
+                let delta = ui.input_mut(|i| { let d = i.smooth_scroll_delta; i.smooth_scroll_delta = Vec2::ZERO; d });
+                state.offset -= delta.x + delta.y;
+            }
+        }
+        state.offset = state.offset.clamp(0.0, max_offset);
+        state.active = active_id;
+        state.width = viewport.width();
+        state.count = self.docs.len();
+        ui.data_mut(|d| d.insert_temp(state_id, state));
+        let mut tabs_ui = ui.new_child(egui::UiBuilder::new().max_rect(viewport));
+        tabs_ui.set_clip_rect(viewport.intersect(ui.clip_rect()));
+        let ui = &mut tabs_ui;
+        let mut x = viewport.min.x + 12.0 - state.offset;
         let mut to_close: Option<usize> = None;
         let mut to_activate: Option<usize> = None;
         let names: Vec<(String, bool, bool)> = self.docs.iter().map(|d| (d.name(), d.ed.is_modified() && d.path.is_none() && d.diff.is_none(), d.conflict)).collect();
@@ -472,10 +513,9 @@ impl App {
         let mut split_request: Option<(usize, Option<bool>)> = None;
         let problems = self.all_problems();
         for (i, (name, modified, conflict)) in names.iter().enumerate() {
-            let galley = ui.painter().layout_no_wrap(name.clone(), font.clone(), pal.text);
-            let w = 14.0 + 18.0 + 8.0 + galley.size().x + 10.0 + 22.0 + 8.0;
+            let w = widths[i];
             let r = Rect::from_min_size(Pos2::new(x, strip.min.y), Vec2::new(w, TAB_H));
-            let resp = ui.interact(r, ui.scope_id().with(("tab", i)), Sense::click());
+            let resp = ui.interact(r, ui.scope_id().with(("tab", i)), Sense::click()).on_hover_text(self.docs[i].path.as_ref().map_or_else(|| name.clone(), |p| p.display().to_string()));
             let active = i == self.active;
             let hit = r.shrink2(Vec2::new(0.0, 8.0));
             if active {
@@ -504,7 +544,8 @@ impl App {
             let has_err = problems.iter().any(|p| p.path == self.docs[i].path && p.path.is_some() && p.sev == Sev::Error);
             let git_color = self.docs[i].path.as_ref().and_then(|p| self.git_change_of(p)).map(|k| self.git_color(k));
             let text_color = if has_err { pal.error } else if let Some(c) = git_color { c } else if active { pal.text } else { pal.text_dim };
-            ui.painter().text(Pos2::new(r.min.x + 40.0, r.center().y), Align2::LEFT_CENTER, name, font.clone(), text_color);
+            let label_rect = Rect::from_min_max(Pos2::new(r.min.x + 40.0, r.min.y), Pos2::new((r.max.x - 34.0).max(r.min.x + 40.0), r.max.y));
+            ui.painter_at(label_rect).text(Pos2::new(r.min.x + 40.0, r.center().y), Align2::LEFT_CENTER, name, font.clone(), text_color);
             let cr = Rect::from_center_size(Pos2::new(r.max.x - 20.0, r.center().y), Vec2::splat(20.0));
             let close_resp = ui.interact(cr, ui.scope_id().with(("tabclose", i)), Sense::click());
             if *modified || *conflict {
@@ -563,9 +604,7 @@ impl App {
                 }
             });
             x += w + 2.0;
-            if x > strip.max.x {
-                break;
-            }
+
         }
         if let Some(i) = to_activate {
             self.show_doc(i);
@@ -831,6 +870,45 @@ pub fn elide(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overflowing_tabs_reveal_the_active_document_and_allow_scrolling_back() {
+        let ctx = egui::Context::default();
+        fonts::install(&ctx);
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.docs = (0..20).map(crate::doc::Doc::untitled).collect();
+        let frame = |app: &mut App, width: f32, events| {
+            let name = app.docs[app.active].name();
+            let mut state = TabStripState::default();
+            let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(width, 200.0))), events, ..Default::default() }, |ui| {
+                let id = ui.scope_id().with("editor_tab_strip");
+                app.draw_tabs(ui, &ctx);
+                state = ui.data(|d| d.get_temp::<TabStripState>(id)).unwrap();
+                assert!(ui.min_rect().right() <= width + 1.0);
+            });
+            let visible = output.shapes.iter().any(|s| match &s.shape {
+                egui::Shape::Text(t) => t.galley.job.text == name && t.pos.x >= s.clip_rect.left() && t.pos.x < s.clip_rect.right(),
+                _ => false,
+            });
+            output.textures_delta.clear();
+            (state, visible)
+        };
+        let (first, visible) = frame(&mut app, 640.0, vec![]);
+        assert!(visible && first.offset == 0.0);
+        app.active = 19;
+        let (last, visible) = frame(&mut app, 640.0, vec![]);
+        assert!(visible && last.offset > 0.0, "new active tab must be visible");
+        let (_, visible) = frame(&mut app, 320.0, vec![]);
+        assert!(visible, "resizing must keep the active tab in view");
+        app.active = 0;
+        let (first, visible) = frame(&mut app, 640.0, vec![]);
+        assert!(visible && first.offset == 0.0);
+        let (scrolled, _) = frame(&mut app, 640.0, vec![egui::Event::PointerMoved(Pos2::new(100.0, 24.0)), egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: Vec2::new(0.0, -100.0), phase: egui::TouchPhase::Move, source: egui::MouseWheelSource::Wheel, modifiers: egui::Modifiers::NONE }]);
+        assert!(scrolled.offset > 0.0, "wheel over tabs must scroll the strip");
+        app.docs.truncate(1);
+        let (single, visible) = frame(&mut app, 640.0, vec![]);
+        assert!(visible && single.offset == 0.0, "closing tabs must clamp the offset");
+    }
 
     #[test]
     fn elide_keeps_short_and_trims_long() {

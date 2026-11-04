@@ -2,6 +2,8 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Scroll tabs left", "Прокрутить вкладки влево"),
+    ("Scroll tabs right", "Прокрутить вкладки вправо"),
     ("Projects belong to your regular WSL user. ~ is their home folder.", "Проекты принадлежат обычному пользователю WSL. ~ — его домашняя папка."),
     ("WSL starts as root. Set a regular user as the distribution's default user before creating or importing projects.", "WSL запускается от root. Перед созданием или импортом проектов назначьте обычного пользователя пользователем дистрибутива по умолчанию."),
     ("Cannot determine the WSL project user and home directory.", "Не удалось определить пользователя WSL и его домашнюю папку."),
