@@ -1444,7 +1444,7 @@ impl App {
         ui.horizontal(|ui| {
             ui.add_space(12.0);
             let local_n = self.git.local.as_ref().map_or(0, |l| l.commits().len());
-            let mut tabs = vec![(GitTab::Log, tr("Log").to_string()), (GitTab::Local, i18n::fmt("Local ({})", &[&local_n])), (GitTab::Stashes, tr("Stashes").to_string())];
+            let mut tabs = vec![(GitTab::Log, tr("Log").to_string()), (GitTab::Local, i18n::fmt("Local History ({})", &[&local_n])), (GitTab::Stashes, tr("Stashes").to_string())];
             if let Some((rel, _)) = &self.git_tools.history {
                 tabs.push((GitTab::History, i18n::fmt("History: {}", &[&rel.rsplit('/').next().unwrap_or(rel)])));
             }
@@ -1480,7 +1480,7 @@ impl App {
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.add_space(14.0);
-                if widgets::secondary_button(ui, &pal, tr("Local Commit")).clicked() {
+                if widgets::secondary_button(ui, &pal, tr("Create Snapshot")).clicked() {
                     commit_local = true;
                 }
             });

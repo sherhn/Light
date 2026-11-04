@@ -199,7 +199,7 @@ impl LocalVcs {
         }
         let id = self.store.next_id + 1;
         self.store.next_id = id;
-        let message = if message.trim().is_empty() { format!("Local commit {id}") } else { message.trim().to_string() };
+        let message = if message.trim().is_empty() { format!("Snapshot {id}") } else { message.trim().to_string() };
         self.store.commits.push(LocalCommit { id, message, time: now_secs(), files });
         self.store.base = Base::Local(id);
         self.save()?;
@@ -535,7 +535,7 @@ mod tests {
         // the store never snapshots itself
         let c3 = v.create("", None).unwrap();
         assert!(v.commit(c3).unwrap().files.keys().all(|k| !k.contains(".light")));
-        assert_eq!(v.commit(c3).unwrap().message, format!("Local commit {c3}"));
+        assert_eq!(v.commit(c3).unwrap().message, format!("Snapshot {c3}"));
     }
 
     #[test]

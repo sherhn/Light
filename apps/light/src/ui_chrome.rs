@@ -178,10 +178,10 @@ impl App {
                 self.run_command(ctx, c);
             }
 
-            // ---- local commit works for every project, git or not
+            // ---- snapshot works for every project, git or not
             if self.project.is_some() && self.git.branch.is_none() {
                 ui.add_space(4.0);
-                if widgets::icon_button(ui, &pal, Icon::History, 34.0, pal.text_dim, tr("Local Commit (Ctrl+Alt+K)")).clicked() {
+                if widgets::icon_button(ui, &pal, Icon::History, 34.0, pal.text_dim, tr("Create Snapshot (Ctrl+Alt+K)")).clicked() {
                     self.run_command(ctx, "git.local_commit");
                 }
             }
@@ -249,7 +249,7 @@ impl App {
                     if r.clicked() {
                         self.run_command(ctx, "git.commit");
                     }
-                    if widgets::icon_button(ui, &pal, Icon::History, 34.0, if self.base_is_local() { pal.accent } else { pal.text_dim }, tr("Local Commit (Ctrl+Alt+K)")).clicked() {
+                    if widgets::icon_button(ui, &pal, Icon::History, 34.0, if self.base_is_local() { pal.accent } else { pal.text_dim }, tr("Create Snapshot (Ctrl+Alt+K)")).clicked() {
                         self.run_command(ctx, "git.local_commit");
                     }
                     if widgets::icon_button(ui, &pal, Icon::ArrowUp, 34.0, pal.text_dim, tr("Push (Ctrl+Shift+K)")).clicked() {

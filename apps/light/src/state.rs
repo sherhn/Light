@@ -98,7 +98,7 @@ pub struct GitState {
     pub kinds: HashMap<PathBuf, ide_core::git::ChangeKind>,
     pub dirty_dirs: HashSet<PathBuf>,
     pub available: bool,
-    /// Local commits (checkpoints kept outside git).
+    /// Project snapshots (checkpoints kept outside git).
     pub local: Option<LocalVcs>,
     pub changes_truncated: bool,
     /// Commit window: collapsed groups / directories (see `ide_core::changes::collapse_key`).
@@ -374,7 +374,7 @@ pub enum ConfirmKind {
     Delete(PathBuf),
     Rollback(String),
     RestoreLocal(u64),
-    /// Put one file back into its state in a local commit: (commit id, relative path).
+    /// Put one file back into its state in a snapshot: (commit id, relative path).
     RestoreLocalFile(u64, String),
     DeleteLocal(u64),
     /// Download the adapter of a debugger, then debug this file.
@@ -443,10 +443,10 @@ pub enum LocalViewMode {
     Code,
 }
 
-/// The local commit browser: files of one commit, their diff or full code, and navigation between commits.
+/// The snapshot browser: files of one commit, their diff or full code, and navigation between commits.
 pub struct LocalViewState {
     pub id: u64,
-    /// What the commit changed (relative to the previous local commit, or HEAD for the first one).
+    /// What the commit changed (relative to the previous snapshot, or HEAD for the first one).
     pub files: Vec<Change>,
     pub sel: usize,
     pub mode: LocalViewMode,

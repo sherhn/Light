@@ -40,14 +40,14 @@ impl App {
         self.draw_commit_header(ui, ctx);
         ui.add_space(6.0);
         if self.git.repo.is_none() && !self.base_is_local() {
-            self.empty_state(ui, Icon::Branch, pal.text_dim, tr("This project is not a Git repository. Local commits work without git."));
+            self.empty_state(ui, Icon::Branch, pal.text_dim, tr("This project is not a Git repository. Project snapshots work without git."));
             ui.add_space(12.0);
             ui.vertical_centered(|ui| {
                 if self.git.available && widgets::primary_button(ui, &pal, tr("Create Git Repository")).clicked() {
                     self.run_command(ctx, "git.init");
                 }
                 ui.add_space(6.0);
-                if widgets::secondary_button(ui, &pal, tr("Make a Local Commit")).clicked() {
+                if widgets::secondary_button(ui, &pal, tr("Create Snapshot")).clicked() {
                     self.popup = Popup::LocalCommit { input: String::new(), just_opened: true };
                 }
             });
@@ -100,7 +100,7 @@ impl App {
                 }
                 if !commits.is_empty() {
                     ui.separator();
-                    widgets::menu_caption(ui, &pal, tr("Local commits"));
+                    widgets::menu_caption(ui, &pal, tr("Project snapshots"));
                 }
                 for (id, msg) in commits {
                     if widgets::menu_row(ui, &pal, Some(Icon::History), &format!("#{id}  {}", crate::ui_chrome::elide(&msg, 36)), "").clicked() {
@@ -109,7 +109,7 @@ impl App {
                     }
                 }
             });
-            if widgets::secondary_button(ui, &pal, tr("Local Commit")).on_hover_text(tr("Snapshot outside of git; the diff starts from it")).clicked() {
+            if widgets::secondary_button(ui, &pal, tr("Create Snapshot")).on_hover_text(tr("Save a project snapshot in Local History")).clicked() {
                 local = true;
             }
         });
@@ -315,7 +315,7 @@ impl App {
                 });
                 if self.git.repo.is_none() {
                     ui.add_space(4.0);
-                    ui.label(RichText::new(tr("Not a Git repository: use Local Commit")).color(pal.text_dim).size(11.5));
+                    ui.label(RichText::new(tr("Not a Git repository: create a snapshot")).color(pal.text_dim).size(11.5));
                 }
             });
         });

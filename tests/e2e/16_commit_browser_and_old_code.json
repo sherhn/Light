@@ -67,6 +67,8 @@
   {"op": "frames", "value": 4},
   {"op": "assert_file_contains", "path": "${PROJ}/src/nav.lisp", "value": "(defun gamma () 1)"},
 
+  {"op": "compare_snapshot", "value": 2},
+  {"op": "wait", "what": "git_settled", "timeout": 30},
   {"op": "log", "value": "clicking a change marker shows the old code in a small window"},
   {"op": "focus_editor"},
   {"op": "set_text", "value": "(defun alpha (x)\n  (* x 5))\n\n(defun beta (y)\n  (alpha y))\n(defun gamma () 1)\n"},

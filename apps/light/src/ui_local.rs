@@ -1,4 +1,4 @@
-//! Local commits in the UI: the list in the Git tool window, the commit browser dialog (files, diff / code,
+//! Project snapshots in the UI: the list in the Git tool window, the commit browser dialog (files, diff / code,
 //! switching between commits, restore) and the small "old code" popup of a clicked gutter marker.
 
 use crate::scrollbars::FadingScroll as _;
@@ -30,7 +30,7 @@ fn kind_color(app: &App, k: ChangeKind) -> Color32 {
 
 impl App {
     pub fn local_restore_confirm(&mut self, id: u64) {
-        let message = i18n::fmt("Restore the working tree to local commit #{}? Files changed since then are overwritten, files created since then are deleted.", &[&id]);
+        let message = i18n::fmt("Restore the working tree to snapshot #{}? Files changed since then are overwritten, files created since then are deleted.", &[&id]);
         self.popup = Popup::Confirm { kind: ConfirmKind::RestoreLocal(id), message };
     }
 
@@ -41,10 +41,10 @@ impl App {
         let commits: Vec<ide_core::localvcs::LocalCommit> = self.git.local.as_ref().map(|l| l.commits().iter().rev().cloned().collect()).unwrap_or_default();
         let base = self.git.local.as_ref().map(|l| l.base().clone()).unwrap_or_default();
         if commits.is_empty() {
-            self.empty_state(ui, Icon::History, pal.text_dim, tr("No local commits yet"));
+            self.empty_state(ui, Icon::History, pal.text_dim, tr("No snapshots yet"));
             ui.add_space(6.0);
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new(tr("A local commit is a snapshot kept outside of git (in .light/).\nAfter making one, diffs and change markers start from it - handy when you\ncannot commit upstream, e.g. working on someone else's repository.")).color(pal.text_dim).size(12.0));
+                ui.label(RichText::new(tr("Project snapshots are kept in .light/ and work without Git.\nBrowse or restore saved files here. Choose a snapshot under Compare with\nto compare your current changes with it.")).color(pal.text_dim).size(12.0));
             });
             return;
         }
@@ -83,7 +83,7 @@ impl App {
                         ui.painter().rect_filled(rb, widgets::radius(), pal.hover);
                     }
                     icons::paint(ui.painter(), rb.shrink(6.0), Icon::Undo, if b.hovered() { pal.text } else { pal.text_dim });
-                    if b.on_hover_text(tr("Restore working tree to this commit...")).clicked() {
+                    if b.on_hover_text(tr("Restore working tree to this snapshot...")).clicked() {
                         restore = Some(c.id);
                     } else if resp.clicked() && !ui.rect_contains_pointer(rb) {
                         open = Some(c.id);
@@ -96,12 +96,12 @@ impl App {
                         open = Some(c.id);
                         ui.close();
                     }
-                    if widgets::menu_row(ui, &pal, Some(Icon::FileDiff), tr("Compare working tree with this commit"), "").clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::FileDiff), tr("Compare working tree with this snapshot"), "").clicked() {
                         use_base = Some(Base::Local(c.id));
                         show_changes = true;
                         ui.close();
                     }
-                    if widgets::menu_row(ui, &pal, Some(Icon::Undo), tr("Restore working tree to this commit..."), "").clicked() {
+                    if widgets::menu_row(ui, &pal, Some(Icon::Undo), tr("Restore working tree to this snapshot..."), "").clicked() {
                         restore = Some(c.id);
                         ui.close();
                     }
@@ -126,7 +126,7 @@ impl App {
             self.local_restore_confirm(id);
         }
         if let Some(id) = delete {
-            self.popup = Popup::Confirm { kind: ConfirmKind::DeleteLocal(id), message: i18n::fmt("Delete local commit #{}?", &[&id]) };
+            self.popup = Popup::Confirm { kind: ConfirmKind::DeleteLocal(id), message: i18n::fmt("Delete snapshot #{}?", &[&id]) };
         }
     }
 
@@ -177,12 +177,12 @@ impl App {
                     let prev_ok = idx > 0;
                     let next_ok = idx + 1 < commits.len();
                     ui.add_enabled_ui(prev_ok, |ui| {
-                        if widgets::icon_button(ui, &pal, Icon::ChevronLeft, 32.0, if prev_ok { pal.text } else { pal.text_dim.gamma_multiply(0.4) }, tr("Previous local commit (Left)")).clicked() {
+                        if widgets::icon_button(ui, &pal, Icon::ChevronLeft, 32.0, if prev_ok { pal.text } else { pal.text_dim.gamma_multiply(0.4) }, tr("Previous snapshot (Left)")).clicked() {
                             goto = Some(commits[idx.saturating_sub(1)].0);
                         }
                     });
                     ui.add_enabled_ui(next_ok, |ui| {
-                        if widgets::icon_button(ui, &pal, Icon::ChevronRight, 32.0, if next_ok { pal.text } else { pal.text_dim.gamma_multiply(0.4) }, tr("Next local commit (Right)")).clicked() {
+                        if widgets::icon_button(ui, &pal, Icon::ChevronRight, 32.0, if next_ok { pal.text } else { pal.text_dim.gamma_multiply(0.4) }, tr("Next snapshot (Right)")).clicked() {
                             goto = Some(commits[(idx + 1).min(commits.len() - 1)].0);
                         }
                     });
@@ -198,7 +198,7 @@ impl App {
                         if widgets::secondary_button(ui, &pal, tr("Restore working tree...")).clicked() {
                             restore_all = true;
                         }
-                        if widgets::secondary_button(ui, &pal, tr("Use as diff base")).on_hover_text(tr("Gutter markers and the changes list will compare with this commit")).clicked() {
+                        if widgets::secondary_button(ui, &pal, tr("Use as diff base")).on_hover_text(tr("Gutter markers and the changes list will compare with this snapshot")).clicked() {
                             use_base = true;
                         }
                     });
@@ -215,7 +215,7 @@ impl App {
                 let mut lui = ui.new_child(egui::UiBuilder::new().max_rect(list.shrink2(vec2(6.0, 8.0))).layout(egui::Layout::top_down(Align::Min)));
                 if st.files.is_empty() {
                     lui.add_space(24.0);
-                    lui.vertical_centered(|ui| ui.label(RichText::new(tr("This commit changed no files")).color(pal.text_dim)));
+                    lui.vertical_centered(|ui| ui.label(RichText::new(tr("This snapshot changed no files")).color(pal.text_dim)));
                 }
                 let mut pick: Option<usize> = None;
                 egui::ScrollArea::vertical().id_salt("lv_files").auto_shrink([false, false]).show_rows_fading(&mut lui, ROW_H, st.files.len(), |ui, range| {
@@ -253,7 +253,7 @@ impl App {
                 if let Some(c) = st.files.get(st.sel) {
                     ui.painter().with_clip_rect(top.shrink2(vec2(16.0, 0.0))).text(pos2(top.min.x + 16.0, top.center().y), Align2::LEFT_CENTER, &c.path, fonts::semibold(13.5), pal.text);
                     let mut tui = ui.new_child(egui::UiBuilder::new().max_rect(top.shrink2(vec2(10.0, 4.0))).layout(egui::Layout::right_to_left(Align::Center)));
-                    if widgets::secondary_button(&mut tui, &pal, tr("Restore file...")).on_hover_text(tr("Put this file back into its state in this commit")).clicked() {
+                    if widgets::secondary_button(&mut tui, &pal, tr("Restore file...")).on_hover_text(tr("Put this file back into its state in this snapshot")).clicked() {
                         restore_file = Some(c.path.clone());
                     }
                     let cur = if st.mode == LocalViewMode::Changes { 0 } else { 1 };
@@ -302,7 +302,7 @@ impl App {
                     LocalViewMode::Code => {
                         if st.code.is_empty() {
                             vui.add_space(20.0);
-                            vui.vertical_centered(|ui| ui.label(RichText::new(if st.files.get(st.sel).is_some_and(|c| c.kind == ChangeKind::Deleted) { tr("The file does not exist in this commit") } else { tr("The file is empty") }).color(pal.text_dim)));
+                            vui.vertical_centered(|ui| ui.label(RichText::new(if st.files.get(st.sel).is_some_and(|c| c.kind == ChangeKind::Deleted) { tr("The file does not exist in this snapshot") } else { tr("The file is empty") }).color(pal.text_dim)));
                         }
                         egui::ScrollArea::both().id_salt(("lv_code", st.id, st.sel)).auto_shrink([false, false]).show_rows_fading(&mut vui, row_h, st.code.len(), |ui, range| {
                             ui.spacing_mut().item_spacing.y = 0.0;

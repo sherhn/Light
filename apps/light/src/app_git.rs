@@ -20,7 +20,7 @@ use crate::i18n::{self, tr};
 use crate::state::*;
 
 impl App {
-    /// (Re)discover the repository and the local commit store of the current project.
+    /// (Re)discover the repository and the snapshot store of the current project.
     pub fn git_attach(&mut self) {
         self.git = GitState::default();
         self.git.available = git::git_available();
@@ -56,7 +56,7 @@ impl App {
         self.git.upstream.as_ref().map_or(0, |u| u.behind)
     }
 
-    /// Is a local commit (checkpoint) the base of diffs right now?
+    /// Is a snapshot (checkpoint) the base of diffs right now?
     pub fn base_is_local(&self) -> bool {
         matches!(self.git.local.as_ref().map(|l| l.base()), Some(Base::Local(_)))
     }
@@ -66,7 +66,7 @@ impl App {
         match self.git.local.as_ref().map(|l| l.base().clone()) {
             Some(Base::Local(id)) => {
                 let msg = self.git.local.as_ref().and_then(|l| l.commit(id)).map(|c| c.message.clone()).unwrap_or_default();
-                i18n::fmt("local #{0}: {1}", &[&id, &msg])
+                i18n::fmt("snapshot #{0}: {1}", &[&id, &msg])
             }
             _ => "HEAD".to_string(),
         }
@@ -354,11 +354,11 @@ impl App {
     pub fn git_commit_selected(&mut self) -> bool {
         self.save_all();
         let Some(repo) = self.git.repo.clone() else {
-            self.toast(tr("This project is not a Git repository - use a local commit instead"), Sev::Weak);
+            self.toast(tr("This project is not a Git repository - use a snapshot instead"), Sev::Weak);
             return false;
         };
         let msg = self.git.commit_msg.clone();
-        // with a local commit as the diff base the list may contain files git does not consider changed
+        // with a snapshot as the diff base the list may contain files git does not consider changed
         let real: HashSet<String> = repo.status().into_iter().map(|c| c.path).collect();
         let paths: Vec<String> = self.git.changes.iter().filter(|c| self.git.checked.contains(&c.path) && real.contains(&c.path)).map(|c| c.path.clone()).collect();
         let ok = self.git_run_sync("Commit", move |r| r.commit(&msg, &paths).map(|h| format!("committed {h}")));
@@ -475,7 +475,7 @@ impl App {
     }
 }
 
-// ---------------------------------------------------------------------- local commits
+// ---------------------------------------------------------------------- snapshots
 
 impl App {
     pub fn after_base_change(&mut self) {
@@ -493,7 +493,7 @@ impl App {
         }
     }
 
-    /// Create a local commit (checkpoint) of the working tree; it becomes the diff base.
+    /// Create a snapshot (checkpoint) of the working tree; it becomes the diff base.
     pub fn local_commit(&mut self, message: &str) -> bool {
         self.save_all();
         let repo = self.git.repo.clone();
@@ -501,14 +501,19 @@ impl App {
             self.toast(tr("Open a project first"), Sev::Weak);
             return false;
         };
+        let base = local.base().clone();
         match local.create(message, repo.as_ref()) {
             Ok(id) => {
+                // Preserve the explicitly selected comparison base in Git projects.
+                if repo.is_some() && let Err(e) = local.set_base(base) {
+                    self.toast(i18n::fmt("Cannot change base: {}", &[&e]), Sev::Error);
+                }
                 self.after_base_change();
-                self.toast(i18n::fmt("Local commit #{} created - the diff now starts from it", &[&id]), Sev::Weak);
+                self.toast(i18n::fmt("Snapshot #{} created", &[&id]), Sev::Weak);
                 true
             }
             Err(e) => {
-                self.toast(i18n::fmt("Local commit failed: {}", &[&e]), Sev::Error);
+                self.toast(i18n::fmt("Snapshot failed: {}", &[&e]), Sev::Error);
                 false
             }
         }
@@ -537,7 +542,7 @@ impl App {
                 }
                 self.after_base_change();
                 self.refresh_project();
-                self.toast(i18n::fmt("Restored local commit #{0} ({1} file(s) changed)", &[&id, &n]), Sev::Weak);
+                self.toast(i18n::fmt("Restored snapshot #{0} ({1} file(s) changed)", &[&id, &n]), Sev::Weak);
             }
             Err(e) => self.toast(i18n::fmt("Restore failed: {}", &[&e]), Sev::Error),
         }
@@ -548,13 +553,13 @@ impl App {
         match local.delete(id) {
             Ok(()) => {
                 self.after_base_change();
-                self.toast(i18n::fmt("Local commit #{} deleted", &[&id]), Sev::Weak);
+                self.toast(i18n::fmt("Snapshot #{} deleted", &[&id]), Sev::Weak);
             }
             Err(e) => self.toast(i18n::fmt("Delete failed: {}", &[&e]), Sev::Error),
         }
     }
 
-    /// Discard local edits of one file: back to the diff base (git HEAD or the local commit).
+    /// Discard local edits of one file: back to the diff base (git HEAD or the snapshot).
     pub fn rollback_file(&mut self, rel: &str) {
         if self.base_is_local() {
             let Some(root) = self.vcs_root() else { return };

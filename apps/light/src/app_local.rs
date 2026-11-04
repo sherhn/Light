@@ -1,4 +1,4 @@
-//! Behaviour behind the local commit browser (view a commit's files, switch between commits, restore) and the
+//! Behaviour behind the snapshot browser (view a commit's files, switch between commits, restore) and the
 //! "old code" popup that opens when a change marker in the gutter is clicked.
 
 use eframe::egui::Pos2;
@@ -15,9 +15,9 @@ fn lf(s: String) -> String {
 }
 
 impl App {
-    // ------------------------------------------------------------------ local commit browser
+    // ------------------------------------------------------------------ snapshot browser
 
-    /// Open the browser on local commit `id`.
+    /// Open the browser on snapshot `id`.
     pub fn open_local_view(&mut self, id: u64) {
         let repo = self.git.repo.clone();
         let Some(local) = self.git.local.as_ref() else { return };
@@ -28,7 +28,7 @@ impl App {
         self.popup = Popup::LocalView(Box::new(LocalViewState { id, files, sel: 0, mode: LocalViewMode::Changes, loaded: None, diff: vec![], code: vec![], scroll_to: None }));
     }
 
-    /// Switch the open browser to another local commit.
+    /// Switch the open browser to another snapshot.
     pub fn local_view_goto(&self, st: &mut LocalViewState, id: u64) {
         let repo = self.git.repo.as_ref();
         let Some(local) = self.git.local.as_ref() else { return };
@@ -61,9 +61,9 @@ impl App {
         st.code = after.lines().map(str::to_string).collect();
     }
 
-    /// Ask before putting one file back into its state in local commit `id`.
+    /// Ask before putting one file back into its state in snapshot `id`.
     pub fn local_restore_file_confirm(&mut self, id: u64, rel: String) {
-        let message = i18n::fmt("Restore '{0}' to its state in local commit #{1}? Your current version of the file is overwritten.", &[&rel, &id]);
+        let message = i18n::fmt("Restore '{0}' to its state in snapshot #{1}? Your current version of the file is overwritten.", &[&rel, &id]);
         self.popup = Popup::Confirm { kind: ConfirmKind::RestoreLocalFile(id, rel), message };
     }
 
@@ -78,7 +78,7 @@ impl App {
                 }
                 self.after_base_change();
                 self.refresh_project();
-                self.toast(i18n::fmt("Restored {0} from local commit #{1}", &[&rel, &id]), Sev::Weak);
+                self.toast(i18n::fmt("Restored {0} from snapshot #{1}", &[&rel, &id]), Sev::Weak);
             }
             Err(e) => self.toast(i18n::fmt("Restore failed: {}", &[&e]), Sev::Error),
         }

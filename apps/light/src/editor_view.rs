@@ -384,7 +384,7 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
                 ui.separator();
                 editor_menu_item(ui, pal, "Rollback...", "", "context.rollback", true, &mut out, &mut menu_rects);
                 ui.separator();
-                editor_menu_item(ui, pal, "Local Commit", "", "git.local_commit", true, &mut out, &mut menu_rects);
+                editor_menu_item(ui, pal, "Create Snapshot", "", "git.local_commit", true, &mut out, &mut menu_rects);
             });
             menu_rects.push(("submenu.git", git.response.rect));
             ui.data_mut(|data| data.insert_temp(egui::Id::unique("editor_context_rects"), menu_rects));

@@ -1481,6 +1481,7 @@ impl App {
                     self.fail(format!("assert_git_changes: expected {want}, got {names:?}"));
                 }
             }
+            "compare_snapshot" => self.local_set_base(ide_core::localvcs::Base::Local(step["value"].as_u64().unwrap_or(1))),
             "assert_base" => {
                 let want_local = sval == "local";
                 if self.base_is_local() != want_local {

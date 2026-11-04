@@ -468,11 +468,11 @@ impl App {
             }
             Popup::LocalCommit { mut input, mut just_opened } => {
                 let (mut ok, mut cancel) = (enter, esc);
-                self.dialog_card(ctx, "local_commit", tr("Local Commit"), 480.0, |ui| {
+                self.dialog_card(ctx, "local_commit", tr("Create Snapshot"), 480.0, |ui| {
                     let r = self.text_field(ui, &mut input, tr("Message (optional)"));
                     widgets::focus_once(ui, &r, &mut just_opened);
                     ui.add_space(8.0);
-                    ui.label(RichText::new(tr("Saves a snapshot of your changes outside of git (in .light/, invisible to git).\nDiffs and change markers start from it afterwards.")).color(self.pal.text_dim).size(12.0));
+                    ui.label(RichText::new(tr("Saves a project snapshot in .light/ without changing Git history.\nChoose a snapshot under Compare with to use it as the comparison base.")).color(self.pal.text_dim).size(12.0));
                     let (o, c) = self.ok_cancel(ui, tr("Create"));
                     ok |= o;
                     cancel |= c;
