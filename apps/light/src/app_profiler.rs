@@ -157,7 +157,7 @@ impl App {
         let mut zoom_to: Option<Vec<usize>> = None;
         let mut rows = Vec::new();
         ui.add_space(6.0);
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.add_space(14.0);
             ui.label(RichText::new(&self.profiler.title).font(fonts::semibold(13.0)));
             let length = if prof.sample_ms > 0.0 { i18n::fmt("{0} ms, {1} samples", &[&(ms(prof.root.total).round() as u64), &prof.root.total]) } else { i18n::fmt("{} samples", &[&prof.root.total]) };
@@ -198,15 +198,24 @@ impl App {
             }
         });
         ui.add_space(4.0);
+        let reveal = self.profiler.reveal.take();
         match self.profiler.view {
             ProfileView::Flame => {
                 let zoom = self.profiler.zoom.clone();
                 let top = node_at(&prof.root, &zoom);
-                let (area, _) = ui.allocate_exact_size(Vec2::new(ui.available_width() - 16.0, ui.available_height() - 6.0), Sense::hover());
+                let viewport_height = (ui.available_height() - 6.0).max(40.0);
+                let mut depth = 1;
+                let mut levels = vec![(top, 1)];
+                while let Some((frame, level)) = levels.pop() {
+                    depth = depth.max(level);
+                    levels.extend(frame.children.iter().map(|child| (child, level + 1)));
+                }
+                egui::ScrollArea::vertical().id_salt("flame_graph").max_height(viewport_height).auto_shrink([false, false]).show(ui, |ui| {
+                let (area, _) = ui.allocate_exact_size(Vec2::new(ui.available_width() - 16.0, (depth as f32 * 20.0).max(viewport_height)), Sense::hover());
                 let area = area.translate(Vec2::new(8.0, 0.0));
                 let painter = ui.painter_at(area);
                 let row_h = 20.0;
-                let hover = ui.input(|i| i.pointer.hover_pos()).filter(|p| area.contains(*p));
+                let hover = ui.input(|i| i.pointer.hover_pos()).filter(|p| area.intersect(ui.clip_rect()).contains(*p));
                 let (clicked, double) = ui.input(|i| (i.pointer.primary_clicked(), i.pointer.button_double_clicked(egui::PointerButton::Primary)));
                 let mut tip: Option<String> = None;
                 // the graph from the function zoomed into, its callers stacked as one bar above it
@@ -224,7 +233,9 @@ impl App {
                         let label = if depth == 0 && path.is_empty() { tr("all").to_string() } else { f.name.clone() };
                         painter.with_clip_rect(r.shrink(3.0)).text(Pos2::new(r.min.x + 5.0, r.center().y), egui::Align2::LEFT_CENTER, label, fonts::ui(12.0), if pal.dark { Color32::from_rgb(20, 16, 12) } else { Color32::from_rgb(40, 24, 10) });
                     }
-                    rows.push((format!("flame:{}", f.name), r));
+                    let key = format!("flame:{}", f.name);
+                    if reveal.as_deref() == Some(key.as_str()) { ui.scroll_to_rect(r, None); }
+                    rows.push((key, r.intersect(ui.clip_rect())));
                     if hovered {
                         let percent = f.total as f64 * 100.0 / total as f64;
                         let place = if f.file.is_empty() { String::new() } else { format!("\n{}:{}", f.file.rsplit('/').next().unwrap_or(&f.file), f.line) };
@@ -250,9 +261,9 @@ impl App {
                         ui.label(t);
                     });
                 }
+                });
             }
             ProfileView::Hot => {
-                let reveal = self.profiler.reveal.take();
                 let hot: Vec<Hot> = profile::hot(&prof.root);
                 ui.horizontal(|ui| {
                     ui.add_space(14.0);

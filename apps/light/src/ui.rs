@@ -121,7 +121,11 @@ impl eframe::App for App {
         }
         if self.bottom_tool.is_some() {
             let margin = Margin { left: 0, right: gap, top: gap, bottom: gap };
-            egui::Panel::bottom("bottom_tool").resizable(true).default_size(280.0).size_range(200.0..=900.0).show_separator_line(false).frame(none.inner_margin(margin)).show(ui, |ui| {
+            // Keep the editor and its gutter usable even on a small or scaled desktop.
+            let editor_space = if self.bottom_tool == Some(BottomTool::Profiler) { 140.0 } else { 260.0 };
+            let maximum = (ui.available_height() - editor_space).clamp(120.0, 900.0);
+            let minimum = if self.bottom_tool == Some(BottomTool::Profiler) { maximum.min(240.0) } else { 120.0 };
+            egui::Panel::bottom("bottom_tool").resizable(true).default_size(280.0_f32.min(maximum)).size_range(minimum..=maximum).show_separator_line(false).frame(none.inner_margin(margin)).show(ui, |ui| {
                 widgets::card_frame(&pal, pal.panel_bg).show(ui, |ui| {
                     ui.set_min_size(ui.available_size());
                     self.draw_bottom_panel(ui, &ctx);
