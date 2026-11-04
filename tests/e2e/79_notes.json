@@ -8,8 +8,26 @@
     "what": "index"
   },
   {
-    "op": "command",
-    "value": "notes.project"
+    "op": "click",
+    "x": 28,
+    "y": 352
+  },
+  {
+    "op": "frames",
+    "value": 3
+  },
+  {
+    "op": "screenshot",
+    "path": "${SHOTS}/${NAME}_menu.png"
+  },
+  {
+    "op": "click",
+    "x": 110,
+    "y": 392
+  },
+  {
+    "op": "frames",
+    "value": 3
   },
   {
     "op": "assert_active_file",

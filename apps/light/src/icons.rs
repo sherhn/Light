@@ -48,6 +48,7 @@ pub enum Icon {
     Package,
     /// The Modules tab.
     Puzzle,
+    Notes,
     Hammer,
     Globe,
     Eye,
@@ -142,6 +143,7 @@ pub fn glyph(icon: Icon) -> Option<char> {
         Icon::Keyboard => l::KEYBOARD,
         Icon::Code => l::CODE_XML,
         Icon::Pencil => l::PENCIL,
+        Icon::Notes => l::BOOK_MARKED,
         Icon::Package => l::PACKAGE,
         Icon::Puzzle => l::PUZZLE,
         Icon::Hammer => l::HAMMER,
@@ -217,7 +219,7 @@ mod tests {
     #[test]
     fn every_icon_has_a_glyph_or_is_custom() {
         use Icon::*;
-        for i in [Folder, FolderOpen, File, Play, Stop, Restart, Search, Warning, Error, Check, ChevronRight, ChevronDown, ChevronUp, Close, Gear, List, Terminal, Trash, Project, Branch, Clear, Info, ArrowUp, ArrowDown, Commit, Refresh, History, More, Repl, Download, Palette, Keyboard, Code, Pencil, Package, Puzzle, Hammer, Globe, Eye, ChevronLeft, Undo, FileDiff, Script, Linux, Install, Ok, Spinner, Key, User, Lock, Repo, Preview, Columns, FilePlus, FolderPlus, FolderGit, Home, Drive, Monitor, ArrowLeft, Copy, Cut, Paste, Redo, Exit, FolderSearch, Sun, Moon, Blank] {
+        for i in [Folder, FolderOpen, File, Play, Stop, Restart, Search, Warning, Error, Check, ChevronRight, ChevronDown, ChevronUp, Close, Gear, List, Terminal, Trash, Project, Branch, Clear, Info, ArrowUp, ArrowDown, Commit, Refresh, History, More, Repl, Download, Palette, Keyboard, Code, Pencil, Package, Puzzle, Notes, Hammer, Globe, Eye, ChevronLeft, Undo, FileDiff, Script, Linux, Install, Ok, Spinner, Key, User, Lock, Repo, Preview, Columns, FilePlus, FolderPlus, FolderGit, Home, Drive, Monitor, ArrowLeft, Copy, Cut, Paste, Redo, Exit, FolderSearch, Sun, Moon, Blank] {
             assert!(glyph(i).is_some(), "{i:?}");
         }
         assert!(glyph(Lisp).is_none());

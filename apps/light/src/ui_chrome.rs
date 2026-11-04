@@ -123,11 +123,6 @@ impl App {
     pub fn draw_toolbar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let pal = self.pal;
         ui.horizontal_centered(|ui| {
-            ui.menu_button(tr("Notes"), |ui| {
-                if ui.button(tr("Project notes")).clicked() { self.open_note(None); ui.close(); }
-                let file = self.doc().and_then(|d| d.path.clone());
-                if ui.add_enabled(file.is_some(), egui::Button::new(tr("File notes"))).clicked() { self.open_note(file); ui.close(); }
-            });
             ui.add_space(12.0);
             ui.spacing_mut().item_spacing.x = 6.0;
 
@@ -407,6 +402,10 @@ impl App {
     // ------------------------------------------------------------------ tool strip
 
     fn strip_button(&mut self, ui: &mut egui::Ui, icon: Icon, active: bool, tip: &str, badge: Option<Color32>) -> bool {
+        self.strip_button_response(ui, icon, active, tip, badge).clicked()
+    }
+
+    fn strip_button_response(&mut self, ui: &mut egui::Ui, icon: Icon, active: bool, tip: &str, badge: Option<Color32>) -> egui::Response {
         let pal = self.pal;
         let (r, resp) = ui.allocate_exact_size(Vec2::splat(40.0), Sense::click());
         if active {
@@ -418,7 +417,7 @@ impl App {
         if let Some(c) = badge {
             ui.painter().circle_filled(r.right_top() + Vec2::new(-8.0, 8.0), 4.0, c);
         }
-        resp.on_hover_text(tip).clicked()
+        resp.on_hover_text(tip)
     }
 
     pub fn draw_tool_strip(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context) {
@@ -442,6 +441,20 @@ impl App {
             if self.strip_button(ui, Icon::Puzzle, on_page, tr("Modules (Ctrl+Alt+P)"), badge) {
                 self.open_modules_tab();
             }
+            let active = self.doc().and_then(|d| d.path.as_ref()).is_some_and(|p| p.components().any(|c| c.as_os_str() == ".light-notes"));
+            let response = self.strip_button_response(ui, Icon::Notes, active, tr("Notes"), None);
+            let pal = self.pal;
+            widgets::menu_popup(&response, &pal).show(|ui| {
+                if widgets::menu_row(ui, &pal, Some(Icon::Notes), tr("Project notes"), "").clicked() {
+                    self.open_note(None); ui.close();
+                }
+                let file = self.doc().and_then(|d| d.path.clone());
+                ui.add_enabled_ui(file.is_some(), |ui| {
+                    if widgets::menu_row(ui, &pal, Some(Icon::File), tr("File notes"), "").clicked() {
+                        self.open_note(file); ui.close();
+                    }
+                });
+            });
         });
         ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
             ui.add_space(8.0);
