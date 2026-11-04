@@ -110,7 +110,21 @@ jobs:
         with: { node-version: "22" }
       - name: GUI regression tests before publishing
         if: runner.os == 'Windows'
-        run: python tests/run_e2e.py --release
+        run: |
+          $env:LIGHT_E2E_SIZE = '800x540'
+          python tests/run_e2e.py --release 72_node_debugger 74_breakpoint_conditions 78_profiler
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:LIGHT_E2E_SIZE
+          python tests/run_e2e.py --release
+      - name: GUI diagnostics on failure
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            target/e2e-logs/
+            target/e2e-shots/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: light-${{ runner.os }}-${{ runner.arch }}

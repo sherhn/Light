@@ -1,6 +1,6 @@
 [
   {"op":"log","value":"@javascript @modules javascript a real Node.js CPU profile as a flame graph and the hot functions"},
-  {"op":"disk_write","path":"${PROJ}/web/busy.js","value":"function fib(n) {\n  return n < 2 ? n : fib(n - 1) + fib(n - 2);\n}\n\nfunction slow() {\n  let s = 0;\n  for (let i = 0; i < 4e7; i++) s += Math.sqrt(i);\n  return s;\n}\n\nfunction main() {\n  console.log('result', fib(28), Math.round(slow()));\n}\n\nmain();\n"},
+  {"op":"disk_write","path":"${PROJ}/web/busy.js","value":"function fib(n) {\n  return n < 2 ? n : fib(n - 1) + fib(n - 2);\n}\n\nfunction slow() {\n  let s = 0;\n  for (let i = 0; i < 4e7; i++) s += Math.sqrt(i);\n  return s;\n}\n\nfunction main() {\n  const until = performance.now() + 800;\n  let answer;\n  do { answer = [fib(32), Math.round(slow())]; } while (performance.now() < until);\n  console.log('result', ...answer);\n}\n\nmain();\n"},
   {"op":"open_project","path":"${PROJ}"},
   {"op":"wait","what":"index"},
   {"op":"open","path":"${PROJ}/web/busy.js"},
@@ -11,7 +11,7 @@
   {"op":"wait","what":"profile","timeout":30},
   {"op":"frames","value":4},
   {"op":"assert_bottom","value":"profiler"},
-  {"op":"assert_run_contains","value":"result 317811"},
+  {"op":"assert_run_contains","value":"result 2178309"},
   {"op":"assert_profile","value":"main","min":50},
   {"op":"assert_profile","value":"slow","min":10},
   {"op":"assert_profile","value":"fib","min":1},

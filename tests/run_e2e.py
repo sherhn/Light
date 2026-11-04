@@ -335,11 +335,17 @@ def run_one(script_path):
             (config / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
         else:
             launch.append("--no-restore")
+        logs = ROOT / "target/e2e-logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        log = logs / f"{name}.log"
         try:
-            p = subprocess.run(launch, capture_output=True, text=True, timeout=600, env=env)
-        except subprocess.TimeoutExpired as e:
-            return name, False, f"TIMEOUT after 600s\n{(e.stdout or b'').decode(errors='replace') if isinstance(e.stdout, bytes) else e.stdout}", time.time() - t0
-        out = (p.stdout or "") + (p.stderr or "")
+            # A debugger can leave descendants holding inherited pipe handles after the IDE exits.
+            # Log to a file so waiting for the IDE never waits for those unrelated pipe handles.
+            with log.open("w", encoding="utf-8") as stream:
+                p = subprocess.run(launch, stdout=stream, stderr=subprocess.STDOUT, timeout=600, env=env)
+        except subprocess.TimeoutExpired:
+            return name, False, "TIMEOUT after 600s\n" + log.read_text(encoding="utf-8", errors="replace"), time.time() - t0
+        out = log.read_text(encoding="utf-8", errors="replace")
         if os.environ.get("LIGHT_E2E_VERBOSE"):
             print(out)
         ok = p.returncode == 0 and "SCRIPT OK" in out
@@ -373,7 +379,7 @@ def main():
         print(f"{'PASS' if ok else 'FAIL'}  {name:<22} {dt:5.1f}s")
         if not ok:
             failed.append(name)
-            for line in out.strip().splitlines()[-25:]:
+            for line in out.strip().splitlines():
                 print("      " + line)
     print(f"\n{len(scripts) - len(failed) - len(skipped)}/{len(scripts)} e2e scripts passed" + (f", {len(skipped)} skipped" if skipped else ""))
     sys.exit(1 if failed else 0)

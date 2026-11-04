@@ -484,24 +484,19 @@ impl App {
                 }
             }
             "debug_button" | "gutter_number_click" => {
-                if op == "gutter_number_click" && !step["revealed"].as_bool().unwrap_or(false)
-                    && let Some(gutter) = self.gutter_rect
-                {
-                        let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as f32;
-                        let lh = crate::editor_view::line_height_for(self.settings.font_size);
-                        if let Some(doc) = self.doc_mut() {
-                            let y = gutter.top() + line * lh - doc.view.scroll.y + lh * 0.5;
-                            if y < gutter.top() || y > gutter.bottom() {
-                                doc.view.scroll.y = (line * lh - gutter.height() * 0.5).max(0.0);
-                                doc.view.scroll_to_caret = false;
-                                let mut retry = step.clone();
-                                retry["revealed"] = true.into();
-                                let script = self.script.as_mut().unwrap();
-                                script.steps.push_front(retry);
-                                script.wait_frames = 3;
-                                return;
-                            }
-                        }
+                if op == "gutter_number_click" && !step["revealed"].as_bool().unwrap_or(false) {
+                    let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
+                    if let Some(doc) = self.doc_mut() {
+                        doc.ed.set_caret(doc.ed.line_start(line.min(doc.ed.line_count().saturating_sub(1))), false);
+                        doc.view.scroll_to_caret = true;
+                    }
+                    let mut retry = step.clone();
+                    retry["revealed"] = true.into();
+                    let script = self.script.as_mut().unwrap();
+                    script.steps.push_front(retry);
+                    script.wait_frames = 4;
+                    script.wait_cond = Some((serde_json::json!({"what": "after", "until": self.now + 0.4}), self.now + 2.0));
+                    return;
                 }
                 let pos = if op == "debug_button" {
                     let rects = ctx.data(|d| d.get_temp::<Vec<(&'static str, egui::Rect)>>(egui::Id::unique("debug_button_rects"))).unwrap_or_default();
@@ -672,13 +667,14 @@ impl App {
                 }
             }
             "profiler_click" => {
-                if sval.starts_with("hot:") && !step["revealed"].as_bool().unwrap_or(false) {
+                if (sval.starts_with("hot:") || sval.starts_with("flame:")) && !step["revealed"].as_bool().unwrap_or(false) {
                     self.profiler.reveal = Some(sval.clone());
                     let mut retry = step.clone();
                     retry["revealed"] = true.into();
                     let script = self.script.as_mut().unwrap();
                     script.steps.push_front(retry);
                     script.wait_frames = 4;
+                    script.wait_cond = Some((serde_json::json!({"what": "after", "until": self.now + 0.4}), self.now + 2.0));
                     return;
                 }
                 // a box of the flame graph (`flame:NAME`), a row of the table (`hot:NAME`), a view (`view:hot`), `reset`;
