@@ -76,7 +76,12 @@ fn paint_card(ui: &mut egui::Ui, pal: &Palette, rect: Rect, card: &Card, tex: Op
     ui.painter().rect_filled(rect, CornerRadius::same(widgets::CARD_RADIUS), pal.panel_bg);
     ui.painter().rect_stroke(rect, CornerRadius::same(widgets::CARD_RADIUS), Stroke::new(1.0, if hovered { pal.accent.gamma_multiply(0.7) } else { pal.border }), StrokeKind::Inside);
     let cover = Rect::from_min_size(rect.min + Vec2::splat(9.0), Vec2::new(rect.width() - 18.0, (rect.width() - 18.0) * 9.0 / 16.0));
-    paint_cover(ui, pal, cover, tex);
+    if let Some(mark) = crate::module_marks::texture(ui.ctx(), &card.id) {
+        ui.painter().rect_filled(cover, CornerRadius::same(14), Color32::from_rgb(20, 27, 25));
+        let side = cover.height() * 0.72;
+        let rect = Rect::from_center_size(Pos2::new(cover.right() - side * 0.6, cover.center().y - 5.0), Vec2::splat(side));
+        ui.painter().image(mark.id(), rect, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), Color32::from_rgba_unmultiplied(160, 205, 185, 110));
+    } else { paint_cover(ui, pal, cover, tex); }
     if recommended {
         let g = ui.painter().layout_no_wrap(tr("Recommended").to_string(), fonts::semibold(11.0), pal.text_on_accent);
         let r = Rect::from_min_size(Pos2::new(cover.max.x - g.size().x - 26.0, cover.min.y + 12.0), Vec2::new(g.size().x + 16.0, 22.0));

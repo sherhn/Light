@@ -23,6 +23,7 @@ mod hover;
 mod imageview;
 mod lang_completion;
 mod modules;
+mod module_marks;
 mod preview;
 mod pty;
 mod ui_preview;

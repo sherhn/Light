@@ -108,6 +108,8 @@ def main():
             sys.exit(f"missing {src}; build first")
         shutil.copy2(src, dist / src.name)
 
+    shutil.copytree(ROOT / "apps/light/assets/module-marks", dist / "licenses/module-marks")
+
     shutil.copy2(sbcl_exe, dist / "lisp" / f"sbcl{EXE}")
     shutil.copy2(sbcl_core, dist / "lisp" / "sbcl.core")
     shutil.copytree(sbcl_contrib, dist / "lisp" / "contrib")
