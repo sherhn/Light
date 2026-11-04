@@ -171,7 +171,7 @@ const TEXT_PAD: f32 = 6.0;
 const MAP_W: f32 = 128.0;
 const MAP_ROW: f32 = 5.0;
 const MAP_COL: f32 = 2.0;
-/// The scrollbar lane at the far right; it also shows where the changes and problems are in the whole file.
+/// The scrollbar lane at the far right; it also shows problems and search matches in the whole file.
 const BAR_W: f32 = 14.0;
 
 /// Screen position of the change marker of display row `row` in a gutter (used by the UI tests to click it).
@@ -879,13 +879,10 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
     }
 
     // ---------------------------------------------------------------- scrollbars
-    // the vertical lane doubles as an overview ruler of the whole file: changes left, problems and matches right
+    // The vertical lane shows problems and search matches; Git changes stay in the gutter and minimap.
     let vp = ui.painter_at(vbar);
     let n_rows = rows.len().max(1) as f32;
     let ruler_y = |line: usize| vbar.min.y + 4.0 + row_of_line(line) as f32 / n_rows * (vbar.height() - 8.0);
-    for m in cfg.git_marks {
-        vp.rect_filled(Rect::from_min_size(Pos2::new(vbar.min.x + 2.0, ruler_y(m.line)), Vec2::new(3.0, 3.0)), CornerRadius::ZERO, mark_color(m.kind));
-    }
     for &(fs, _) in cfg.find {
         vp.rect_filled(Rect::from_min_size(Pos2::new(vbar.max.x - 6.0, ruler_y(ed.line_of(fs.min(text_len)))), Vec2::new(4.0, 2.0)), CornerRadius::ZERO, pal.find_current);
     }
