@@ -135,7 +135,7 @@ impl App {
             return;
         };
         let on_linux_fs = ide_core::wsl::wsl_path(&root).is_some();
-        self.env_banner = cfg!(windows) && !on_linux_fs && !self.project_cfg.decided && !self.env_banner_dismissed && self.wsl_target().is_none() && self.linux_relevant();
+        self.env_banner = cfg!(windows) && self.settings.suggest_linux && !on_linux_fs && !self.project_cfg.decided && !self.env_banner_dismissed && self.wsl_target().is_none() && self.linux_relevant();
         if self.env_banner && self.wsl.probe.is_none() && !self.wsl.probing() {
             self.wsl_probe();
         }
@@ -315,6 +315,14 @@ impl App {
         self.open_settings_page(crate::ui_settings::WSL_PAGE);
     }
 
+    /// A refusal is remembered across projects and app restarts. The status-bar menu stays available.
+    pub fn dismiss_linux_offer(&mut self) {
+        self.settings.suggest_linux = false;
+        self.env_banner = false;
+        self.env_banner_dismissed = true;
+        self.save_settings();
+    }
+
     /// The question shown on top of the editor when a Unix-style project is opened on Windows.
     pub fn draw_env_banner(&mut self, ui: &mut egui::Ui) {
         if !self.env_banner {
@@ -356,16 +364,17 @@ impl App {
             if narrow {
                 let close = egui::Rect::from_min_size(egui::pos2(body.right() - 24.0, body.top() - 2.0), Vec2::splat(24.0));
                 let mut close_ui = ui.new_child(egui::UiBuilder::new().max_rect(close));
-                if widgets::icon_button(&mut close_ui, &pal, Icon::Close, 24.0, pal.text_dim, tr("Not now")).clicked() { act = Some(None); }
-            } else if widgets::icon_button(&mut buttons, &pal, Icon::Close, 24.0, pal.text_dim, tr("Not now")).clicked() { act = Some(None); }
+                if widgets::icon_button(&mut close_ui, &pal, Icon::Close, 24.0, pal.text_dim, tr("Dismiss Linux suggestion")).clicked() { act = Some(None); }
+            } else if widgets::icon_button(&mut buttons, &pal, Icon::Close, 24.0, pal.text_dim, tr("Dismiss Linux suggestion")).clicked() { act = Some(None); }
         });
         if setup {
             self.open_settings_page(crate::ui_settings::WSL_PAGE);
         }
         match act {
-            Some(None) => {
-                self.env_banner = false;
-                self.env_banner_dismissed = true;
+            Some(None) => self.dismiss_linux_offer(),
+            Some(Some(None)) => {
+                self.dismiss_linux_offer();
+                self.set_project_env(None);
             }
             Some(Some(choice)) => self.set_project_env(choice),
             None => {}
@@ -434,6 +443,36 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn declining_linux_survives_reopening_and_allows_explicit_switching() {
+        let root = std::env::temp_dir().join(format!("light-linux-offer-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("Makefile"), "all:\n").unwrap();
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.open_project(&root);
+        app.env_banner = true;
+        app.dismiss_linux_offer();
+        assert!(!app.env_banner && !app.settings.suggest_linux);
+        let profile = root.join("settings.json");
+        app.settings.save_to(&profile).unwrap();
+        let mut reopened = App::new(ide_core::settings::Settings::load_from(&profile));
+        reopened.open_project(&root);
+        assert!(!reopened.env_banner, "reopening must not repeat a declined offer");
+        // Even clearing the per-session dismissal cannot bring back a globally declined offer.
+        reopened.env_banner_dismissed = false;
+        reopened.update_env_banner();
+        assert!(!reopened.env_banner);
+        reopened.set_project_env(Some("Ubuntu".into()));
+        assert_eq!(reopened.project_distro().as_deref(), Some("Ubuntu"));
+        assert!(!reopened.settings.suggest_linux, "manual switching must not reset the refusal");
+        reopened.set_project_env(None);
+        // Restoring suggestions is explicit in Settings, without changing the chosen environment.
+        reopened.settings.suggest_linux = true;
+        reopened.update_env_banner();
+        assert!(!reopened.env_banner, "the project's explicit Windows choice is retained");
+        let _ = std::fs::remove_dir_all(root);
+    }
 
     #[test]
     fn linux_banner_wraps_text_and_actions_in_narrow_editor_panes() {

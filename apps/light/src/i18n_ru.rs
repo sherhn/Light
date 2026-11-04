@@ -2,6 +2,10 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Dismiss Linux suggestion", "Больше не предлагать Linux"),
+    ("Suggestions", "Предложения"),
+    ("Suggest running projects in Linux", "Предлагать запуск проектов в Linux"),
+    ("After declining once, suggestions stay off. You can always switch using the status bar.", "После первого отказа предложения отключаются. Переключить среду всегда можно в нижней панели."),
     ("Scroll tabs left", "Прокрутить вкладки влево"),
     ("Scroll tabs right", "Прокрутить вкладки вправо"),
     ("Projects belong to your regular WSL user. ~ is their home folder.", "Проекты принадлежат обычному пользователю WSL. ~ — его домашняя папка."),

@@ -185,6 +185,8 @@ pub struct Settings {
     pub run_env: RunEnv,
     /// WSL distribution used when `run_env` is `Wsl`.
     pub wsl_distro: String,
+    /// Offer Linux on Windows until the user declines; switching remains available in the status bar.
+    pub suggest_linux: bool,
     /// SBCL inside the distribution (command or absolute path); empty = `sbcl`.
     pub wsl_sbcl: String,
     /// Where Windows drives are mounted inside the distribution; empty = `/mnt/`.
@@ -232,6 +234,7 @@ impl Default for Settings {
             lisp_path: String::new(),
             run_env: RunEnv::Windows,
             wsl_distro: String::new(),
+            suggest_linux: true,
             wsl_sbcl: String::new(),
             wsl_mount_root: String::new(),
             linux_tools: LinuxTools::default(),
@@ -373,7 +376,8 @@ mod tests {
         let f = d.path().join("s.json");
         fs::write(&f, r#"{"theme":"Dark"}"#).unwrap();
         assert_eq!(Settings::load_from(&f).run_env, RunEnv::Windows, "older files run on Windows");
-        let s = Settings { run_env: RunEnv::Wsl, wsl_distro: "Ubuntu-24.04".into(), wsl_sbcl: "/usr/bin/sbcl".into(), ..Settings::default() };
+        assert!(Settings::load_from(&f).suggest_linux, "older profiles allow the first offer");
+        let s = Settings { suggest_linux: false, run_env: RunEnv::Wsl, wsl_distro: "Ubuntu-24.04".into(), wsl_sbcl: "/usr/bin/sbcl".into(), ..Settings::default() };
         s.save_to(&f).unwrap();
         assert_eq!(Settings::load_from(&f), s);
     }

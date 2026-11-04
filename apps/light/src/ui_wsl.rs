@@ -287,6 +287,18 @@ impl App {
             });
         });
 
+        let mut suggestions_changed = false;
+        group(ui, &pal, tr("Suggestions"), |ui, rows| {
+            rows.row(ui, &pal, tr("Suggest running projects in Linux"), tr("After declining once, suggestions stay off. You can always switch using the status bar."), 44.0, |ui| {
+                suggestions_changed = widgets::toggle(ui, &pal, &mut self.settings.suggest_linux).changed();
+            });
+        });
+        if suggestions_changed {
+            self.env_banner_dismissed = false;
+            self.update_env_banner();
+            self.save_settings();
+        }
+
         // ---------------------------------------------------------------- setup steps
         group(ui, &pal, tr("Setup"), |ui, rows| {
             // 1. WSL
