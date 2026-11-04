@@ -264,6 +264,9 @@ impl App {
             // the logo: `logo` sets the version chosen in the settings (auto, light, dark); `taskbar` pretends the taskbar is
             // light or dark; `dark` asserts the version of the window's icon (put on the window itself on Windows)
             "logo" => {
+                if let Some(value) = step.get("external_logo").and_then(|v| v.as_str()) {
+                    self.settings.external_logo = match value { "light" => ide_core::settings::LogoStyle::Light, "dark" => ide_core::settings::LogoStyle::Dark, _ => ide_core::settings::LogoStyle::Auto };
+                }
                 use ide_core::settings::LogoStyle;
                 if let Some(style) = step["logo"].as_str() {
                     self.settings.logo = match style { "light" => LogoStyle::Light, "dark" => LogoStyle::Dark, _ => LogoStyle::Auto };

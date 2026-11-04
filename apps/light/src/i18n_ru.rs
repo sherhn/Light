@@ -2,6 +2,9 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Taskbar and Dock icon", "Иконка панели задач и Dock"),
+    ("Window icon", "Системная иконка"),
+    ("Logo inside the application", "Логотип внутри приложения"),
     ("Dismiss Linux suggestion", "Больше не предлагать Linux"),
     ("Suggestions", "Предложения"),
     ("Suggest running projects in Linux", "Предлагать запуск проектов в Linux"),

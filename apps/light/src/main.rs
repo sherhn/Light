@@ -122,7 +122,7 @@ fn main() -> eframe::Result {
     let (w, h) = args.size.unwrap_or((1280.0, 800.0));
     let mut viewport = egui::ViewportBuilder::default().with_inner_size([w, h]).with_min_inner_size([640.0, 400.0]).with_title("Light").with_decorations(false).with_app_id("light");
     // what the window starts with: Windows tells at once, the other systems are asked once the window is up
-    let startup_dark = brand::use_dark_logo(settings.logo, brand::taskbar_is_light().unwrap_or(false));
+    let startup_dark = brand::use_dark_logo(settings.external_logo, brand::taskbar_is_light().unwrap_or(false));
     if let Some(icon) = brand::window_icon(startup_dark) {
         viewport = viewport.with_icon(std::sync::Arc::new(icon));
     }

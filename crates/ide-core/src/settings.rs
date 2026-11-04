@@ -213,6 +213,8 @@ pub struct Settings {
     /// The project tree shows the size and the time of the last change beside each file.
     pub show_file_details: bool,
     pub logo: LogoStyle,
+    /// Window/taskbar/Dock icon, independently of logos inside the application.
+    pub external_logo: LogoStyle,
     /// Ask the remotes of the project now and then whether they have new commits (a quiet `git fetch`).
     pub git_auto_fetch: bool,
 }
@@ -251,6 +253,7 @@ impl Default for Settings {
             show_bottom_panel: true,
             show_file_details: true,
             logo: LogoStyle::Auto,
+            external_logo: LogoStyle::Auto,
             git_auto_fetch: true,
         }
     }
@@ -349,7 +352,7 @@ mod tests {
     fn roundtrip_and_defaults() {
         let d = TempDir::new("settings");
         let f = d.path().join("cfg/settings.json");
-        let mut s = Settings { theme: Theme::Light, font_size: 17.0, ..Settings::default() };
+        let mut s = Settings { theme: Theme::Light, font_size: 17.0, logo: LogoStyle::Light, external_logo: LogoStyle::Dark, ..Settings::default() };
         s.push_recent_project("E:/p");
         s.save_to(&f).unwrap();
         let back = Settings::load_from(&f);

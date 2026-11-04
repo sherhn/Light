@@ -13,13 +13,13 @@ impl App {
     /// on a light system unless the settings choose one. The system is asked in the background every few seconds, and
     /// only while the choice is Automatic; when it does not say, the icon stays as it is.
     fn update_window_icon(&mut self, ctx: &egui::Context, frame: &eframe::Frame) {
-        if self.settings.logo == ide_core::settings::LogoStyle::Auto && !self.taskbar_frozen {
+        if self.settings.external_logo == ide_core::settings::LogoStyle::Auto && !self.taskbar_frozen {
             let waker = ctx.clone();
             if let Some(light) = self.taskbar_probe.refresh(move || waker.request_repaint()) {
                 self.taskbar_light = Some(light);
             }
         }
-        let dark = crate::brand::use_dark_logo(self.settings.logo, self.taskbar_light.unwrap_or(false));
+        let dark = crate::brand::use_dark_logo(self.settings.external_logo, self.taskbar_light.unwrap_or(false));
         if self.window_icon_dark == Some(dark) {
             return;
         }
