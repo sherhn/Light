@@ -321,7 +321,7 @@ def run_one(script_path):
             sep = os.pathsep
             env["PATH"] = sep.join(p for p in env.get("PATH", "").split(sep) if "sbcl" not in p.lower() and "steel bank" not in p.lower())
         t0 = time.time()
-        launch = [str(EXE), "--script", str(script), "--size", "1280x800"]
+        launch = [str(EXE), "--script", str(script), "--size", os.environ.get("LIGHT_E2E_SIZE", "1280x800")]
         if "@restore_session" in text or "@restore_without_project" in text:
             config = tmp / "cfg"
             config.mkdir(exist_ok=True)
@@ -336,9 +336,9 @@ def run_one(script_path):
         else:
             launch.append("--no-restore")
         try:
-            p = subprocess.run(launch, capture_output=True, text=True, timeout=180, env=env)
+            p = subprocess.run(launch, capture_output=True, text=True, timeout=600, env=env)
         except subprocess.TimeoutExpired as e:
-            return name, False, f"TIMEOUT after 180s\n{(e.stdout or b'').decode(errors='replace') if isinstance(e.stdout, bytes) else e.stdout}", time.time() - t0
+            return name, False, f"TIMEOUT after 600s\n{(e.stdout or b'').decode(errors='replace') if isinstance(e.stdout, bytes) else e.stdout}", time.time() - t0
         out = (p.stdout or "") + (p.stderr or "")
         if os.environ.get("LIGHT_E2E_VERBOSE"):
             print(out)

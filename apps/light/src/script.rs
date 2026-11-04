@@ -206,6 +206,7 @@ impl App {
         };
         let op = step["op"].as_str().unwrap_or("").to_string();
         let sval = step["value"].as_str().unwrap_or("").to_string();
+        eprintln!("[script step] {op} {}", step["value"]);
         let path = step["path"].as_str().map(PathBuf::from);
         // put the script back before executing steps that need &mut self
         self.script = Some(s);
@@ -483,6 +484,25 @@ impl App {
                 }
             }
             "debug_button" | "gutter_number_click" => {
+                if op == "gutter_number_click" && !step["revealed"].as_bool().unwrap_or(false)
+                    && let Some(gutter) = self.gutter_rect
+                {
+                        let line = step["line"].as_u64().unwrap_or(1).saturating_sub(1) as f32;
+                        let lh = crate::editor_view::line_height_for(self.settings.font_size);
+                        if let Some(doc) = self.doc_mut() {
+                            let y = gutter.top() + line * lh - doc.view.scroll.y + lh * 0.5;
+                            if y < gutter.top() || y > gutter.bottom() {
+                                doc.view.scroll.y = (line * lh - gutter.height() * 0.5).max(0.0);
+                                doc.view.scroll_to_caret = false;
+                                let mut retry = step.clone();
+                                retry["revealed"] = true.into();
+                                let script = self.script.as_mut().unwrap();
+                                script.steps.push_front(retry);
+                                script.wait_frames = 3;
+                                return;
+                            }
+                        }
+                }
                 let pos = if op == "debug_button" {
                     let rects = ctx.data(|d| d.get_temp::<Vec<(&'static str, egui::Rect)>>(egui::Id::unique("debug_button_rects"))).unwrap_or_default();
                     rects.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center())
@@ -652,6 +672,15 @@ impl App {
                 }
             }
             "profiler_click" => {
+                if sval.starts_with("hot:") && !step["revealed"].as_bool().unwrap_or(false) {
+                    self.profiler.reveal = Some(sval.clone());
+                    let mut retry = step.clone();
+                    retry["revealed"] = true.into();
+                    let script = self.script.as_mut().unwrap();
+                    script.steps.push_front(retry);
+                    script.wait_frames = 4;
+                    return;
+                }
                 // a box of the flame graph (`flame:NAME`), a row of the table (`hot:NAME`), a view (`view:hot`), `reset`;
                 // `"double": true` double-clicks
                 match self.profiler.rows.iter().find(|(k, _)| *k == sval).map(|(_, r)| r.center()) {

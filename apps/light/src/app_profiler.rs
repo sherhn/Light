@@ -39,6 +39,7 @@ pub struct ProfilerState {
     pending: Option<Pending>,
     /// Where the boxes of the flame graph and the rows of the table were drawn (the UI tests click them): name -> rect.
     pub rows: Vec<(String, Rect)>,
+    pub reveal: Option<String>,
 }
 
 /// A warm colour of its own for every function, so the same function looks the same everywhere in the graph.
@@ -251,6 +252,7 @@ impl App {
                 }
             }
             ProfileView::Hot => {
+                let reveal = self.profiler.reveal.take();
                 let hot: Vec<Hot> = profile::hot(&prof.root);
                 ui.horizontal(|ui| {
                     ui.add_space(14.0);
@@ -273,7 +275,9 @@ impl App {
                         ui.painter().text(Pos2::new(r.max.x - 216.0, r.center().y), egui::Align2::LEFT_CENTER, fmt(h.total), fonts::ui(12.5), pal.text_dim);
                         let place = if h.file.is_empty() { String::new() } else { format!("{}:{}", h.file.rsplit('/').next().unwrap_or(&h.file), h.line) };
                         ui.painter().with_clip_rect(Rect::from_min_max(Pos2::new(r.max.x - 120.0, r.min.y), r.max)).text(Pos2::new(r.max.x - 116.0, r.center().y), egui::Align2::LEFT_CENTER, place, fonts::ui(12.0), pal.text_dim);
-                        rows.push((format!("hot:{}", h.name), r));
+                        let key = format!("hot:{}", h.name);
+                        if reveal.as_deref() == Some(key.as_str()) { ui.scroll_to_rect(r, None); }
+                        rows.push((key, r.intersect(ui.clip_rect())));
                         if resp.clicked() && !h.file.is_empty() {
                             open = Some((h.file.clone(), h.line));
                         }
