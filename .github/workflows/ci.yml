@@ -13,6 +13,10 @@ jobs:
         with: { components: clippy }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: Prepare pinned modules from Light-Modules
+        run: python tools/prepare_modules.py
+      - name: Pinned module preparation tests
+        run: python -m unittest discover -s tools -p test_prepare_modules.py
       - name: Installer safety tests
         run: python -m unittest discover -s tools -p test_installers.py
       - name: License and source-package regression tests

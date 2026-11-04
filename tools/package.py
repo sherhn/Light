@@ -87,6 +87,9 @@ def main():
     ap.add_argument("--git-dir", help="an extracted Portable Git distribution (Windows)")
     a = ap.parse_args()
 
+    from prepare_modules import prepare
+    prepare()
+
     if not a.skip_build:
         subprocess.run(["cargo", "build", "--locked", "--release", "-p", "light", "-p", "light-cli"], cwd=ROOT, check=True)
     sbcl_exe, sbcl_core, sbcl_contrib = find_sbcl(a.sbcl_dir)
@@ -122,7 +125,7 @@ def main():
     # the modules (languages, run commands, project templates, covers) that can be installed without a network
     registry = ROOT / "registry"
     if not (registry / "index.json").is_file():
-        sys.exit("no registry/index.json: run `python tools/build_registry.py --covers` first")
+        sys.exit("no pinned registry/index.json: run `python tools/prepare_modules.py` first")
     shutil.copytree(registry, dist / "registry")
     from license_bundle import seal, verify
     seal(dist)

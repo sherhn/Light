@@ -9,7 +9,6 @@ import zipfile
 from unittest.mock import patch
 
 import license_bundle as legal
-from build_registry import module_notices
 import git_sources
 from git_sources import inspect_source, versions
 from legal_sources import require_sbcl_version
@@ -54,15 +53,13 @@ class LicensePolicyTests(unittest.TestCase):
                     legal.relative_path(path)
 
     def test_html_download_carries_original_credit_license_and_change_notice(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            module_notices({"id": "html"}, root)
-            notice = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
-            self.assertNotIn(b"\r", (root / "THIRD_PARTY_NOTICES.md").read_bytes())
-            self.assertIn("HTML5 Logo by W3C", notice)
-            self.assertIn("color, opacity", notice)
-            self.assertTrue((root / "HTML5-CC-BY-3.0.txt").is_file())
-            self.assertEqual((root / "LICENSE").read_bytes(), (legal.ROOT / "LICENSE").read_bytes())
+        root = legal.ROOT / "registry/modules/html"
+        notice = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+        self.assertNotIn(b"\r", (root / "THIRD_PARTY_NOTICES.md").read_bytes())
+        self.assertIn("HTML5 Logo by W3C", notice)
+        self.assertIn("color, opacity", notice)
+        self.assertTrue((root / "HTML5-CC-BY-3.0.txt").is_file())
+        self.assertEqual((root / "LICENSE").read_bytes(), (legal.ROOT / "LICENSE").read_bytes())
 
     def test_unreviewed_runtime_cannot_be_silently_relabelled(self):
         with self.assertRaisesRegex(ValueError, "has not been reviewed"):

@@ -50,6 +50,10 @@ jobs:
         with: { components: clippy }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: Prepare pinned modules from Light-Modules
+        run: python tools/prepare_modules.py
+      - name: Pinned module preparation tests
+        run: python -m unittest discover -s tools -p test_prepare_modules.py
       - name: Linux system libraries
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libgl1-mesa-dev libwayland-dev libx11-dev dpkg-dev desktop-file-utils
@@ -128,6 +132,7 @@ jobs:
     env:
       LIGHT_RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -150,6 +155,10 @@ jobs:
                   print(f"- **{label}**: [{path.name}]({base}/{quote(path.name)})")
           print("\nWindows: run Setup. macOS: open the disk image and drag Light to Applications. Ubuntu / Debian: open the .deb in your software installer, or use `sudo apt install ./Light-*.deb`.\n")
           print("The IDE, CLI, offline language modules and bundled runtime are included; Windows also includes Git. Project-specific compilers and interpreters are separate tools.\n")
+          version = os.environ['LIGHT_RELEASE_TAG'].removeprefix('v').split('-')[0]
+          changes = Path('docs/releases') / f'{version}.md'
+          if changes.is_file():
+              print(changes.read_text(encoding='utf-8') + '\n')
           for path in sorted(Path('dist').glob('Git-*-sources.zip')):
               print(f"Corresponding source for bundled Git and its components: [{path.name}]({base}/{quote(path.name)}). The kit contains exact versions, original source packages, build recipes, patches and checksums.\n")
           print("Original third-party licenses accompany every package; MPL component sources and SBCL sources are also included in the installed resources.\n")
