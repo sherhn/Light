@@ -70,7 +70,7 @@ pub fn parse_compiler_output(text: &str) -> Vec<Problem> {
         let block_end = raw == ";" || raw == "; ";
         let line = raw.trim_end();
         if !line.starts_with(';') {
-            if line.trim().is_empty() {
+            if line.trim().is_empty() && !cur.as_ref().is_some_and(|p| p.severity == Severity::Error && p.message.starts_with("READ error during COMPILE-FILE:")) {
                 flush(&mut cur, &mut out);
             }
             continue;
@@ -146,7 +146,10 @@ pub fn parse_compiler_output(text: &str) -> Vec<Problem> {
         }
         if let Some(p) = cur.as_mut() {
             if trimmed.is_empty() {
-                if block_end && !p.message.trim().is_empty() {
+                // Reader diagnostics contain blank comment lines between the title,
+                // condition and source position. SBCL 2.6.10 can print these as `; `.
+                let reader_error = p.severity == Severity::Error && p.message.starts_with("READ error during COMPILE-FILE:");
+                if block_end && !p.message.trim().is_empty() && !reader_error {
                     flush(&mut cur, &mut out);
                 } else {
                     p.message.push('\n');
@@ -398,6 +401,17 @@ mod tests {
     }
 
     #[test]
+    fn reader_error_keeps_its_position_when_internal_blank_lines_are_bare_comments() {
+        for blank in ["; \r\n", ";\r\n", "\r\n"] {
+            let text = sbcl_text(STYLE_AND_READ).replace(";   \r\n", blank);
+            let problems = parse_compiler_output(&text);
+            let error = problems.iter().find(|p| p.severity == Severity::Error).unwrap();
+            assert_eq!((error.line, error.column), (Some(9), Some(0)), "{problems:#?}");
+            assert!(error.message.contains("end of file"));
+        }
+    }
+
+    #[test]
     fn parses_undefined_summary() {
         let ps = parse_compiler_output(&sbcl_text(UNDEFINED));
         let syms: Vec<_> = ps.iter().filter_map(|p| p.symbol.as_deref()).collect();
@@ -477,7 +491,7 @@ mod tests {
         let r = compile_sync(&imp, &f, Duration::from_secs(60)).unwrap();
         assert!(!r.success());
         let err = r.problems.iter().find(|p| p.severity == Severity::Error).expect("error problem");
-        assert_eq!(err.line, Some(3), "{:#?}", r.problems);
+        assert_eq!(err.line, Some(3), "{:#?}\nRaw compiler output:\n{}", r.problems, r.output);
         let (s, _) = locate(err, src, Dialect::CommonLisp).unwrap();
         assert_eq!(s, src.find("(defun broken").unwrap());
     }
