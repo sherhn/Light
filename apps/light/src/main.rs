@@ -4,6 +4,7 @@
 
 mod app;
 mod app_notes;
+mod viewer;
 mod app_check;
 mod app_tasks;
 mod app_testing;
@@ -85,10 +86,12 @@ struct Args {
     script: Option<PathBuf>,
     size: Option<(f32, f32)>,
     no_restore: bool,
+    full_ide: bool,
+    viewer_smoke: bool,
 }
 
 fn parse_args() -> Args {
-    let mut a = Args { paths: vec![], script: None, size: None, no_restore: false };
+    let mut a = Args { paths: vec![], script: None, size: None, no_restore: false, full_ide: false, viewer_smoke: false };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -101,9 +104,12 @@ fn parse_args() -> Args {
                     a.size = Some((w, h));
                 }
             }
+            "--ide" => a.full_ide = true,
+            "--view" => a.full_ide = false,
+            "--viewer-smoke" => a.viewer_smoke = true,
             "--no-restore" => a.no_restore = true,
             "--help" | "-h" => {
-                println!("light [PATH...] [--script FILE.json] [--size WxH] [--no-restore]");
+                println!("light [PATH...] [--ide | --view] [--script FILE.json] [--size WxH] [--no-restore]");
                 std::process::exit(0);
             }
             p => a.paths.push(PathBuf::from(p)),
@@ -113,6 +119,7 @@ fn parse_args() -> Args {
 }
 
 fn main() -> eframe::Result {
+    let started = std::time::Instant::now();
     if let Ok(executable) = std::env::current_exe()
         && let Some(path) = ide_core::bundle::tool_path(&executable, std::env::var_os("PATH").as_deref())
     {
@@ -121,6 +128,10 @@ fn main() -> eframe::Result {
     }
     let args = parse_args();
     let settings = Settings::load();
+    if viewer::should_view(&args.paths, args.full_ide, args.script.is_some()) {
+        crate::i18n::set(settings.language);
+        return viewer::run(args.paths, settings, args.viewer_smoke, started);
+    }
     let (w, h) = args.size.unwrap_or((1280.0, 800.0));
     let mut viewport = egui::ViewportBuilder::default().with_inner_size([w, h]).with_min_inner_size([640.0, 400.0]).with_title("Light").with_decorations(false).with_app_id("light");
     // what the window starts with: Windows tells at once, the other systems are asked once the window is up

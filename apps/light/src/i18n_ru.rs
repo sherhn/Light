@@ -2,6 +2,12 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("This file is not UTF-8 text", "Файл не является текстом UTF-8"),
+    ("File is too large for quick view (32 MB)", "Файл слишком большой для быстрого просмотра (32 МБ)"),
+    ("Matches", "Совпадения"),
+    ("Reload", "Перезагрузить"),
+    ("Open in IDE", "Открыть в IDE"),
+    ("Quick View — read only", "Быстрый просмотр — только чтение"),
     ("Cannot open notes", "Не удалось открыть заметки"),
     ("Open a project or file first", "Сначала откройте проект или файл"),
     ("File notes", "Заметки файла"),

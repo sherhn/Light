@@ -1,0 +1,9 @@
+# Notes and quick view
+
+Project and file notes are available from the Notes menu in the toolbar and the command palette. File notes are also available in a file's project-tree context menu. Notes are ordinary editable Markdown files under `.light-notes/`: `project.md` and a matching relative path under `files/` (for example `files/src/main.py.md`); files outside the project use a hashed key. They use normal save/autosave, undo and Git. Commit this folder to share notes, or ignore it for private notes. Renaming a source file does not migrate its note automatically.
+
+Launching `light FILE...` opens a read-only Quick View. `light --view FILE...` is explicit; `light --ide FILE...` opens the full IDE. Directories open as projects. Quick View does not instantiate the IDE application, restore or overwrite its session, initialize installed modules, start Git, index a project or launch WSL. Files load in a worker; source highlighting uses embedded language definitions. Search, selecting/copying text, reloading and opening the file in the full IDE are available. UTF-8 text up to 32 MiB is supported; binary, invalid or oversized files show an error.
+
+The Windows installer registers Light in Open With and Default Apps for common source/text extensions, without changing the user's defaults. After installing, choose Light through Windows Open With > Choose another app > Always. A portable light.exe can also be selected there. Linux desktop files already advertise text/plain. This change does not add macOS Launch Services document-open handling.
+
+Appearance settings independently select the logo inside the application and the window/taskbar/Dock icon. Automatic uses the application theme inside and the OS taskbar/Dock appearance outside. Static executable/shortcut icons are resources of the installed package and do not change with runtime preferences.
