@@ -262,6 +262,7 @@ impl App {
                         open = Some(row.path.clone());
                         ui.close();
                     }
+                    if !row.is_dir && ui.button(tr("File notes")).clicked() { action = Some(("notes".into(), row.path.clone())); ui.close(); }
                     if widgets::menu_row(ui, &pal, Some(Icon::Pencil), tr("Rename..."), "").clicked() {
                         action = Some(("rename".into(), row.path.clone()));
                         ui.close();
@@ -322,6 +323,7 @@ impl App {
             match a.as_str() {
                 "new_file" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), kind: 0, is_dir: false, just_opened: true },
                 "new_dir" => self.popup = Popup::NewFile { dir: path, input: String::new(), extension: String::new(), kind: 0, is_dir: true, just_opened: true },
+                "notes" => self.open_note(Some(path.clone())),
                 "rename" => {
                     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                     self.popup = Popup::RenameFile { path, input: name, just_opened: true };

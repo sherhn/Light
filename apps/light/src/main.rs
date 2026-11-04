@@ -3,6 +3,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app;
+mod app_notes;
 mod app_check;
 mod app_tasks;
 mod app_testing;

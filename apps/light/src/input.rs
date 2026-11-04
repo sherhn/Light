@@ -385,6 +385,8 @@ impl App {
                     self.toast(tr("Path copied"), Sev::Weak);
                 }
             }
+            "notes.project" => self.open_note(None),
+            "notes.file" => { let file = self.doc().and_then(|d| d.path.clone()); if file.is_some() { self.open_note(file); } },
             "app.modules" => self.open_modules_tab(),
             "app.settings" => {
                 self.popup = Popup::Settings { lisp_path: self.settings.lisp_path.clone(), detected: self.lisp.as_ref().map(|l| l.describe()).unwrap_or_default(), filter: String::new(), page: 0 };

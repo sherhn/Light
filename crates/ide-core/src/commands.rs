@@ -73,6 +73,8 @@ cmds! {
     "file.reveal", "Reveal in File Manager", File, [];
     "file.copy_path", "Copy Path", File, ["Ctrl+Shift+C"];
     "app.settings", "Settings...", File, ["Ctrl+Alt+S"];
+    "notes.project", "Project notes", File, [];
+    "notes.file", "File notes", File, [];
     "app.modules", "Modules...", File, ["Ctrl+Alt+P"];
     "app.exit", "Exit", File, ["Alt+F4"];
     // ---- Edit

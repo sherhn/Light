@@ -1,0 +1,97 @@
+[
+  {
+    "op": "open_project",
+    "path": "${PROJ}"
+  },
+  {
+    "op": "wait",
+    "what": "index"
+  },
+  {
+    "op": "command",
+    "value": "notes.project"
+  },
+  {
+    "op": "assert_active_file",
+    "value": "project.md"
+  },
+  {
+    "op": "focus_editor"
+  },
+  {
+    "op": "key",
+    "value": "Ctrl+End"
+  },
+  {
+    "op": "text",
+    "value": "Project idea: ship it."
+  },
+  {
+    "op": "command",
+    "value": "file.save"
+  },
+  {
+    "op": "assert_file_contains",
+    "path": "${PROJ}/.light-notes/project.md",
+    "value": "Project idea: ship it."
+  },
+  {
+    "op": "open",
+    "path": "${PROJ}/src/nav.lisp"
+  },
+  {
+    "op": "command",
+    "value": "notes.file"
+  },
+  {
+    "op": "assert_text_contains",
+    "value": "src/nav.lisp"
+  },
+  {
+    "op": "focus_editor"
+  },
+  {
+    "op": "key",
+    "value": "Ctrl+End"
+  },
+  {
+    "op": "text",
+    "value": "Explain beta here."
+  },
+  {
+    "op": "command",
+    "value": "file.save"
+  },
+  {
+    "op": "assert_file_contains",
+    "path": "${PROJ}/.light-notes/files/src/nav.lisp.md",
+    "value": "Explain beta here."
+  },
+  {
+    "op": "open",
+    "path": "${PROJ}/src/nav.lisp"
+  },
+  {
+    "op": "command",
+    "value": "notes.file"
+  },
+  {
+    "op": "assert_text_contains",
+    "value": "Explain beta here."
+  },
+  {
+    "op": "command",
+    "value": "notes.project"
+  },
+  {
+    "op": "assert_text_contains",
+    "value": "Project idea: ship it."
+  },
+  {
+    "op": "screenshot",
+    "path": "${SHOTS}/${NAME}.png"
+  },
+  {
+    "op": "quit"
+  }
+]

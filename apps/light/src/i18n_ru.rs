@@ -2,6 +2,11 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Cannot open notes", "Не удалось открыть заметки"),
+    ("Open a project or file first", "Сначала откройте проект или файл"),
+    ("File notes", "Заметки файла"),
+    ("Project notes", "Заметки проекта"),
+    ("Notes", "Заметки"),
     ("Taskbar and Dock icon", "Иконка панели задач и Dock"),
     ("Window icon", "Системная иконка"),
     ("Logo inside the application", "Логотип внутри приложения"),

@@ -123,6 +123,11 @@ impl App {
     pub fn draw_toolbar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let pal = self.pal;
         ui.horizontal_centered(|ui| {
+            ui.menu_button(tr("Notes"), |ui| {
+                if ui.button(tr("Project notes")).clicked() { self.open_note(None); ui.close(); }
+                let file = self.doc().and_then(|d| d.path.clone());
+                if ui.add_enabled(file.is_some(), egui::Button::new(tr("File notes"))).clicked() { self.open_note(file); ui.close(); }
+            });
             ui.add_space(12.0);
             ui.spacing_mut().item_spacing.x = 6.0;
 
