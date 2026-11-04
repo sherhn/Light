@@ -10,10 +10,18 @@ use serde::{Deserialize, Serialize};
 use super::manifest::Detect;
 
 /// Where the modules of this release are published (the `registry` folder of the repository).
-pub const DEFAULT_URL: &str = "https://raw.githubusercontent.com/sherhn/Light/main/registry";
+pub const DEFAULT_URL: &str = "https://raw.githubusercontent.com/sherhn/Light-Modules/main/registry";
 
 /// Largest file a module may have, in bytes.
 pub const MAX_FILE: u64 = 20 * 1024 * 1024;
+pub const MAX_PACKAGE: u64 = 100 * 1024 * 1024;
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Archive {
+    pub url: String,
+    pub size: u64,
+    pub sha256: String,
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(default)]
@@ -39,12 +47,20 @@ pub struct IndexEntry {
     pub path: String,
     pub files: Vec<FileEntry>,
     pub detect: Detect,
+    /// Empty for legacy folder registries. Versioned ZIP assets are checked before unpacking.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archive: Option<Archive>,
+    pub min_ide: String,
 }
 
 impl IndexEntry {
     /// Bytes to download.
     pub fn size(&self) -> u64 {
-        self.files.iter().map(|f| f.size).sum()
+        self.archive.as_ref().map_or_else(|| self.files.iter().map(|f| f.size).sum(), |a| a.size)
+    }
+
+    pub fn compatible(&self) -> bool {
+        self.min_ide.is_empty() || !super::manifest::is_newer(&self.min_ide, env!("CARGO_PKG_VERSION"))
     }
 }
 
@@ -58,12 +74,17 @@ pub struct Index {
 impl Index {
     pub fn parse(json: &str) -> Result<Index, String> {
         let i: Index = serde_json::from_str(json).map_err(|e| format!("index.json: {e}"))?;
-        if i.version == 0 {
+        if !matches!(i.version, 1 | 2) {
             return Err("index.json: this is not a module index (it has no version)".into());
         }
         for m in &i.modules {
             if !is_plain_name(&m.id) || m.path.split('/').any(|p| p == ".." || p.is_empty()) || m.path.contains('\\') {
                 return Err(format!("index.json: the module {:?} has a path that is not allowed", m.id));
+            }
+            if let Some(a) = &m.archive
+                && (!a.url.starts_with("https://") || a.size == 0 || a.size > MAX_PACKAGE || a.sha256.len() != 64 || !a.sha256.bytes().all(|b| b.is_ascii_hexdigit()))
+            {
+                return Err(format!("index.json: {} has invalid archive metadata", m.id));
             }
             for f in &m.files {
                 if !is_plain_name(&f.name) {
@@ -163,8 +184,12 @@ fn merge_bundled(index: &mut Index, bundled: Index, source: &Source) {
 
 /// A file from the web with the system's `curl`.
 fn curl_get(url: &str) -> Result<Vec<u8>, String> {
+    download(url, MAX_FILE)
+}
+
+pub(super) fn download(url: &str, maximum: u64) -> Result<Vec<u8>, String> {
     let mut c = Command::new("curl");
-    c.args(["-fsSL", "--connect-timeout", "15", "--max-time", "180", "--max-filesize", &MAX_FILE.to_string(), "-A", "Light", url]);
+    c.args(["-fsSL", "--connect-timeout", "15", "--max-time", "180", "--max-filesize", &maximum.to_string(), "-A", "Light", url]);
     c.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     #[cfg(windows)]
     {
@@ -175,6 +200,9 @@ fn curl_get(url: &str) -> Result<Vec<u8>, String> {
     if !out.status.success() {
         let why = String::from_utf8_lossy(&out.stderr).trim().to_string();
         return Err(if why.is_empty() { format!("{url}: download failed") } else { why });
+    }
+    if out.stdout.len() as u64 > maximum {
+        return Err(format!("{url}: too large"));
     }
     Ok(out.stdout)
 }

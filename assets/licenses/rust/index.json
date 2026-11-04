@@ -6200,6 +6200,28 @@
       "archive_sha256": "cb30dbbd9036155e74adad6812e9898d03ec374946234fbcebd5dfc7b9187b90"
     },
     {
+      "name": "typed-path",
+      "version": "0.12.4",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/chipsenkbeil/typed-path",
+      "files": [
+        {
+          "path": "typed-path-0.12.4/LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "source": "https://crates.io/crates/typed-path/0.12.4"
+        },
+        {
+          "path": "typed-path-0.12.4/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "source": "https://crates.io/crates/typed-path/0.12.4"
+        }
+      ],
+      "archive_sha256": "54ec2755506471f54baf5e4bb5499d8e510cc1caf271270e778a736bd2d7336c"
+    },
+    {
       "name": "unicode-bidi",
       "version": "0.3.18",
       "expression": "MIT OR Apache-2.0",
@@ -7972,6 +7994,23 @@
         }
       ],
       "archive_sha256": "c3743ddbf47738d929cd1ae2e199d40d0162979dfe31aef8ae646d2bf00bf97a"
+    },
+    {
+      "name": "zip",
+      "version": "8.6.0",
+      "expression": "MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/zip-rs/zip2",
+      "files": [
+        {
+          "path": "zip-8.6.0/LICENSE",
+          "sha256": "58545fed1565e42d687aecec6897d35c6d37ccb71479a137c0deb2203e125c79",
+          "source": "https://crates.io/crates/zip/8.6.0"
+        }
+      ],
+      "archive_sha256": "2d04a6b5381502aa6087c94c669499eb1602eb9c5e8198e534de571f7154809b"
     },
     {
       "name": "zlib-rs",

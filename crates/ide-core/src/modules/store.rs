@@ -132,6 +132,27 @@ impl ModuleStore {
     /// before.
     pub fn install(&self, entry: &IndexEntry, source: &Source, progress: Progress) -> Result<Manifest, String> {
         let source = entry.source.as_ref().unwrap_or(source);
+        self.install_from(entry, |tmp| {
+            if let Some(archive) = &entry.archive && matches!(source, Source::Url(_)) {
+                if !archive.url.starts_with("https://") { return Err("module archives require HTTPS".into()); }
+                progress(0, entry.files.len(), "Downloading package");
+                let bytes = super::registry::download(&archive.url, super::registry::MAX_PACKAGE)?;
+                self.unpack_package(tmp, entry, &bytes, progress)
+            } else {
+                self.fetch_into(tmp, entry, source, progress)
+            }
+        })
+    }
+
+    /// Install an already downloaded ZIP against trusted catalog metadata.
+    pub fn install_archive(&self, entry: &IndexEntry, bytes: &[u8], progress: Progress) -> Result<Manifest, String> {
+        self.install_from(entry, |tmp| self.unpack_package(tmp, entry, bytes, progress))
+    }
+
+    fn install_from(&self, entry: &IndexEntry, fetch: impl FnOnce(&Path) -> Result<(), String>) -> Result<Manifest, String> {
+        if !entry.compatible() {
+            return Err(format!("{} requires Light {} or newer", entry.id, entry.min_ide));
+        }
         if !is_plain_name(&entry.id) {
             return Err(format!("{}: not a module id", entry.id));
         }
@@ -142,12 +163,49 @@ impl ModuleStore {
         let tmp = self.dir.join(format!(".installing-{}", entry.id));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
-        let result = self.fetch_into(&tmp, entry, source, progress);
+        let result = fetch(&tmp).and_then(|()| {
+            let m = Manifest::parse(&fs::read_to_string(tmp.join("module.json")).map_err(|e| e.to_string())?)?;
+            if m.id != entry.id || m.version != entry.version { return Err("module identity/version does not match the catalog".into()); }
+            Ok(())
+        });
         if let Err(e) = result {
             let _ = fs::remove_dir_all(&tmp);
             return Err(e);
         }
         self.put_in_place(&entry.id, &tmp)
+    }
+
+    fn unpack_package(&self, tmp: &Path, entry: &IndexEntry, bytes: &[u8], progress: Progress) -> Result<(), String> {
+        use std::io::{Cursor, Read};
+        let metadata = entry.archive.as_ref().ok_or("module has no archive metadata")?;
+        if bytes.len() as u64 != metadata.size || bytes.len() as u64 > super::registry::MAX_PACKAGE || !sha256_hex(bytes).eq_ignore_ascii_case(&metadata.sha256) {
+            return Err("module archive size/checksum mismatch".into());
+        }
+        let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| format!("invalid module ZIP: {e}"))?;
+        if zip.len() != entry.files.len() { return Err("module ZIP contains unexpected or missing files".into()); }
+        let mut seen = std::collections::HashSet::new();
+        let mut total = 0_u64;
+        for i in 0..zip.len() {
+            let mut file = zip.by_index(i).map_err(|e| e.to_string())?;
+            let name = file.name().to_string();
+            if !is_plain_name(&name) || !seen.insert(name.to_lowercase()) || file.is_dir() || file.unix_mode().is_some_and(|m| m & 0o170000 == 0o120000) {
+                return Err("module ZIP contains an unsafe or duplicate file name".into());
+            }
+            let expected = entry.files.iter().find(|f| f.name == name).ok_or("module ZIP contains a file missing from the catalog")?;
+            total = total.checked_add(expected.size).ok_or("module ZIP is too large")?;
+            if expected.size > super::registry::MAX_FILE || total > super::registry::MAX_PACKAGE || file.size() != expected.size {
+                return Err("module ZIP file size exceeds the catalog or limit".into());
+            }
+            progress(i, entry.files.len(), &name);
+            let mut data = Vec::new();
+            file.by_ref().take(expected.size + 1).read_to_end(&mut data).map_err(|e| e.to_string())?;
+            if data.len() as u64 != expected.size || !sha256_hex(&data).eq_ignore_ascii_case(&expected.sha256) {
+                return Err(format!("{name}: module ZIP file checksum mismatch"));
+            }
+            fs::write(tmp.join(&name), data).map_err(|e| e.to_string())?;
+        }
+        progress(entry.files.len(), entry.files.len(), "");
+        Ok(())
     }
 
     /// Install a module from files that come with the program (nothing is downloaded).
@@ -287,6 +345,64 @@ mod tests {
         assert!(!st.dir().join("demo").exists());
         // nothing is left behind
         assert!(fs::read_dir(st.dir()).unwrap().flatten().all(|e| e.file_name() == "state.json"));
+    }
+
+    fn package(entry: &mut IndexEntry, source: &Source, extra: Option<(&str, &[u8])>) -> Vec<u8> {
+        use std::io::{Cursor, Write};
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for file in &entry.files {
+            writer.start_file(&file.name, zip::write::SimpleFileOptions::default()).unwrap();
+            writer.write_all(&source.fetch(&format!("{}/{}", entry.path, file.name)).unwrap()).unwrap();
+        }
+        if let Some((name, data)) = extra {
+            writer.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            writer.write_all(data).unwrap();
+        }
+        let bytes = writer.finish().unwrap().into_inner();
+        entry.archive = Some(super::super::registry::Archive { url: "https://example.org/demo.zip".into(), size: bytes.len() as u64, sha256: sha256_hex(&bytes) });
+        bytes
+    }
+
+    #[test]
+    fn versioned_zip_updates_are_verified_before_replacing_the_installed_module() {
+        let d = TempDir::new("zip-updates");
+        let (src, first) = registry(&d, "1.0.0");
+        let st = store(&d);
+        st.install(&first, &src, &mut |_, _, _| {}).unwrap();
+        let (src, mut next) = registry(&d, "1.1.0");
+        let bytes = package(&mut next, &src, None);
+        let mut corrupt = bytes.clone();
+        corrupt[0] ^= 1;
+        assert!(st.install_archive(&next, &corrupt, &mut |_, _, _| {}).is_err());
+        assert_eq!(st.get("demo").unwrap().manifest.version, "1.0.0");
+        let mut wrong_file = next.clone();
+        wrong_file.files[0].sha256 = "0".repeat(64);
+        assert!(st.install_archive(&wrong_file, &bytes, &mut |_, _, _| {}).is_err());
+        assert_eq!(st.get("demo").unwrap().manifest.version, "1.0.0");
+        let mut wrong_version = next.clone();
+        wrong_version.version = "2.0.0".into();
+        assert!(st.install_archive(&wrong_version, &bytes, &mut |_, _, _| {}).is_err());
+        next.min_ide = "99.0.0".into();
+        assert!(st.install_archive(&next, &bytes, &mut |_, _, _| {}).unwrap_err().contains("requires Light"));
+        next.min_ide.clear();
+        let installed = st.install_archive(&next, &bytes, &mut |_, _, _| {}).unwrap();
+        assert_eq!(installed.version, "1.1.0");
+        assert_eq!(st.get("demo").unwrap().manifest.version, "1.1.0");
+    }
+
+    #[test]
+    fn zip_entries_cannot_escape_or_bypass_the_catalog() {
+        let d = TempDir::new("zip-paths");
+        let (src, mut entry) = registry(&d, "1.0.0");
+        let st = store(&d);
+        let bytes = package(&mut entry, &src, Some(("../outside.txt", b"no")));
+        assert!(st.install_archive(&entry, &bytes, &mut |_, _, _| {}).is_err());
+        assert!(!st.dir().join("outside.txt").exists());
+        assert!(st.installed().is_empty());
+        let bytes = package(&mut entry, &src, None);
+        entry.files[0].size += 1;
+        assert!(st.install_archive(&entry, &bytes, &mut |_, _, _| {}).is_err());
+        assert!(st.installed().is_empty());
     }
 
     #[test]

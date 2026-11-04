@@ -12,6 +12,27 @@ fn registry_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../registry")
 }
 
+#[test]
+#[ignore = "downloads the published official module release; run explicitly before releasing the IDE"]
+fn published_module_packages_install_from_the_official_catalog() {
+    use ide_core::modules::ModuleStore;
+    let source = Source::parse(ide_core::modules::registry::DEFAULT_URL);
+    let index = source.fetch_index().unwrap();
+    assert_eq!(index.modules.len(), 17);
+    let root = std::env::temp_dir().join(format!("light-published-modules-{}", std::process::id()));
+    std::fs::create_dir(&root).unwrap();
+    let store = ModuleStore::at(root.join("modules"));
+    for entry in &index.modules {
+        assert!(entry.archive.is_some(), "{} is not a released ZIP", entry.id);
+        let manifest = store.install(entry, &source, &mut |_, _, _| {}).unwrap_or_else(|e| panic!("{}: {e}", entry.id));
+        assert_eq!(manifest.version, entry.version);
+        assert!(store.dir().join(&entry.id).join("LICENSE").is_file());
+        assert!(store.dir().join(&entry.id).join("THIRD_PARTY_NOTICES.md").is_file());
+    }
+    assert_eq!(store.installed().len(), 17);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 fn manifests() -> Vec<Manifest> {
     let index = Source::Dir(registry_dir()).fetch_index().expect("registry/index.json");
     index.modules.iter().map(|e| Manifest::parse(&String::from_utf8(Source::Dir(registry_dir()).fetch(&format!("{}/module.json", e.path)).unwrap()).unwrap()).unwrap_or_else(|er| panic!("{}: {er}", e.id))).collect()
@@ -132,8 +153,8 @@ fn the_index_is_current_and_every_module_is_valid() {
         assert!(e.files.iter().any(|f| f.name == "module.json"), "{}", e.id);
         for f in &e.files {
             let bytes = src.fetch(&format!("{}/{}", e.path, f.name)).unwrap_or_else(|er| panic!("{}/{}: {er}", e.id, f.name));
-            assert_eq!(bytes.len() as u64, f.size, "{}/{} changed: run python tools/build_registry.py", e.id, f.name);
-            assert_eq!(sha256_hex(&bytes), f.sha256, "{}/{} changed: run python tools/build_registry.py", e.id, f.name);
+            assert_eq!(bytes.len() as u64, f.size, "{}/{} changed: run python tools/prepare_modules.py", e.id, f.name);
+            assert_eq!(sha256_hex(&bytes), f.sha256, "{}/{} changed: run python tools/prepare_modules.py", e.id, f.name);
         }
         let m = Manifest::parse(&String::from_utf8(src.fetch(&format!("{}/module.json", e.path)).unwrap()).unwrap()).unwrap();
         assert_eq!((m.id.as_str(), m.version.as_str(), m.name.as_str()), (e.id.as_str(), e.version.as_str(), e.name.as_str()));
