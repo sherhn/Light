@@ -126,7 +126,9 @@ impl App {
         let raw = file.strip_prefix("file://").unwrap_or(file);
         // file:///E:/p/x.js -> E:/p/x.js
         let raw = if raw.len() > 3 && raw.starts_with('/') && raw.as_bytes()[2] == b':' { &raw[1..] } else { raw };
-        let decoded = raw.replace("%20", " ");
+        let decoded = if file.starts_with("file://") {
+            percent_encoding::percent_decode_str(raw).decode_utf8_lossy().into_owned()
+        } else { raw.to_owned() };
         let path = match self.wsl_target() {
             Some(t) if decoded.starts_with('/') => lisp_runtime::wsl::to_windows(&decoded, &t),
             _ => PathBuf::from(decoded),
@@ -309,6 +311,28 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn encoded_file_urls_reuse_the_document_and_open_the_requested_line() {
+        let root = std::env::temp_dir().join(format!("light-profile-url-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("code ~ # percent%20.js");
+        std::fs::write(&path, "// first\nfunction slow() {}\n").unwrap();
+        let mut app = App::new(ide_core::settings::Settings::default());
+        assert!(app.open_file(&path));
+        let count = app.docs.len();
+        let text = path.to_string_lossy().replace('\\', "/");
+        const SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC.remove(b'/').remove(b':');
+        let encoded = percent_encoding::utf8_percent_encode(&text, SET);
+        let url = format!("file://{}{encoded}", if cfg!(windows) { "/" } else { "" });
+        app.open_profiled(&url, 2);
+        assert_eq!(app.docs.len(), count);
+        assert_eq!(app.doc().unwrap().ed.line_col(app.doc().unwrap().ed.caret()).0, 1);
+        app.open_profiled(&path.to_string_lossy(), 1);
+        assert_eq!(app.docs.len(), count);
+        assert_eq!(app.doc().unwrap().ed.line_col(app.doc().unwrap().ed.caret()).0, 0);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn a_function_has_the_same_warm_colour_everywhere() {

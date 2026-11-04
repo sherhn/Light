@@ -112,9 +112,11 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           $env:LIGHT_E2E_SIZE = '800x540'
+          $env:LIGHT_E2E_SHORT_PATHS = '1'
           python tests/run_e2e.py --release 72_node_debugger 74_breakpoint_conditions 78_profiler
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Remove-Item Env:LIGHT_E2E_SIZE
+          Remove-Item Env:LIGHT_E2E_SHORT_PATHS
           python tests/run_e2e.py --release
       - name: GUI diagnostics on failure
         if: failure() && runner.os == 'Windows'

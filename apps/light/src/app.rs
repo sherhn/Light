@@ -525,7 +525,7 @@ impl App {
     // ------------------------------------------------------------------ documents
 
     pub fn open_file(&mut self, path: &Path) -> bool {
-        if let Some(i) = self.docs.iter().position(|d| d.path.as_deref() == Some(path)) {
+        if let Some(i) = self.docs.iter().position(|d| d.path.as_deref().is_some_and(|p| crate::app_run::same_file(p, path))) {
             self.show_doc(i);
             self.editor_focus = true;
             return true;

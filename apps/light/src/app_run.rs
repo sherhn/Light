@@ -84,6 +84,22 @@ pub fn shell_launch(line: &str, dir: &Path, t: Option<&Target>, env: &[(String, 
     }
 }
 
+/// Resolve Windows aliases without passing verbatim paths to external tools.
+pub(crate) fn host_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    if let Ok(full) = path.canonicalize() {
+        let text = full.to_string_lossy();
+        if let Some(unc) = text.strip_prefix(r"\\?\UNC\") { return PathBuf::from(format!(r"\\{unc}")); }
+        if let Some(native) = text.strip_prefix(r"\\?\") { return PathBuf::from(native); }
+        return full;
+    }
+    path.to_path_buf()
+}
+
+pub(crate) fn same_file(a: &Path, b: &Path) -> bool {
+    a == b || a.canonicalize().ok().zip(b.canonicalize().ok()).is_some_and(|(a, b)| a == b)
+}
+
 /// A path as the shell of the project sees it: in its Linux, or with forward slashes here.
 pub fn shell_path(path: &Path, t: Option<&Target>) -> String {
     match t {

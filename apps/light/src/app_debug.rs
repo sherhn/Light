@@ -442,7 +442,8 @@ impl App {
     fn send_breakpoints(&mut self, session: usize, path: &Path) {
         let t = self.wsl_target();
         let lines: Vec<usize> = self.debug.breakpoints.get(path).map(|s| s.iter().copied().collect()).unwrap_or_default();
-        let source = crate::app_run::shell_path(path, t.as_ref());
+        let host_path = crate::app_run::host_path(path);
+        let source = crate::app_run::shell_path(if t.is_none() { &host_path } else { path }, t.as_ref());
         // the adapter on this computer wants the system's own separators
         let source = if t.is_none() { source.replace('/', std::path::MAIN_SEPARATOR_STR) } else { source };
         let options = &self.debug.options;
@@ -533,11 +534,15 @@ impl App {
             }
         };
         let t = self.wsl_target();
+        let host_path = crate::app_run::host_path(path);
+        let path = if t.is_none() { host_path.as_path() } else { path };
         let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
+        let adapter = if t.is_none() { crate::app_run::host_path(&adapter) } else { adapter };
         let adapter_s = if adapter.as_os_str().is_empty() { String::new() } else { crate::app_run::shell_path(&adapter, t.as_ref()) };
         let port_s = port.to_string();
         let args: Vec<String> = def.command.iter().map(|a| a.replace("{adapter}", &adapter_s).replace("{port}", &port_s)).collect();
         let root = self.project_root().map(Path::to_path_buf).unwrap_or_else(|| dir.clone());
+        let root = if t.is_none() { crate::app_run::host_path(&root) } else { root };
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
         let exe = if t.is_none() && cfg!(windows) { ".exe" } else { "" };
         let vars = [("file", crate::app_run::shell_path(path, t.as_ref())), ("dir", crate::app_run::shell_path(&dir, t.as_ref())), ("root", crate::app_run::shell_path(&root, t.as_ref())), ("stem", stem), ("exe", exe.to_string())];
@@ -908,7 +913,14 @@ impl App {
                 }
                 match pending {
                     Pending::StackTrace => {
-                        let frames = frames_of(&m["body"], t.as_ref());
+                        let mut frames = frames_of(&m["body"], t.as_ref());
+                        for frame in &mut frames {
+                            if let Some(path) = &frame.path
+                                && let Some(original) = self.docs.iter().filter_map(|d| d.path.as_ref()).find(|p| crate::app_run::same_file(p, path))
+                            {
+                                frame.path = Some(original.clone());
+                            }
+                        }
                         // the first frame of the program's own code is the one shown
                         let first = frames.iter().position(|f| f.path.is_some()).unwrap_or(0);
                         if let Some(s) = self.debug.stopped.as_mut() {

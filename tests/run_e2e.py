@@ -76,6 +76,13 @@ def screen_fits_window():
 def run_one(script_path):
     name = script_path.stem
     tmp = pathlib.Path(tempfile.mkdtemp(prefix=f"light-e2e-{name}-"))
+    if os.name == "nt" and os.environ.get("LIGHT_E2E_SHORT_PATHS"):
+        # Exercise the 8.3 aliases used by Windows CI and percent-encoded Node file URLs.
+        import ctypes
+        short = ctypes.create_unicode_buffer(32768)
+        if not ctypes.windll.kernel32.GetShortPathNameW(str(tmp), short, len(short)):
+            raise OSError("cannot resolve the Windows short path for the fixture")
+        tmp = pathlib.Path(short.value)
     # set before anything can return: the cleanup below stops it
     github = None
     http_server = None
