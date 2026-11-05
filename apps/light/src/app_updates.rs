@@ -271,8 +271,17 @@ impl App {
         let (pending, mode) = if self.updater.rollback_requested { (install_record(cache, installation, "rollback-ide"), "--light-rollback-update") } else { (pending_ide(cache, installation), "--light-apply-update") };
         let result = (|| -> Result<(), String> {
             let executable = std::env::current_exe().map_err(|e| e.to_string())?;
-            let helpers = cache.join("helpers"); fs::create_dir_all(&helpers).map_err(|e| e.to_string())?;
-            let helper = helpers.join(format!("light-update-{}{}", std::process::id(), if cfg!(windows) { ".exe" } else { "" }));
+            let helpers = cache.join("helpers").join(std::process::id().to_string());
+            let helper = if cfg!(target_os = "macos") && installation.join("Contents/Frameworks").is_dir() {
+                // Relocated dylibs use @loader_path/../Frameworks. Keep that layout for the detached helper.
+                for (relative, source) in engine::tree_files(&installation.join("Contents/Frameworks"))? {
+                    let destination = helpers.join("Frameworks").join(relative);
+                    fs::create_dir_all(destination.parent().unwrap()).map_err(|e| e.to_string())?;
+                    fs::copy(source, destination).map_err(|e| e.to_string())?;
+                }
+                helpers.join("MacOS/light")
+            } else { helpers.join(if cfg!(windows) { "light.exe" } else { "light" }) };
+            fs::create_dir_all(helper.parent().unwrap()).map_err(|e| e.to_string())?;
             fs::copy(executable, &helper).map_err(|e| e.to_string())?;
             let mut command = Command::new(helper); command.arg(mode).arg(pending).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
             #[cfg(windows)] { use std::os::windows::process::CommandExt; command.creation_flags(0x0800_0000); }
