@@ -72,6 +72,38 @@ pub fn file_hash(path: &Path) -> Result<String, String> {
     loop { let n = file.read(&mut buffer).map_err(|e| e.to_string())?; if n == 0 { break } hash.update(&buffer[..n]); }
     Ok(hex(&hash.finalize()))
 }
+/// Hash native code independently of the embedded Apple signature, which seals this inventory itself.
+/// The complete final signature is still authenticated by the signed release archive's SHA-256.
+pub fn macho_hash(path: &Path) -> Result<String, String> {
+    if fs::metadata(path).map_err(|e| e.to_string())?.len() > MAX_ARCHIVE { return Err("Mach-O executable is too large".into()); }
+    let mut bytes = fs::read(path).map_err(|e| e.to_string())?;
+    let number = |data: &[u8], offset: usize| -> Result<usize, String> {
+        let word: [u8;4] = data.get(offset..offset+4).ok_or("truncated Mach-O")?.try_into().unwrap();
+        Ok(u32::from_le_bytes(word) as usize)
+    };
+    if bytes.len() < 32 || number(&bytes,0)? != 0xfeedfacf { return Err("native macOS updates require a thin 64-bit Mach-O".into()); }
+    let count = number(&bytes,16)?; let end = 32_usize.checked_add(number(&bytes,20)?).ok_or("invalid Mach-O length")?;
+    if end > bytes.len() || count > 10000 { return Err("invalid Mach-O commands".into()); }
+    let mut cursor = 32; let mut signature = None;
+    for _ in 0..count {
+        if cursor + 8 > end { return Err("truncated Mach-O command".into()); }
+        let command = number(&bytes,cursor)?; let size = number(&bytes,cursor+4)?;
+        let next = cursor.checked_add(size).ok_or("invalid Mach-O command size")?;
+        if size < 8 || next > end { return Err("invalid Mach-O command size".into()); }
+        if command == 0x1d {
+            if size < 16 || signature.is_some() { return Err("invalid Mach-O signature command".into()); }
+            signature = Some((number(&bytes,cursor+8)?,number(&bytes,cursor+12)?));
+            bytes[cursor+8..cursor+16].fill(0);
+        }
+        if command == 0x19 && size >= 72 && bytes[cursor+8..cursor+24] == *b"__LINKEDIT\0\0\0\0\0\0" {
+            bytes[cursor+32..cursor+40].fill(0); bytes[cursor+48..cursor+56].fill(0);
+        }
+        cursor = next;
+    }
+    let (offset,size) = signature.ok_or("unsigned Mach-O executable")?;
+    if offset < end || size == 0 || offset.checked_add(size) != Some(bytes.len()) { return Err("invalid Mach-O signature range".into()); }
+    Ok(hex(&Sha256::digest(&bytes[..offset])))
+}
 pub fn check_file(path: &Path, artifact: &Artifact) -> Result<(), String> {
     if fs::metadata(path).map_err(|e| e.to_string())?.len() != artifact.size || !file_hash(path)?.eq_ignore_ascii_case(&artifact.sha256) { return Err("update size/checksum mismatch".into()); }
     Ok(())
@@ -109,7 +141,7 @@ pub fn safe_relative(text: &str) -> bool {
 }
 pub fn inventory_path(root: &Path) -> PathBuf {
     let direct = root.join("update-manifest.json");
-    if direct.is_file() { direct } else { root.join("Contents/_CodeSignature/light-update-manifest.json") }
+    if direct.is_file() { direct } else { root.join("Contents/Resources/light-update-manifest.json") }
 }
 pub fn read_inventory(root: &Path) -> Result<Inventory, String> {
     let data = fs::read(inventory_path(root)).map_err(|e| e.to_string())?;
@@ -117,14 +149,16 @@ pub fn read_inventory(root: &Path) -> Result<Inventory, String> {
     serde_json::from_slice(&data).map_err(|e| e.to_string())
 }
 fn auxiliary_owned(name: &str, inventory: &Inventory) -> bool {
-    name == "update-manifest.json" || (inventory.entrypoint.starts_with("Contents/MacOS/") && name == "Contents/_CodeSignature/light-update-manifest.json")
+    name == "update-manifest.json" || (inventory.entrypoint.starts_with("Contents/MacOS/") && matches!(name, "Contents/Resources/light-update-manifest.json" | "Contents/_CodeSignature/CodeResources"))
 }
 pub fn validate_tree(root: &Path, expected_version: &str) -> Result<Inventory, String> {
     let inventory = read_inventory(root)?;
     version(&inventory.version)?;
     if inventory.schema != 1 || inventory.version != expected_version || !safe_relative(&inventory.entrypoint) || !inventory.files.contains_key(&inventory.entrypoint) { return Err("update inventory does not match this version".into()); }
     for (name, expected) in &inventory.files {
-        if !safe_relative(name) || fs::symlink_metadata(root.join(name)).map_err(|e| e.to_string())?.file_type().is_symlink() || !file_hash(&root.join(name))?.eq_ignore_ascii_case(expected) { return Err(format!("update inventory mismatch: {name}")); }
+        if !safe_relative(name) || fs::symlink_metadata(root.join(name)).map_err(|e| e.to_string())?.file_type().is_symlink() { return Err(format!("unsafe update inventory path: {name}")); }
+        let actual = if expected.starts_with("macho-sha256:") && name == &inventory.entrypoint && name.starts_with("Contents/MacOS/") { format!("macho-sha256:{}", macho_hash(&root.join(name))?) } else { file_hash(&root.join(name))? };
+        if !actual.eq_ignore_ascii_case(expected) { return Err(format!("update inventory mismatch: {name}")); }
     }
     Ok(inventory)
 }
@@ -322,6 +356,19 @@ mod tests {
         let key = SigningKey::from_bytes(&[42; 32]);
         let fixture = include_bytes!("../tests/fixtures/signed-update.json");
         assert_eq!(verify(fixture, &hex(key.verifying_key().as_bytes()), "ide", 1100).unwrap().version, "1.3.0");
+    }
+    #[test]
+    fn python_macho_hashes_survive_resigning_and_reject_code_edits_and_bad_ranges() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!("../tests/fixtures/macho-hash.json")).unwrap();
+        let d = TempDir::new("macho-hash"); let path = d.path().join("light");
+        let decode = |text: &str| text.as_bytes().chunks_exact(2).map(|chunk| u8::from_str_radix(std::str::from_utf8(chunk).unwrap(),16).unwrap()).collect::<Vec<_>>();
+        for key in ["bytes", "resigned"] {
+            let bytes = decode(fixture[key].as_str().unwrap()); fs::write(&path,&bytes).unwrap();
+            assert_eq!(macho_hash(&path).unwrap(), fixture["sha256"].as_str().unwrap());
+            let mut changed=bytes.clone(); changed[200]^=1; fs::write(&path,changed).unwrap();
+            assert_ne!(macho_hash(&path).unwrap(), fixture["sha256"].as_str().unwrap());
+            fs::write(&path,&bytes[..bytes.len()-1]).unwrap(); assert!(macho_hash(&path).is_err());
+        }
     }
     fn tree(root: &Path, version: &str, content: &str) {
         fs::create_dir_all(root).unwrap(); fs::write(root.join("light.exe"), content).unwrap();

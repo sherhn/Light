@@ -264,9 +264,10 @@ def macos(dist, version, architecture):
         macos_libraries(contents)
         from update_archives import inventory, package as update_package
         subprocess.run(["codesign", "--force", "--sign", "-", str(contents.parent)], check=True)
-        # codesign changes the Mach-O executable. Inventory the final bytes afterwards,
-        # inside the signature directory (outside the resource seal), to avoid a hash cycle.
-        inventory(contents.parent, version, "Contents/MacOS/light", "Contents/_CodeSignature/light-update-manifest.json")
+        # The inventory seals code independently of Apple's changing signature blob;
+        # the final codesign then seals the inventory as a normal resource.
+        inventory(contents.parent, version, "Contents/MacOS/light", "Contents/Resources/light-update-manifest.json")
+        subprocess.run(["codesign", "--force", "--sign", "-", str(contents.parent)], check=True)
         subprocess.run(["codesign", "--verify", "--deep", "--strict", str(contents.parent)], check=True)
         update_package(contents.parent, dist.parent / f"{dist.name}-update.zip", version, "Contents/MacOS/light", refresh=False)
         (image / "Applications").symlink_to("/Applications", target_is_directory=True)
