@@ -66,6 +66,12 @@ impl ModuleStore {
         fs::read_to_string(self.state_path()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
     }
 
+    fn checked_state(&self) -> Result<State, String> {
+        let path = self.state_path();
+        if !path.exists() { return Ok(State::default()) }
+        serde_json::from_slice(&fs::read(path).map_err(|e| e.to_string())?).map_err(|e| format!("module state is unreadable; refusing to overwrite it: {e}"))
+    }
+
     pub fn has_state(&self) -> bool {
         self.state_path().is_file()
     }
@@ -94,6 +100,13 @@ impl ModuleStore {
                 continue;
             }
             let id = e.file_name().to_string_lossy().into_owned();
+            if let Ok(bytes) = fs::read(dir.join(".light-managed.json"))
+                && let Ok(proof) = serde_json::from_slice::<IndexEntry>(&bytes)
+                && !proof.compatible()
+            {
+                bad.push(format!("{id}: requires Light {} or newer", proof.min_ide));
+                continue;
+            }
             match fs::read_to_string(dir.join("module.json")).map_err(|e| e.to_string()).and_then(|j| Manifest::parse(&j)) {
                 Ok(m) if m.id == id => {
                     let enabled = state.enabled.get(&id).copied().unwrap_or(true);
@@ -123,6 +136,14 @@ impl ModuleStore {
         if dir.is_dir() {
             fs::remove_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
+        let root = self.dir.canonicalize().map_err(|e| e.to_string())?;
+        for prefix in [".previous-", ".replaced-", ".rollback-", ".failed-"] {
+            let backup = self.dir.join(format!("{prefix}{id}"));
+            if backup.exists() {
+                if !backup.canonicalize().map_err(|e| e.to_string())?.starts_with(&root) { return Err("module backup is outside the module store".into()); }
+                fs::remove_dir_all(&backup).map_err(|e| e.to_string())?;
+            }
+        }
         let mut s = self.state();
         s.enabled.remove(id);
         self.save_state(&s)
@@ -132,7 +153,8 @@ impl ModuleStore {
     /// before.
     pub fn install(&self, entry: &IndexEntry, source: &Source, progress: Progress) -> Result<Manifest, String> {
         let source = entry.source.as_ref().unwrap_or(source);
-        self.install_from(entry, |tmp| {
+        let official = matches!(source, Source::Url(url) if url.trim_end_matches('/') == super::registry::DEFAULT_URL);
+        self.install_from(entry, official, |tmp| {
             if let Some(archive) = &entry.archive && matches!(source, Source::Url(_)) {
                 if !archive.url.starts_with("https://") { return Err("module archives require HTTPS".into()); }
                 progress(0, entry.files.len(), "Downloading package");
@@ -146,10 +168,10 @@ impl ModuleStore {
 
     /// Install an already downloaded ZIP against trusted catalog metadata.
     pub fn install_archive(&self, entry: &IndexEntry, bytes: &[u8], progress: Progress) -> Result<Manifest, String> {
-        self.install_from(entry, |tmp| self.unpack_package(tmp, entry, bytes, progress))
+        self.install_from(entry, true, |tmp| self.unpack_package(tmp, entry, bytes, progress))
     }
 
-    fn install_from(&self, entry: &IndexEntry, fetch: impl FnOnce(&Path) -> Result<(), String>) -> Result<Manifest, String> {
+    fn install_from(&self, entry: &IndexEntry, official: bool, fetch: impl FnOnce(&Path) -> Result<(), String>) -> Result<Manifest, String> {
         if !entry.compatible() {
             return Err(format!("{} requires Light {} or newer", entry.id, entry.min_ide));
         }
@@ -172,7 +194,71 @@ impl ModuleStore {
             let _ = fs::remove_dir_all(&tmp);
             return Err(e);
         }
+        if official { fs::write(tmp.join(".light-managed.json"), serde_json::to_vec(entry).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?; }
         self.put_in_place(&entry.id, &tmp)
+    }
+
+    /// Proof of the last installed package; local edits or extra files prevent automatic replacement.
+    pub fn managed_entry(&self, id: &str) -> Option<IndexEntry> {
+        if !is_plain_name(id) { return None }
+        let entry: IndexEntry = serde_json::from_slice(&fs::read(self.dir.join(id).join(".light-managed.json")).ok()?).ok()?;
+        let official = entry.archive.as_ref()?.url.starts_with("https://github.com/sherhn/Light-Modules/releases/download/");
+        (entry.id == id && official && self.matches_entry(&entry)).then_some(entry)
+    }
+
+    pub fn matches_entry(&self, entry: &IndexEntry) -> bool {
+        if !is_plain_name(&entry.id) { return false }
+        let root = self.dir.join(&entry.id);
+        Self::matches_directory(&root, entry)
+    }
+
+    fn matches_directory(root: &Path, entry: &IndexEntry) -> bool {
+        let Some(manifest) = fs::read_to_string(root.join("module.json")).ok().and_then(|s| Manifest::parse(&s).ok()) else { return false };
+        if manifest.id != entry.id || manifest.version != entry.version { return false }
+        let Ok(files) = fs::read_dir(root) else { return false };
+        let names: Vec<_> = files.filter_map(Result::ok).map(|f| f.file_name().to_string_lossy().into_owned()).filter(|n| n != ".light-managed.json").collect();
+        if names.len() != entry.files.len() { return false }
+        entry.files.iter().all(|f| f.size <= super::registry::MAX_FILE && is_plain_name(&f.name) && fs::symlink_metadata(root.join(&f.name)).is_ok_and(|m| m.is_file() && !m.file_type().is_symlink() && m.len() == f.size) && fs::read(root.join(&f.name)).is_ok_and(|bytes| sha256_hex(&bytes).eq_ignore_ascii_case(&f.sha256)))
+    }
+
+    pub fn mark_managed(&self, entry: &IndexEntry) -> Result<(), String> {
+        if !self.matches_entry(entry) { return Err("local module changes prevent automatic updating".into()); }
+        fs::write(self.dir.join(&entry.id).join(".light-managed.json"), serde_json::to_vec(entry).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    }
+
+    pub fn rollback_available(&self, id: &str) -> bool {
+        if !is_plain_name(id) { return false }
+        let root = self.dir.join(format!(".previous-{id}"));
+        let Some(proof) = fs::read(root.join(".light-managed.json")).ok().and_then(|data| serde_json::from_slice::<IndexEntry>(&data).ok()) else { return false };
+        proof.id == id && Self::matches_directory(&root, &proof)
+    }
+
+    pub fn previous_version(&self, id: &str) -> Option<String> {
+        if !self.rollback_available(id) { return None }
+        Manifest::parse(&fs::read_to_string(self.dir.join(format!(".previous-{id}/module.json"))).ok()?).ok().map(|m| m.version)
+    }
+
+    pub fn rollback_to(&self, id: &str, target: &str) -> Result<(), String> {
+        if !is_plain_name(id) { return Err("invalid module id".into()); }
+        let current = Manifest::parse(&fs::read_to_string(self.dir.join(id).join("module.json")).map_err(|e| e.to_string())?)?;
+        if current.version == target { return Ok(()) }
+        if self.previous_version(id).as_deref() != Some(target) { return Err("module rollback request is stale".into()); }
+        self.rollback(id)
+    }
+
+    /// Caller holds the module-store exclusive lock and has stopped all module users.
+    pub fn rollback(&self, id: &str) -> Result<(), String> {
+        if !is_plain_name(id) { return Err("invalid module id".into()); }
+        let dest = self.dir.join(id);
+        let previous = self.dir.join(format!(".previous-{id}"));
+        let swap = self.dir.join(format!(".rollback-{id}"));
+        let manifest = Manifest::parse(&fs::read_to_string(previous.join("module.json")).map_err(|e| e.to_string())?)?;
+        if manifest.id != id || swap.exists() { return Err("invalid or busy module rollback".into()); }
+        let proof: IndexEntry = serde_json::from_slice(&fs::read(previous.join(".light-managed.json")).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        if proof.id != id || !Self::matches_directory(&previous, &proof) { return Err("previous module version was modified or is corrupt".into()); }
+        fs::rename(&dest, &swap).map_err(|e| e.to_string())?;
+        if let Err(e) = fs::rename(&previous, &dest) { let _ = fs::rename(&swap, &dest); return Err(e.to_string()); }
+        fs::rename(&swap, &previous).map_err(|e| e.to_string())
     }
 
     fn unpack_package(&self, tmp: &Path, entry: &IndexEntry, bytes: &[u8], progress: Progress) -> Result<(), String> {
@@ -232,6 +318,7 @@ impl ModuleStore {
 
     /// Check the module in `tmp` and move it to its place, keeping what was there if anything goes wrong.
     fn put_in_place(&self, id: &str, tmp: &Path) -> Result<Manifest, String> {
+        let mut s = self.checked_state()?;
         let manifest = match fs::read_to_string(tmp.join("module.json")).map_err(|e| e.to_string()).and_then(|j| Manifest::parse(&j)) {
             Ok(m) if m.id == id => m,
             Ok(m) => {
@@ -255,10 +342,20 @@ impl ModuleStore {
             }
             return Err(format!("{}: {e}", dest.display()));
         }
-        let _ = fs::remove_dir_all(&old);
-        let mut s = self.state();
         s.enabled.entry(id.to_string()).or_insert(true);
-        self.save_state(&s)?;
+        if let Err(error) = self.save_state(&s) {
+            let failed = self.dir.join(format!(".failed-{id}"));
+            if fs::rename(&dest, &failed).is_ok() {
+                if old.exists() { let _ = fs::rename(&old, &dest); }
+                let _ = fs::remove_dir_all(failed);
+            }
+            return Err(error);
+        }
+        if old.exists() {
+            let previous = self.dir.join(format!(".previous-{id}"));
+            let _ = fs::remove_dir_all(&previous);
+            fs::rename(&old, &previous).map_err(|e| e.to_string())?;
+        }
         Ok(manifest)
     }
 
@@ -288,6 +385,45 @@ mod tests {
     use super::*;
     use crate::modules::registry::FileEntry;
     use crate::testutil::TempDir;
+
+    #[test]
+    fn updates_and_rollback_preserve_disabled_state_and_detect_local_edits() {
+        let d = TempDir::new("module-safe-update");
+        let (source, old) = registry(&d, "1.0.0");
+        let store = ModuleStore::at(d.path().join("installed"));
+        store.install(&old, &source, &mut |_, _, _| {}).unwrap();
+        assert!(store.managed_entry("demo").is_none(), "local registries do not opt in to automatic updates");
+        store.mark_managed(&old).unwrap();
+        store.set_enabled("demo", false).unwrap();
+        let (source, newer) = registry(&d, "1.1.0");
+        store.install(&newer, &source, &mut |_, _, _| {}).unwrap();
+        assert!(!store.state().enabled["demo"]);
+        assert!(store.rollback_available("demo"));
+        store.rollback_to("demo", "1.0.0").unwrap();
+        store.rollback_to("demo", "1.0.0").unwrap(); // Retrying a persisted request must not toggle versions.
+        assert!(store.rollback_to("demo", "0.9.0").is_err());
+        assert_eq!(store.installed()[0].manifest.version, "1.0.0");
+        assert!(!store.state().enabled["demo"]);
+        assert!(store.matches_entry(&old));
+        fs::write(store.dir().join("demo/cover.png"), b"my custom cover").unwrap();
+        assert!(!store.matches_entry(&old));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_failed_state_commit_restores_the_original_module() {
+        let d = TempDir::new("module-state-rollback");
+        let (source, old) = registry(&d, "1.0.0"); let store = ModuleStore::at(d.path().join("installed"));
+        store.install(&old, &source, &mut |_, _, _| {}).unwrap();
+        store.set_enabled("demo", false).unwrap();
+        let path = store.state_path(); let original = fs::metadata(&path).unwrap().permissions(); let mut permissions = original.clone(); permissions.set_readonly(true); fs::set_permissions(&path, permissions).unwrap();
+        let (source, newer) = registry(&d, "1.1.0");
+        let result = store.install(&newer, &source, &mut |_, _, _| {});
+        fs::set_permissions(&path, original).unwrap();
+        assert!(result.is_err());
+        assert_eq!(store.installed()[0].manifest.version, "1.0.0");
+        assert!(!store.state().enabled["demo"]);
+    }
 
     /// A registry on disk with one module `demo` and its index entry.
     fn registry(d: &TempDir, version: &str) -> (Source, IndexEntry) {

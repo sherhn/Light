@@ -1,6 +1,6 @@
 //! Persistent IDE settings (JSON in the platform config directory).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -217,6 +217,9 @@ pub struct Settings {
     pub external_logo: LogoStyle,
     /// Ask the remotes of the project now and then whether they have new commits (a quiet `git fetch`).
     pub git_auto_fetch: bool,
+    pub auto_update_ide: bool,
+    pub auto_update_modules: bool,
+    pub module_update_pins: BTreeSet<String>,
 }
 
 impl Default for Settings {
@@ -255,6 +258,9 @@ impl Default for Settings {
             logo: LogoStyle::Auto,
             external_logo: LogoStyle::Auto,
             git_auto_fetch: true,
+            auto_update_ide: true,
+            auto_update_modules: true,
+            module_update_pins: BTreeSet::new(),
         }
     }
 }
