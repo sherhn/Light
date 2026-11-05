@@ -219,7 +219,7 @@ impl Palette {
             panel_bg: Color32::from_rgba_unmultiplied(24, 27, 29, 244),
             editor_bg: c(0x121416),
             gutter_bg: c(0x121416),
-            border: Color32::from_rgba_unmultiplied(213, 225, 218, 22),
+            border: Color32::from_rgba_unmultiplied(213, 225, 218, 30),
             hover: Color32::from_rgba_unmultiplied(179, 214, 173, 18),
             selected: Color32::from_rgba_unmultiplied(179, 214, 173, 35),
             accent: c(0xB3D6AD),
@@ -239,9 +239,9 @@ impl Palette {
             glow_a: c(0x26362D),
             glow_b: c(0x242F34),
             caret: c(0xC1E0B9),
-            line_number: c(0x69746E),
+            line_number: c(0x7F8C84),
             line_number_active: c(0xBBC7BD),
-            current_line: Color32::from_rgba_unmultiplied(179, 214, 173, 9),
+            current_line: Color32::from_rgba_unmultiplied(179, 214, 173, 14),
             selection: Color32::from_rgba_unmultiplied(151, 181, 164, 65),
             match_bracket: Color32::from_rgba_unmultiplied(179, 214, 173, 55),
             find_match: c(0x343E2D),
@@ -257,7 +257,7 @@ impl Palette {
             git_added: c(0x92DA88),
             git_untracked: c(0xE5A574),
             plain: c(0xD6DDD8),
-            comment: c(0x84938A),
+            comment: c(0x909E95),
             string: c(0xB3CEAA),
             number: c(0xC9B396),
             keyword_form: c(0xB7A7C9),
@@ -288,7 +288,7 @@ impl Palette {
             panel_bg: Color32::from_rgba_unmultiplied(244, 246, 242, 244),
             editor_bg: c(0xF8FAF6),
             gutter_bg: c(0xF8FAF6),
-            border: Color32::from_rgba_unmultiplied(42, 57, 46, 30),
+            border: Color32::from_rgba_unmultiplied(42, 57, 46, 42),
             hover: Color32::from_rgba_unmultiplied(75, 105, 79, 16),
             selected: Color32::from_rgba_unmultiplied(75, 105, 79, 30),
             accent: c(0x46674B),
@@ -306,9 +306,9 @@ impl Palette {
             glow_a: c(0xCEDBCE),
             glow_b: c(0xD6DEE0),
             caret: c(0x26322B),
-            line_number: c(0x8A978D),
+            line_number: c(0x718176),
             line_number_active: c(0x526658),
-            current_line: Color32::from_rgba_unmultiplied(75, 105, 79, 10),
+            current_line: Color32::from_rgba_unmultiplied(75, 105, 79, 16),
             selection: Color32::from_rgba_unmultiplied(113, 143, 125, 55),
             match_bracket: Color32::from_rgba_unmultiplied(75, 105, 79, 44),
             find_match: c(0xE2E8CE),
@@ -324,7 +324,7 @@ impl Palette {
             git_added: c(0x2F7A3A),
             git_untracked: c(0x9B5224),
             plain: c(0x2D3931),
-            comment: c(0x6C7B6E),
+            comment: c(0x5F7063),
             string: c(0x466C40),
             number: c(0x8A643E),
             keyword_form: c(0x795789),
@@ -357,10 +357,38 @@ impl Palette {
 
     /// The palette the settings ask for, the user's own theme included.
     pub fn for_settings(s: &Settings) -> Palette {
-        match s.theme {
+        let palette = match s.theme {
             Theme::Custom => Palette::custom(&s.custom_theme),
             t => Palette::for_theme(t),
+        };
+        palette.with_contrast(s.theme_contrast)
+    }
+
+    /// Adjust readability while preserving backgrounds, hues and the user's stored color definitions.
+    pub fn with_contrast(mut self, percent: u16) -> Palette {
+        let amount = percent.clamp(75, 150) as f32 / 100.0;
+        if amount == 1.0 { return self }
+        fn foreground(color: Color32, background: Color32, amount: f32) -> Color32 {
+            let [r, g, b, a] = color.to_srgba_unmultiplied();
+            let bright = 0.2126 * background.r() as f32 + 0.7152 * background.g() as f32 + 0.0722 * background.b() as f32;
+            let pole = if bright < 128.0 { Color32::WHITE } else { Color32::BLACK };
+            let (target, weight) = if amount > 1.0 { (pole, (amount - 1.0) * 0.65) } else { (background, (1.0 - amount) * 0.65) };
+            let mix = |value: u8, target: u8| (value as f32 + (target as f32 - value as f32) * weight).round() as u8;
+            Color32::from_rgba_unmultiplied(mix(r, target.r()), mix(g, target.g()), mix(b, target.b()), a)
         }
+        for slot in SLOTS.iter() {
+            let editor = matches!(slot.group, "Syntax" | "Messages and status" | "Rainbow brackets") || matches!(slot.key, "caret" | "line_number" | "line_number_active" | "todo" | "alert");
+            let chrome = matches!(slot.key, "text" | "text_dim" | "accent" | "blue");
+            if (editor || chrome) && let Some(color) = self.color(slot.key) {
+                self.set_color(slot.key, foreground(color, if editor { self.editor_bg } else { self.window_bg }, amount));
+            }
+        }
+        self.text_on_accent = foreground(self.text_on_accent, self.accent, amount);
+        for key in ["border", "hover", "selected", "tab_active_bg", "current_line", "selection", "match_bracket", "indent_guide", "whitespace"] {
+            let [r,g,b,a] = self.color(key).unwrap().to_srgba_unmultiplied();
+            self.set_color(key, Color32::from_rgba_unmultiplied(r,g,b,(a as f32 * amount).round().min(255.0) as u8));
+        }
+        self
     }
 
     /// The palette `theme` starts from, with the colours it changed put over it (a colour that is not a hex code, or a
@@ -482,6 +510,45 @@ impl Palette {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn luminance(color: Color32) -> f32 {
+        let channel = |v: u8| { let s = v as f32 / 255.0; if s <= 0.04045 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) } };
+        0.2126 * channel(color.r()) + 0.7152 * channel(color.g()) + 0.0722 * channel(color.b())
+    }
+    fn contrast(a: Color32, b: Color32) -> f32 {
+        let (a,b) = (luminance(a),luminance(b)); (a.max(b)+0.05)/(a.min(b)+0.05)
+    }
+    #[test]
+    fn contrast_increases_readability_in_both_palettes_and_keeps_selection_legible() {
+        for base in [Palette::dark(), Palette::light()] {
+            assert!(contrast(base.comment, base.editor_bg) >= 4.5);
+            assert!(contrast(base.line_number, base.gutter_bg) >= 3.5);
+            let low = base.with_contrast(75); let high = base.with_contrast(150);
+            for key in ["plain", "text_dim", "comment", "keyword_form", "string", "line_number"] {
+                assert!(contrast(low.color(key).unwrap(), base.editor_bg) < contrast(base.color(key).unwrap(), base.editor_bg), "{key}");
+                assert!(contrast(high.color(key).unwrap(), base.editor_bg) > contrast(base.color(key).unwrap(), base.editor_bg), "{key}");
+            }
+            assert_eq!(high.editor_bg, base.editor_bg);
+            assert!(high.border.a() > base.border.a());
+            let [r,g,b,a] = high.selection.to_srgba_unmultiplied();
+            let mix = |fg: u8, bg: u8| ((fg as u32 * a as u32 + bg as u32 * (255-a as u32))/255) as u8;
+            let selection = Color32::from_rgb(mix(r,high.editor_bg.r()),mix(g,high.editor_bg.g()),mix(b,high.editor_bg.b()));
+            assert!(contrast(high.plain, selection) >= 4.5);
+            assert!(contrast(high.text_on_accent, high.accent) >= 4.5);
+            assert_eq!(format!("{:?}",base.with_contrast(100)), format!("{base:?}"));
+        }
+    }
+    #[test]
+    fn contrast_never_rewrites_the_users_custom_colors() {
+        let mut settings = Settings { theme: Theme::Custom, ..Default::default() };
+        settings.custom_theme.set("comment", [100, 150, 120, 255]);
+        let saved = settings.custom_theme.clone(); let normal = Palette::for_settings(&settings);
+        settings.theme_contrast = 150;
+        assert_ne!(Palette::for_settings(&settings).comment, normal.comment);
+        assert_eq!(settings.custom_theme, saved);
+        settings.theme_contrast = 100;
+        assert_eq!(Palette::for_settings(&settings).comment, Color32::from_rgb(100,150,120));
+    }
 
     #[test]
     fn dialog_and_popup_surfaces_remain_opaque_with_transparent_custom_colors() {

@@ -169,6 +169,8 @@ pub struct Settings {
     pub theme: Theme,
     /// The colours of [`Theme::Custom`].
     pub custom_theme: CustomTheme,
+    /// Contrast percentage, applied to the derived palette without rewriting custom colors.
+    pub theme_contrast: u16,
     pub language: Language,
     pub font_size: f32,
     pub show_line_numbers: bool,
@@ -227,6 +229,7 @@ impl Default for Settings {
         Settings {
             theme: Theme::Dark,
             custom_theme: CustomTheme::default(),
+            theme_contrast: 100,
             language: Language::English,
             font_size: 14.0,
             show_line_numbers: true,
@@ -287,6 +290,7 @@ impl Settings {
             .and_then(|s| serde_json::from_str::<Settings>(&s).ok())
             .map(|mut s| {
                 s.font_size = s.font_size.clamp(MIN_FONT, MAX_FONT);
+                s.theme_contrast = s.theme_contrast.clamp(75, 150);
                 s
             })
     }
@@ -358,7 +362,7 @@ mod tests {
     fn roundtrip_and_defaults() {
         let d = TempDir::new("settings");
         let f = d.path().join("cfg/settings.json");
-        let mut s = Settings { theme: Theme::Light, font_size: 17.0, logo: LogoStyle::Light, external_logo: LogoStyle::Dark, ..Settings::default() };
+        let mut s = Settings { theme: Theme::Light, theme_contrast: 140, font_size: 17.0, logo: LogoStyle::Light, external_logo: LogoStyle::Dark, ..Settings::default() };
         s.push_recent_project("E:/p");
         s.save_to(&f).unwrap();
         let back = Settings::load_from(&f);
@@ -377,6 +381,9 @@ mod tests {
         assert_eq!(s.theme, Theme::Light);
         assert_eq!(s.font_size, MAX_FONT, "clamped");
         assert!(s.show_line_numbers, "missing fields use defaults");
+        assert_eq!(s.theme_contrast, 100, "older settings keep the standard contrast");
+        fs::write(&f, r#"{"theme_contrast":999}"#).unwrap();
+        assert_eq!(Settings::load_from(&f).theme_contrast, 150);
     }
 
     #[test]

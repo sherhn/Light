@@ -192,8 +192,20 @@ impl App {
                                         changed_theme = true;
                                     }
                                 });
+                                rows.row(ui, &pal, tr("Contrast"), tr("Adjust text, syntax and outlines together. Your custom colors stay saved."), 280.0, |ui| {
+                                    if widgets::icon_button(ui, &pal, Icon::Undo, 28.0, pal.text_dim, tr("Reset contrast")).clicked() {
+                                        self.settings.theme_contrast = 100;
+                                        changed_theme = true;
+                                    }
+                                    changed_theme |= ui.add(egui::Slider::new(&mut self.settings.theme_contrast, 75..=150).suffix("%")).changed();
+                                });
+                                if self.settings.theme != Theme::Custom {
+                                    ui.add_space(10.0);
+                                    crate::ui_theme::sample(ui, &Palette::for_settings(&self.settings));
+                                    ui.add_space(12.0);
+                                }
                             });
-                            if self.settings.theme == Theme::Custom && crate::ui_theme::theme_editor(ui, &pal, &mut self.settings.custom_theme) {
+                            if self.settings.theme == Theme::Custom && crate::ui_theme::theme_editor(ui, &pal, &mut self.settings.custom_theme, self.settings.theme_contrast) {
                                 changed_theme = true;
                             }
                             group(ui, &pal, tr("Logo"), |ui, rows| {

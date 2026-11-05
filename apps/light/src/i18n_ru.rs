@@ -2,6 +2,9 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Contrast", "Контрастность"),
+    ("Reset contrast", "Сбросить контрастность"),
+    ("Adjust text, syntax and outlines together. Your custom colors stay saved.", "Контраст текста, подсветки и границ. Заданные вами цвета сохраняются."),
     ("Native update package downloaded; install it with your system package manager", "Обновление скачано. Установите пакет через системный менеджер пакетов."),
     ("Show downloaded system package", "Показать скачанный пакет"),
     ("Update check stopped unexpectedly; you can retry", "Проверка обновлений прервалась. Её можно запустить повторно."),

@@ -15,7 +15,7 @@ use crate::widgets::{self, TextField};
 
 /// The editor of the user's own theme. `pal` is the palette the dialog is drawn in. Returns whether a colour (or the
 /// palette it starts from) changed.
-pub(crate) fn theme_editor(ui: &mut egui::Ui, pal: &Palette, theme: &mut CustomTheme) -> bool {
+pub(crate) fn theme_editor(ui: &mut egui::Ui, pal: &Palette, theme: &mut CustomTheme, contrast: u16) -> bool {
     let mut changed = false;
     let current = Palette::custom(theme);
     let n_changed = theme.colors.keys().filter(|k| theme.get(k).is_some() && current.color(k).is_some()).count();
@@ -37,7 +37,7 @@ pub(crate) fn theme_editor(ui: &mut egui::Ui, pal: &Palette, theme: &mut CustomT
             });
         });
         ui.add_space(12.0);
-        sample(ui, &current);
+        sample(ui, &current.with_contrast(contrast));
         ui.add_space(14.0);
     });
 
@@ -117,7 +117,7 @@ fn hex_field(ui: &mut egui::Ui, pal: &Palette, key: &str, now: Color32) -> Optio
 }
 
 /// A few lines of code in the colours of `pal`, with the backgrounds of the current line, a selection and a search hit.
-fn sample(ui: &mut egui::Ui, pal: &Palette) {
+pub(crate) fn sample(ui: &mut egui::Ui, pal: &Palette) {
     use Class::*;
     let font = egui::FontId::monospace(13.0);
     let mut job = LayoutJob::default();

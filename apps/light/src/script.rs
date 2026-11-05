@@ -1024,6 +1024,15 @@ impl App {
                 s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
                 s.pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
             }
+            // Split gestures across frames for controls that react while the button is held (sliders, drags).
+            "pointer" => {
+                let pos = Pos2::new(step["x"].as_f64().unwrap_or(0.0) as f32, step["y"].as_f64().unwrap_or(0.0) as f32);
+                let pending = &mut self.script.as_mut().unwrap().pending;
+                pending.push(Event::PointerMoved(pos));
+                if let Some(pressed) = match step["action"].as_str() { Some("down") => Some(true), Some("up") => Some(false), _ => None } {
+                    pending.push(Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+                }
+            }
             // the mouse on a row of the console log last drawn: `line` is the text of the row as shown, `col` a character
             // column or "end"; `action`: down, move, up, or click (with `count`)
             "log_mouse" => {
@@ -1777,6 +1786,7 @@ impl App {
                         return;
                     }
                 };
+                if let Some(contrast) = step["contrast"].as_u64() { self.settings.theme_contrast = contrast.clamp(75,150) as u16; }
                 if let Some(d) = step["dark"].as_bool() {
                     self.settings.custom_theme.dark = d;
                 }
@@ -1805,6 +1815,9 @@ impl App {
                     Theme::Custom => "custom",
                 };
                 let mut errors = vec![];
+                if let Some(contrast) = step["contrast"].as_u64() && self.settings.theme_contrast as u64 != contrast {
+                    errors.push(format!("contrast {}, expected {contrast}", self.settings.theme_contrast));
+                }
                 if !sval.is_empty() && got != sval {
                     errors.push(format!("theme {got}, expected {sval}"));
                 }
