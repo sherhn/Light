@@ -1080,7 +1080,17 @@ impl App {
                 let pos = Pos2::new(step["x"].as_f64().unwrap_or(0.0) as f32, step["y"].as_f64().unwrap_or(0.0) as f32);
                 let s = self.script.as_mut().unwrap();
                 s.pending.push(Event::PointerMoved(pos));
+                // Let the new hovered scroll area be hit-tested before delivering the wheel.
+                // Native input moves the pointer before scrolling; one synthetic frame can lose the first wheel.
+                if !step["hovered"].as_bool().unwrap_or(false) {
+                    let mut next = step.clone(); next["hovered"] = true.into();
+                    s.steps.push_front(next); s.wait_frames = 2;
+                    return;
+                }
                 s.pending.push(Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: egui::Vec2::new(0.0, step["dy"].as_f64().unwrap_or(0.0) as f32), phase: egui::TouchPhase::Move, source: egui::MouseWheelSource::Wheel, modifiers: egui::Modifiers::NONE });
+                // egui eases wheel input by elapsed time, not frame count. Fast builds can run
+                // dozens of scripted frames before that motion settles.
+                s.wait_cond = Some((serde_json::json!({"what":"after", "until":now + 0.4}), now + 10.0));
             }
             // the mouse left the window (with a button down it keeps its capture, but egui forgets where it is)
             "pointer_gone" => {
