@@ -277,7 +277,7 @@ impl App {
             if let Some(e) = &error {
                 ui.horizontal(|ui| {
                     ui.add_space(SIDE);
-                    ui.label(RichText::new(i18n::fmt("Cannot load the list of modules: {}", &[&crate::ui_chrome::elide(e, 160)])).color(pal.error).size(12.5));
+                    ui.label(RichText::new(i18n::fmt("Cannot load the list of modules: {}", &[e])).color(pal.error).size(12.5));
                 });
                 ui.add_space(8.0);
             }

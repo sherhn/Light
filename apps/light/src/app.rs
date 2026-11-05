@@ -66,6 +66,8 @@ pub struct App {
     pub find: FindBar,
     pub completion: Completion,
     pub toasts: Vec<Toast>,
+    /// Complete last error, retained until its details window is closed.
+    pub error_details: Option<String>,
     pub hint: Option<(String, f64)>,
     /// The documentation popup of the name the pointer rests on.
     pub hover: crate::hover::HoverState,
@@ -197,6 +199,7 @@ impl App {
             find: FindBar::default(),
             completion: Completion::default(),
             toasts: vec![],
+            error_details: None,
             hint: None,
             hover: Default::default(),
             checks: Default::default(),
@@ -267,6 +270,7 @@ impl App {
 
     pub fn toast(&mut self, text: impl Into<String>, sev: Sev) {
         let text = text.into();
+        if sev == Sev::Error { self.error_details = Some(text.clone()); }
         self.toasts.push(Toast { text, sev, until: self.now + 4.5 });
         if self.toasts.len() > 5 {
             self.toasts.remove(0);

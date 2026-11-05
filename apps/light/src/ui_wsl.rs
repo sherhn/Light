@@ -364,7 +364,7 @@ impl App {
                                 act = Some(Act::LoadOnline);
                             }
                             if let Some(e) = &online_error {
-                                ui.label(RichText::new(crate::ui_chrome::elide(e, 120)).color(pal.error).size(11.5));
+                                ui.label(RichText::new(e).color(pal.error).size(11.5));
                             }
                         }
                         for (name, friendly) in &online {
@@ -424,7 +424,7 @@ impl App {
                     match &sbcl {
                         Some(Ok(c)) if c.path.is_some() => i18n::fmt("{0} at {1}", &[&c.version.clone().unwrap_or_else(|| "SBCL".into()), &c.path.clone().unwrap_or_default()]),
                         Some(Ok(_)) => i18n::fmt("SBCL is not installed in {}.", &[&selected]),
-                        Some(Err(e)) => i18n::fmt("Could not check {0}: {1}", &[&selected, &crate::ui_chrome::elide(e, 140)]),
+                        Some(Err(e)) => i18n::fmt("Could not check {0}: {1}", &[&selected, e]),
                         None => tr("Not checked yet.").to_string(),
                     }
                 };

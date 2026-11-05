@@ -1,0 +1,46 @@
+[
+  {
+    "op": "open_project",
+    "path": "${PROJ}"
+  },
+  {
+    "op": "wait",
+    "what": "git_ready"
+  },
+  {
+    "op": "command",
+    "value": "git.pull"
+  },
+  {
+    "op": "wait",
+    "what": "error_details",
+    "timeout": 30
+  },
+  {
+    "op": "assert_error_contains",
+    "value": "There is no tracking information"
+  },
+  {
+    "op": "assert_error_contains",
+    "value": "git pull <remote> <branch>"
+  },
+  {
+    "op": "sleep",
+    "value": 5.0
+  },
+  {
+    "op": "assert_error_contains",
+    "value": "git pull <remote> <branch>"
+  },
+  {
+    "op": "frames",
+    "value": 3
+  },
+  {
+    "op": "screenshot",
+    "path": "${SHOTS}/${NAME}.png"
+  },
+  {
+    "op": "quit"
+  }
+]

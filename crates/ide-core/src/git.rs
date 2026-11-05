@@ -146,8 +146,13 @@ fn run_in(dir: &Path, args: &[&str]) -> Result<String, String> {
     } else {
         let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
         let o = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        Err(if err.is_empty() { o } else { err })
+        Err(command_error(&err, &o))
     }
+}
+
+/// A WSL startup warning on stderr must not hide Git diagnostics on stdout.
+fn command_error(stderr: &str, stdout: &str) -> String {
+    [stderr.trim(), stdout.trim()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n")
 }
 
 /// Find the repository containing `start` by walking up to a `.git` entry.
@@ -471,7 +476,7 @@ impl Repo {
         let out = cmd.output().map_err(|e| format!("cannot run git: {e}"))?;
         let text = String::from_utf8_lossy(&out.stdout).into_owned();
         let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        if out.status.success() { Ok(text) } else { Err(if err.is_empty() { text.trim().to_string() } else { err }) }
+        if out.status.success() { Ok(text) } else { Err(command_error(&err, &text)) }
     }
 }
 
@@ -710,6 +715,15 @@ pub enum MergeKind {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn wsl_notice_cannot_hide_the_actual_git_failure() {
+        let notice = "wsl: localhost proxy cannot be mirrored in NAT mode";
+        let failure = "fatal: cannot access repository\nAuthentication failed";
+        let message = super::command_error(notice, failure);
+        assert!(message.contains(notice)); assert!(message.contains(failure));
+        assert_eq!(super::command_error("", failure), failure);
+    }
+
     use super::*;
     use crate::testutil::TempDir;
 

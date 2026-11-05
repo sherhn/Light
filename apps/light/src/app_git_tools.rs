@@ -101,7 +101,7 @@ impl App {
             Ok(lines) => {
                 self.git_tools.blame.insert(path, lines);
             }
-            Err(e) => self.toast(i18n::fmt("Cannot annotate: {}", &[&e.lines().next().unwrap_or_default()]), Sev::Error),
+            Err(e) => self.toast(i18n::fmt("Cannot annotate: {}", &[&e]), Sev::Error),
         }
     }
 
@@ -231,7 +231,7 @@ impl App {
                     self.toast(i18n::fmt("Cherry-picking '{}' stopped for conflicts", &[&subject]), Sev::Error);
                     self.popup = Popup::Conflicts;
                 } else {
-                    self.toast(i18n::fmt("{0} failed: {1}", &[&tr("Cherry-Pick"), &e.lines().next().unwrap_or_default()]), Sev::Error);
+                    self.toast(i18n::fmt("{0} failed: {1}", &[&tr("Cherry-Pick"), &e]), Sev::Error);
                 }
             }
         }
@@ -248,7 +248,7 @@ impl App {
                     self.toast(i18n::fmt("Reverting '{}' stopped for conflicts", &[&subject]), Sev::Error);
                     self.popup = Popup::Conflicts;
                 } else {
-                    self.toast(i18n::fmt("{0} failed: {1}", &[&tr("Revert"), &e.lines().next().unwrap_or_default()]), Sev::Error);
+                    self.toast(i18n::fmt("{0} failed: {1}", &[&tr("Revert"), &e]), Sev::Error);
                 }
             }
         }
@@ -324,7 +324,7 @@ impl App {
             }
             Err(e) if repo.merge_state().is_some() => {
                 self.popup = Popup::Conflicts;
-                self.toast(i18n::fmt("The rebase stopped: {}", &[&e.lines().next().unwrap_or_default()]), Sev::Error);
+                self.toast(i18n::fmt("The rebase stopped: {}", &[&e]), Sev::Error);
             }
             Err(e) => self.popup = Popup::Rebase(Box::new(RebaseState { error: Some(e), ..st })),
         }

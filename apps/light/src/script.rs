@@ -95,6 +95,7 @@ impl App {
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             // the picture of the active tab (a raster image, or the drawing beside the code of an SVG) is on screen
             "picture" => self.doc().and_then(|d| d.picture.as_deref()).is_some_and(|v| v.settled()),
+            "error_details" => self.error_details.is_some(),
             "git_settled" => self.git.rx.is_none(),
             "shell_ended" => self.term.shell.as_ref().is_some_and(|sh| sh.exited.is_some()),
             "no_shell" => self.term.shell.is_none(),
@@ -1275,6 +1276,9 @@ impl App {
                 if got != want {
                     self.fail(format!("assert_text: expected {want:?}, got {got:?}"));
                 }
+            }
+            "assert_error_contains" => {
+                if !self.error_details.as_deref().unwrap_or_default().contains(&sval) { self.fail(format!("full error does not contain {sval:?}")); }
             }
             "assert_text_contains" => {
                 let got = self.doc().map(|d| d.ed.text().to_string()).unwrap_or_default();

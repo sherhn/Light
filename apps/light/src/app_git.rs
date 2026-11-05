@@ -186,7 +186,7 @@ impl App {
                     let text = if msg.is_empty() { i18n::fmt("{}: done", &[&i18n::tr_dyn(&what)]) } else { format!("{}: {}", i18n::tr_dyn(&what), msg.lines().last().unwrap_or("")) };
                     self.toast(text, Sev::Weak);
                 }
-                Err(e) => self.toast(i18n::fmt("{0} failed: {1}", &[&i18n::tr_dyn(&what), &e.lines().next().unwrap_or("")]), Sev::Error),
+                Err(e) => self.toast(i18n::fmt("{0} failed: {1}", &[&i18n::tr_dyn(&what), &e]), Sev::Error),
             }
             self.git_refresh();
             self.refresh_project();
@@ -313,7 +313,7 @@ impl App {
                 true
             }
             Err(e) => {
-                self.toast(i18n::fmt("{0} failed: {1}", &[&i18n::tr_dyn(what), &e.lines().next().unwrap_or("")]), Sev::Error);
+                self.toast(i18n::fmt("{0} failed: {1}", &[&i18n::tr_dyn(what), &e]), Sev::Error);
                 false
             }
         }

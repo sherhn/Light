@@ -786,6 +786,19 @@ impl App {
     // ------------------------------------------------------------------ toasts
 
     pub fn draw_toasts(&mut self, ctx: &egui::Context) {
+        if let Some(details) = self.error_details.clone() {
+            let mut open = true;
+            egui::Window::new(tr("Error details")).id(egui::Id::unique("error_details"))
+                .open(&mut open).default_width(640.0).max_width((ctx.content_rect().width() - 32.0).max(200.0))
+                .show(ctx, |ui| {
+                    if ui.button(tr("Copy full error")).clicked() { ctx.copy_text(details.clone()); }
+                    egui::ScrollArea::both().max_height(ctx.content_rect().height() * 0.55).show(ui, |ui| {
+                        let mut text = details.as_str();
+                        ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY).font(egui::TextStyle::Monospace));
+                    });
+                });
+            if !open { self.error_details = None; }
+        }
         let pal = self.pal;
         let screen = ctx.content_rect();
         let mut y = screen.max.y - STATUS_H - 16.0;
@@ -801,13 +814,13 @@ impl App {
             let w = (g.size().x + 68.0).min(620.0);
             let h = 48.0;
             let rect = Rect::from_min_size(Pos2::new(screen.max.x - w - 20.0, y - h), Vec2::new(w, h));
-            egui::Area::new(egui::Id::unique(("toast", i))).fixed_pos(rect.min).order(egui::Order::Tooltip).interactable(false).show(ctx, |ui| {
+            egui::Area::new(egui::Id::unique(("toast", i))).fixed_pos(rect.min).order(egui::Order::Tooltip).interactable(true).show(ctx, |ui| {
                 let p = ui.painter();
                 p.rect_filled(rect, CornerRadius::same(12), pal.popup_bg);
                 p.rect_filled(Rect::from_min_size(rect.min + Vec2::new(0.0, 10.0), Vec2::new(3.0, h - 20.0)), CornerRadius::same(2), color);
                 icons::paint(p, Rect::from_min_size(rect.min + Vec2::new(18.0, 16.0), Vec2::splat(16.0)), icon, color);
                 p.text(Pos2::new(rect.min.x + 46.0, rect.center().y), Align2::LEFT_CENTER, text, font, pal.text);
-                ui.allocate_rect(rect, Sense::hover());
+                if ui.allocate_rect(rect, Sense::click()).on_hover_text(&t.text).clicked() { self.error_details = Some(t.text.clone()); }
             });
             y -= h + 10.0;
         }
