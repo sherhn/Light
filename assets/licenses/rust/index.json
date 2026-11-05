@@ -308,6 +308,28 @@
       "archive_sha256": "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
     },
     {
+      "name": "base64ct",
+      "version": "1.8.3",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/formats",
+      "files": [
+        {
+          "path": "base64ct-1.8.3/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/base64ct/1.8.3"
+        },
+        {
+          "path": "base64ct-1.8.3/LICENSE-MIT",
+          "sha256": "2d1c57bff28344b9e698f51063bc8509799cc4c99a4e0cf2aa3f7e7c3e1f9a9d",
+          "source": "https://crates.io/crates/base64ct/1.8.3"
+        }
+      ],
+      "archive_sha256": "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
+    },
+    {
       "name": "bit-set",
       "version": "0.10.0",
       "expression": "Apache-2.0 OR MIT",
@@ -394,6 +416,28 @@
         }
       ],
       "archive_sha256": "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
+    },
+    {
+      "name": "block-buffer",
+      "version": "0.10.4",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/utils",
+      "files": [
+        {
+          "path": "block-buffer-0.10.4/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/block-buffer/0.10.4"
+        },
+        {
+          "path": "block-buffer-0.10.4/LICENSE-MIT",
+          "sha256": "d5c22aa3118d240e877ad41c5d9fa232f9c77d757d4aac0c2f943afc0a95e0ef",
+          "source": "https://crates.io/crates/block-buffer/0.10.4"
+        }
+      ],
+      "archive_sha256": "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
     },
     {
       "name": "block2",
@@ -850,6 +894,28 @@
       "archive_sha256": "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
     },
     {
+      "name": "const-oid",
+      "version": "0.9.6",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/formats/tree/master/const-oid",
+      "files": [
+        {
+          "path": "const-oid-0.9.6/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/const-oid/0.9.6"
+        },
+        {
+          "path": "const-oid-0.9.6/LICENSE-MIT",
+          "sha256": "bada9e7ed8dc00d63502053c455d7c8d7575dfb7e8277a2a832531844d900682",
+          "source": "https://crates.io/crates/const-oid/0.9.6"
+        }
+      ],
+      "archive_sha256": "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
+    },
+    {
       "name": "core-foundation",
       "version": "0.9.4",
       "expression": "MIT OR Apache-2.0",
@@ -941,6 +1007,28 @@
         }
       ],
       "archive_sha256": "45390e6114f68f718cc7a830514a96f903cccd70d02a8f6d9f643ac4ba45afaf"
+    },
+    {
+      "name": "cpufeatures",
+      "version": "0.2.17",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/utils",
+      "files": [
+        {
+          "path": "cpufeatures-0.2.17/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/cpufeatures/0.2.17"
+        },
+        {
+          "path": "cpufeatures-0.2.17/LICENSE-MIT",
+          "sha256": "ae9baa7beea910273c2f384c2a6b721fb7bd02bda3436074a1072e4ee689f985",
+          "source": "https://crates.io/crates/cpufeatures/0.2.17"
+        }
+      ],
+      "archive_sha256": "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
     },
     {
       "name": "crc32fast",
@@ -1048,6 +1136,28 @@
       "archive_sha256": "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
     },
     {
+      "name": "crypto-common",
+      "version": "0.1.7",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/traits",
+      "files": [
+        {
+          "path": "crypto-common-0.1.7/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/crypto-common/0.1.7"
+        },
+        {
+          "path": "crypto-common-0.1.7/LICENSE-MIT",
+          "sha256": "3521672491a3479422d5fe1aca6645dd2984090f85da6e5205abfb18fb7a6897",
+          "source": "https://crates.io/crates/crypto-common/0.1.7"
+        }
+      ],
+      "archive_sha256": "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
+    },
+    {
       "name": "cursor-icon",
       "version": "1.2.0",
       "expression": "MIT OR Apache-2.0 OR Zlib",
@@ -1075,6 +1185,45 @@
       "archive_sha256": "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
     },
     {
+      "name": "curve25519-dalek",
+      "version": "4.1.3",
+      "expression": "BSD-3-Clause",
+      "selected": [
+        "BSD-3-Clause"
+      ],
+      "repository": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek",
+      "files": [
+        {
+          "path": "curve25519-dalek-4.1.3/LICENSE",
+          "sha256": "cca0bd3c4fcdba74145ef9d49c62337e2c9fbf9368288f11d0547f1b0273219f",
+          "source": "https://crates.io/crates/curve25519-dalek/4.1.3"
+        }
+      ],
+      "archive_sha256": "97fb8b7c4503de7d6ae7b42ab72a5a59857b4c937ec27a3d4539dba95b5ab2be"
+    },
+    {
+      "name": "curve25519-dalek-derive",
+      "version": "0.1.1",
+      "expression": "MIT/Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/dalek-cryptography/curve25519-dalek",
+      "files": [
+        {
+          "path": "curve25519-dalek-derive-0.1.1/LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "source": "https://crates.io/crates/curve25519-dalek-derive/0.1.1"
+        },
+        {
+          "path": "curve25519-dalek-derive-0.1.1/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "source": "https://crates.io/crates/curve25519-dalek-derive/0.1.1"
+        }
+      ],
+      "archive_sha256": "f46882e17999c6cc590af592290432be3bce0428cb0d5f8b6715e4dc7b383eb3"
+    },
+    {
       "name": "data-url",
       "version": "0.3.2",
       "expression": "MIT OR Apache-2.0",
@@ -1095,6 +1244,50 @@
         }
       ],
       "archive_sha256": "be1e0bca6c3637f992fc1cc7cbc52a78c1ef6db076dbf1059c4323d6a2048376"
+    },
+    {
+      "name": "der",
+      "version": "0.7.10",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/formats/tree/master/der",
+      "files": [
+        {
+          "path": "der-0.7.10/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/der/0.7.10"
+        },
+        {
+          "path": "der-0.7.10/LICENSE-MIT",
+          "sha256": "ad64fcb9589f162720f3cc5010ad76ca6ad3764e11861f9192c489df176bb71d",
+          "source": "https://crates.io/crates/der/0.7.10"
+        }
+      ],
+      "archive_sha256": "e7c1832837b905bbfb5101e07cc24c8deddf52f93225eee6ead5f4d63d53ddcb"
+    },
+    {
+      "name": "digest",
+      "version": "0.10.7",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/traits",
+      "files": [
+        {
+          "path": "digest-0.10.7/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/digest/0.10.7"
+        },
+        {
+          "path": "digest-0.10.7/LICENSE-MIT",
+          "sha256": "9e0dfd2dd4173a530e238cb6adb37aa78c34c6bc7444e0e10c1ab5d8881f63ba",
+          "source": "https://crates.io/crates/digest/0.10.7"
+        }
+      ],
+      "archive_sha256": "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
     },
     {
       "name": "dirs",
@@ -1311,6 +1504,45 @@
         }
       ],
       "archive_sha256": "31bcbef0d4263a63eb32c4834e5d711613035ce1333468e107d928923e21e6e2"
+    },
+    {
+      "name": "ed25519",
+      "version": "2.2.3",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/signatures/tree/master/ed25519",
+      "files": [
+        {
+          "path": "ed25519-2.2.3/LICENSE-APACHE",
+          "sha256": "78779d420019e6b4630376af8e86b6b335ee8a2f89ede6e0411e0469a326aaa4",
+          "source": "https://crates.io/crates/ed25519/2.2.3"
+        },
+        {
+          "path": "ed25519-2.2.3/LICENSE-MIT",
+          "sha256": "b3470648aff02beb36d7a53240fc9260ed80ed93bd43bace6b67d7ef7336ee33",
+          "source": "https://crates.io/crates/ed25519/2.2.3"
+        }
+      ],
+      "archive_sha256": "115531babc129696a58c64a4fef0a8bf9e9698629fb97e9e40767d235cfbcd53"
+    },
+    {
+      "name": "ed25519-dalek",
+      "version": "2.2.0",
+      "expression": "BSD-3-Clause",
+      "selected": [
+        "BSD-3-Clause"
+      ],
+      "repository": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek",
+      "files": [
+        {
+          "path": "ed25519-dalek-2.2.0/LICENSE",
+          "sha256": "7a313964a6e050794d2ad57f4863c11f6bbe055c0ae6ce2cf3b9fc45150bada3",
+          "source": "https://crates.io/crates/ed25519-dalek/2.2.0"
+        }
+      ],
+      "archive_sha256": "70e796c081cee67dc755e1a36a0a172b897fab85fc3f6bc48307991f64e4eca9"
     },
     {
       "name": "eframe",
@@ -1699,6 +1931,43 @@
       "archive_sha256": "b97b65636e5b9ef369943878ac74335ba1c55c1cb6adbf1e2c293c624248d693"
     },
     {
+      "name": "fiat-crypto",
+      "version": "0.2.9",
+      "expression": "MIT OR Apache-2.0 OR BSD-1-Clause",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/mit-plv/fiat-crypto",
+      "files": [
+        {
+          "path": "fiat-crypto-0.2.9/AUTHORS",
+          "sha256": "ad74c036a6afaedc418fed65f171c877c2f74a4c70938a03930aa11c98a20508",
+          "source": "https://crates.io/crates/fiat-crypto/0.2.9"
+        },
+        {
+          "path": "fiat-crypto-0.2.9/COPYRIGHT",
+          "sha256": "6c935d087a2992d0f092665400a2fa99c98db58d96fbe29368f8f48182bed9aa",
+          "source": "https://crates.io/crates/fiat-crypto/0.2.9"
+        },
+        {
+          "path": "fiat-crypto-0.2.9/LICENSE-APACHE",
+          "sha256": "9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f",
+          "source": "https://crates.io/crates/fiat-crypto/0.2.9"
+        },
+        {
+          "path": "fiat-crypto-0.2.9/LICENSE-BSD-1",
+          "sha256": "0c1240e29b4a2c528bcc3ccc38a98b1dba5e3e6b465da910208935f082e2ced6",
+          "source": "https://crates.io/crates/fiat-crypto/0.2.9"
+        },
+        {
+          "path": "fiat-crypto-0.2.9/LICENSE-MIT",
+          "sha256": "0034712d5e97a4f5b900a160a5c19d582b740d8e0638b4e44fd07e7b492dcd13",
+          "source": "https://crates.io/crates/fiat-crypto/0.2.9"
+        }
+      ],
+      "archive_sha256": "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
+    },
+    {
       "name": "find-msvc-tools",
       "version": "0.1.15",
       "expression": "MIT OR Apache-2.0",
@@ -1965,6 +2234,28 @@
       "archive_sha256": "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
     },
     {
+      "name": "fs2",
+      "version": "0.4.3",
+      "expression": "MIT/Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/danburkert/fs2-rs",
+      "files": [
+        {
+          "path": "fs2-0.4.3/LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "source": "https://crates.io/crates/fs2/0.4.3"
+        },
+        {
+          "path": "fs2-0.4.3/LICENSE-MIT",
+          "sha256": "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0",
+          "source": "https://crates.io/crates/fs2/0.4.3"
+        }
+      ],
+      "archive_sha256": "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+    },
+    {
       "name": "futures-core",
       "version": "0.3.34",
       "expression": "MIT OR Apache-2.0",
@@ -2031,6 +2322,23 @@
       "archive_sha256": "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
     },
     {
+      "name": "generic-array",
+      "version": "0.14.7",
+      "expression": "MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/fizyk20/generic-array.git",
+      "files": [
+        {
+          "path": "generic-array-0.14.7/LICENSE",
+          "sha256": "c09aae9d3c77b531f56351a9947bc7446511d6b025b3255312d3e3442a9a7583",
+          "source": "https://crates.io/crates/generic-array/0.14.7"
+        }
+      ],
+      "archive_sha256": "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
+    },
+    {
       "name": "gethostname",
       "version": "1.1.0",
       "expression": "Apache-2.0",
@@ -2046,6 +2354,28 @@
         }
       ],
       "archive_sha256": "1bd49230192a3797a9a4d6abe9b3eed6f7fa4c8a8a4947977c6f80025f92cbd8"
+    },
+    {
+      "name": "getrandom",
+      "version": "0.2.17",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/rust-random/getrandom",
+      "files": [
+        {
+          "path": "getrandom-0.2.17/LICENSE-APACHE",
+          "sha256": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf",
+          "source": "https://crates.io/crates/getrandom/0.2.17"
+        },
+        {
+          "path": "getrandom-0.2.17/LICENSE-MIT",
+          "sha256": "42fa16951ce7f24b5a467a40e5b449a1d41e662f97ca779864f053f39e097737",
+          "source": "https://crates.io/crates/getrandom/0.2.17"
+        }
+      ],
+      "archive_sha256": "ff2abc00be7fca6ebc474524697ae276ad847ad0a6b3faa4bcb027e9a4614ad0"
     },
     {
       "name": "getrandom",
@@ -4280,6 +4610,28 @@
       "archive_sha256": "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
     },
     {
+      "name": "pkcs8",
+      "version": "0.10.2",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/formats/tree/master/pkcs8",
+      "files": [
+        {
+          "path": "pkcs8-0.10.2/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/pkcs8/0.10.2"
+        },
+        {
+          "path": "pkcs8-0.10.2/LICENSE-MIT",
+          "sha256": "ad64fcb9589f162720f3cc5010ad76ca6ad3764e11861f9192c489df176bb71d",
+          "source": "https://crates.io/crates/pkcs8/0.10.2"
+        }
+      ],
+      "archive_sha256": "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
+    },
+    {
       "name": "pkg-config",
       "version": "0.3.34",
       "expression": "MIT OR Apache-2.0",
@@ -4654,6 +5006,33 @@
         }
       ],
       "archive_sha256": "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+    },
+    {
+      "name": "rand_core",
+      "version": "0.6.4",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/rust-random/rand",
+      "files": [
+        {
+          "path": "rand_core-0.6.4/COPYRIGHT",
+          "sha256": "90eb64f0279b0d9432accfa6023ff803bc4965212383697eee27a0f426d5f8d5",
+          "source": "https://crates.io/crates/rand_core/0.6.4"
+        },
+        {
+          "path": "rand_core-0.6.4/LICENSE-APACHE",
+          "sha256": "6df43f6f4b5d4587f3d8d71e45532c688fd168afa5fe89d571cb32fa09c4ef51",
+          "source": "https://crates.io/crates/rand_core/0.6.4"
+        },
+        {
+          "path": "rand_core-0.6.4/LICENSE-MIT",
+          "sha256": "209fbbe0ad52d9235e37badf9cadfe4dbdc87203179c0899e738b39ade42177b",
+          "source": "https://crates.io/crates/rand_core/0.6.4"
+        }
+      ],
+      "archive_sha256": "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
     },
     {
       "name": "raw-window-handle",
@@ -5370,6 +5749,28 @@
       "archive_sha256": "4e7523beb55eece201a2356bee0bbca0d1ab466c14c07703b2e0ee6d42cb0c2c"
     },
     {
+      "name": "sha2",
+      "version": "0.10.9",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/hashes",
+      "files": [
+        {
+          "path": "sha2-0.10.9/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/sha2/0.10.9"
+        },
+        {
+          "path": "sha2-0.10.9/LICENSE-MIT",
+          "sha256": "b4eb00df6e2a4d22518fcaa6a2b4646f249b3a3c9814509b22bd2091f1392ff1",
+          "source": "https://crates.io/crates/sha2/0.10.9"
+        }
+      ],
+      "archive_sha256": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+    },
+    {
       "name": "shlex",
       "version": "2.0.1",
       "expression": "MIT OR Apache-2.0",
@@ -5390,6 +5791,28 @@
         }
       ],
       "archive_sha256": "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
+    },
+    {
+      "name": "signature",
+      "version": "2.2.0",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/traits/tree/master/signature",
+      "files": [
+        {
+          "path": "signature-2.2.0/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/signature/2.2.0"
+        },
+        {
+          "path": "signature-2.2.0/LICENSE-MIT",
+          "sha256": "b3470648aff02beb36d7a53240fc9260ed80ed93bd43bace6b67d7ef7336ee33",
+          "source": "https://crates.io/crates/signature/2.2.0"
+        }
+      ],
+      "archive_sha256": "77549399552de45a898a580c1b41d445bf730df867cc44e6c0233bbc4b8329de"
     },
     {
       "name": "simd-adler32",
@@ -5658,6 +6081,28 @@
       "archive_sha256": "dd538fb6910ac1099850255cf94a94df6551fbdd602454387d0adb2d1ca6dead"
     },
     {
+      "name": "spki",
+      "version": "0.7.3",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/formats/tree/master/spki",
+      "files": [
+        {
+          "path": "spki-0.7.3/LICENSE-APACHE",
+          "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "source": "https://crates.io/crates/spki/0.7.3"
+        },
+        {
+          "path": "spki-0.7.3/LICENSE-MIT",
+          "sha256": "c995204cc6bad2ed67dd41f7d89bb9f1a9d48e0edd745732b30640d7912089a4",
+          "source": "https://crates.io/crates/spki/0.7.3"
+        }
+      ],
+      "archive_sha256": "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
+    },
+    {
       "name": "stable_deref_trait",
       "version": "1.2.1",
       "expression": "MIT OR Apache-2.0",
@@ -5717,6 +6162,23 @@
         }
       ],
       "archive_sha256": "6637bab7722d379c8b41ba849228d680cc12d0a45ba1fa2b48f2a30577a06731"
+    },
+    {
+      "name": "subtle",
+      "version": "2.6.1",
+      "expression": "BSD-3-Clause",
+      "selected": [
+        "BSD-3-Clause"
+      ],
+      "repository": "https://github.com/dalek-cryptography/subtle",
+      "files": [
+        {
+          "path": "subtle-2.6.1/LICENSE",
+          "sha256": "d1fc1bc0d155df60b2e7705b6b2ae02a05c96f948e1cec6e2fb86360b09f346b",
+          "source": "https://crates.io/crates/subtle/2.6.1"
+        }
+      ],
+      "archive_sha256": "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
     },
     {
       "name": "svgtypes",
@@ -6222,6 +6684,33 @@
       "archive_sha256": "54ec2755506471f54baf5e4bb5499d8e510cc1caf271270e778a736bd2d7336c"
     },
     {
+      "name": "typenum",
+      "version": "1.20.1",
+      "expression": "MIT OR Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/paholg/typenum",
+      "files": [
+        {
+          "path": "typenum-1.20.1/LICENSE",
+          "sha256": "db11fec9946737df39ca3898d9cd8c10ec6f6c3a884a6802b0ad0b81b4e8f23a",
+          "source": "https://crates.io/crates/typenum/1.20.1"
+        },
+        {
+          "path": "typenum-1.20.1/LICENSE-APACHE",
+          "sha256": "516b24e051bf5630880ebbd55c40a25ce9552ebaf8970a53e8976eb70e522406",
+          "source": "https://crates.io/crates/typenum/1.20.1"
+        },
+        {
+          "path": "typenum-1.20.1/LICENSE-MIT",
+          "sha256": "a825bd853ab71619a4923d7b4311221427848070ff44d990da39b0b274c1683f",
+          "source": "https://crates.io/crates/typenum/1.20.1"
+        }
+      ],
+      "archive_sha256": "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
+    },
+    {
       "name": "unicode-bidi",
       "version": "0.3.18",
       "expression": "MIT OR Apache-2.0",
@@ -6681,6 +7170,33 @@
         }
       ],
       "archive_sha256": "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+    },
+    {
+      "name": "wasi",
+      "version": "0.11.1+wasi-snapshot-preview1",
+      "expression": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/bytecodealliance/wasi",
+      "files": [
+        {
+          "path": "wasi-0.11.1+wasi-snapshot-preview1/LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "source": "https://crates.io/crates/wasi/0.11.1+wasi-snapshot-preview1"
+        },
+        {
+          "path": "wasi-0.11.1+wasi-snapshot-preview1/LICENSE-Apache-2.0_WITH_LLVM-exception",
+          "sha256": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5",
+          "source": "https://crates.io/crates/wasi/0.11.1+wasi-snapshot-preview1"
+        },
+        {
+          "path": "wasi-0.11.1+wasi-snapshot-preview1/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "source": "https://crates.io/crates/wasi/0.11.1+wasi-snapshot-preview1"
+        }
+      ],
+      "archive_sha256": "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
     },
     {
       "name": "wasip2",
@@ -7237,6 +7753,50 @@
       "archive_sha256": "99dad6f1fbdbbdb4c278a6508b059d44688f5cebddf78d005a46a31340269286"
     },
     {
+      "name": "winapi",
+      "version": "0.3.9",
+      "expression": "MIT/Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/retep998/winapi-rs",
+      "files": [
+        {
+          "path": "winapi-0.3.9/LICENSE-APACHE",
+          "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+          "source": "https://crates.io/crates/winapi/0.3.9"
+        },
+        {
+          "path": "winapi-0.3.9/LICENSE-MIT",
+          "sha256": "ce7bc3499fee93d5022ef430d5e4201e79a6d9154f3974e42f41349f0569e09b",
+          "source": "https://crates.io/crates/winapi/0.3.9"
+        }
+      ],
+      "archive_sha256": "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
+    },
+    {
+      "name": "winapi-i686-pc-windows-gnu",
+      "version": "0.4.0",
+      "expression": "MIT/Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/retep998/winapi-rs",
+      "files": [
+        {
+          "path": "winapi-i686-pc-windows-gnu-0.4.0/upstream/LICENSE-APACHE",
+          "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+          "source": "https://github.com/retep998/winapi-rs/blob/796a8e6c2971dc2ff1bcff166e6671284f9b5b6b/LICENSE-APACHE"
+        },
+        {
+          "path": "winapi-i686-pc-windows-gnu-0.4.0/upstream/LICENSE-MIT",
+          "sha256": "ce7bc3499fee93d5022ef430d5e4201e79a6d9154f3974e42f41349f0569e09b",
+          "source": "https://github.com/retep998/winapi-rs/blob/796a8e6c2971dc2ff1bcff166e6671284f9b5b6b/LICENSE-MIT"
+        }
+      ],
+      "archive_sha256": "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+    },
+    {
       "name": "winapi-util",
       "version": "0.1.11",
       "expression": "Unlicense OR MIT",
@@ -7262,6 +7822,28 @@
         }
       ],
       "archive_sha256": "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+    },
+    {
+      "name": "winapi-x86_64-pc-windows-gnu",
+      "version": "0.4.0",
+      "expression": "MIT/Apache-2.0",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/retep998/winapi-rs",
+      "files": [
+        {
+          "path": "winapi-x86_64-pc-windows-gnu-0.4.0/upstream/LICENSE-APACHE",
+          "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+          "source": "https://github.com/retep998/winapi-rs/blob/796a8e6c2971dc2ff1bcff166e6671284f9b5b6b/LICENSE-APACHE"
+        },
+        {
+          "path": "winapi-x86_64-pc-windows-gnu-0.4.0/upstream/LICENSE-MIT",
+          "sha256": "ce7bc3499fee93d5022ef430d5e4201e79a6d9154f3974e42f41349f0569e09b",
+          "source": "https://github.com/retep998/winapi-rs/blob/796a8e6c2971dc2ff1bcff166e6671284f9b5b6b/LICENSE-MIT"
+        }
+      ],
+      "archive_sha256": "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
     },
     {
       "name": "windows-link",
@@ -7943,6 +8525,28 @@
         }
       ],
       "archive_sha256": "f75b4683f6c7f45248d4d64056a24298c6281e0993356d7d1b4a1a962ef10d4a"
+    },
+    {
+      "name": "zeroize",
+      "version": "1.9.1",
+      "expression": "Apache-2.0 OR MIT",
+      "selected": [
+        "MIT"
+      ],
+      "repository": "https://github.com/RustCrypto/utils",
+      "files": [
+        {
+          "path": "zeroize-1.9.1/LICENSE-APACHE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "source": "https://crates.io/crates/zeroize/1.9.1"
+        },
+        {
+          "path": "zeroize-1.9.1/LICENSE-MIT",
+          "sha256": "8c7516d4b27b1e495be5e38b612298b63de48d05f49cdac94f70f3cd70f8864b",
+          "source": "https://crates.io/crates/zeroize/1.9.1"
+        }
+      ],
+      "archive_sha256": "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
     },
     {
       "name": "zerotrie",

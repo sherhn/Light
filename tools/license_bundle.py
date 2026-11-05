@@ -186,7 +186,14 @@ def font_copyright(data):
 
 def upstream_licenses(package):
     base = Path(package["manifest_path"]).parent
-    vcs = json.loads((base / ".cargo_vcs_info.json").read_text(encoding="utf-8"))
+    vcs_file = base / ".cargo_vcs_info.json"
+    if (not vcs_file.is_file() and package["name"] in ("winapi-i686-pc-windows-gnu", "winapi-x86_64-pc-windows-gnu")
+            and package["version"] == "0.4.0" and package.get("repository") == "https://github.com/retep998/winapi-rs"):
+        # These old import-library crates omitted both notices and VCS metadata.
+        # Use the reviewed winapi 0.3.9 release's root grants, never floating HEAD.
+        vcs = {"git": {"sha1": "796a8e6c2971dc2ff1bcff166e6671284f9b5b6b"}, "path_in_vcs": ""}
+    else:
+        vcs = json.loads(vcs_file.read_text(encoding="utf-8"))
     match = re.match(r"https?://github.com/([^/]+/[^/#]+)", package.get("repository") or "")
     if not match:
         raise ValueError(f"cannot locate exact upstream license for {package['name']}")

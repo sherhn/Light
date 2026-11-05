@@ -30,6 +30,7 @@ pub mod testing;
 pub mod termcomplete;
 pub mod todo;
 pub mod settings;
+pub mod updates;
 pub mod workspace;
 pub mod wsl;
 

@@ -1,0 +1,4 @@
+{
+  "signed": "{\"expires\":2000,\"issued\":1000,\"kind\":\"ide\",\"schema\":1,\"targets\":{\"windows-x64\":{\"name\":\"Light-1.3.0-windows-x64-update.zip\",\"sha256\":\"abababababababababababababababababababababababababababababababab\",\"size\":10,\"url\":\"https://github.com/sherhn/Light/releases/download/v1.3.0/Light-1.3.0-windows-x64-update.zip\"}},\"version\":\"1.3.0\"}",
+  "signature": "fb67b8a41b256d2347e5b7f9c335257adf3ef8bda53e86c8826ff76d2fbcbcace2d225ae3c1b805c2818a21856f79613c37189e7fb9abbeffec9436e6f32da0a"
+}

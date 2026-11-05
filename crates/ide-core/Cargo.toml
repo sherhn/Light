@@ -15,3 +15,6 @@ regex = "1"
 dirs.workspace = true
 zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2"] }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+ed25519-dalek = { version = "=2.2.0", default-features = false, features = ["std"] }
+sha2 = "0.10"
+fs2 = "0.4.3"
