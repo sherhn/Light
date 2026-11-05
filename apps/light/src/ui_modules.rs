@@ -21,6 +21,8 @@ enum Action {
     Install(String),
     Remove(String),
     Toggle(String, bool),
+    Automatic(String, bool),
+    Rollback(String),
     Refresh,
     Welcome,
     InstallAll(Vec<String>),
@@ -70,7 +72,7 @@ fn paint_cover(ui: &mut egui::Ui, pal: &Palette, rect: Rect, tex: Option<&Textur
 }
 
 #[allow(clippy::too_many_arguments)]
-fn paint_card(ui: &mut egui::Ui, pal: &Palette, rect: Rect, card: &Card, tex: Option<&TextureHandle>, busy: Option<&Busy>, recommended: bool, actions: &mut Vec<Action>) {
+fn paint_card(ui: &mut egui::Ui, pal: &Palette, rect: Rect, card: &Card, tex: Option<&TextureHandle>, busy: Option<&Busy>, recommended: bool, automatic: bool, actions: &mut Vec<Action>) {
     let hovered = ui.rect_contains_pointer(rect);
     // The same restrained language watermark used by the website's module cards.
     ui.painter().rect_filled(rect, CornerRadius::same(widgets::CARD_RADIUS), pal.panel_bg);
@@ -123,6 +125,12 @@ fn paint_card(ui: &mut egui::Ui, pal: &Palette, rect: Rect, card: &Card, tex: Op
             Some(m) => {
                 let resp = widgets::icon_button(ui, pal, Icon::More, 30.0, pal.text_dim, tr("More"));
                 widgets::menu_popup(&resp, pal).width(180.0).show(|ui| {
+                    let mut automatic = automatic;
+                    if ui.checkbox(&mut automatic, tr("Allow automatic updates")).changed() { actions.push(Action::Automatic(card.id.clone(), automatic)); }
+                    let previous = m.dir.parent().map(|root| root.join(format!(".previous-{}", card.id)));
+                    if ui.add_enabled(previous.is_some_and(|p| p.is_dir()), egui::Button::new(tr("Restore previous version"))).clicked() {
+                        actions.push(Action::Rollback(card.id.clone())); ui.close();
+                    }
                     if widgets::menu_row(ui, pal, Some(Icon::Trash), tr("Remove"), "").clicked() {
                         actions.push(Action::Remove(card.id.clone()));
                         ui.close();
@@ -301,7 +309,7 @@ impl App {
                 let (col, row) = (i % cols, i / cols);
                 let rect = Rect::from_min_size(Pos2::new(area.min.x + SIDE + col as f32 * (cw + GAP), area.min.y + row as f32 * (ch + GAP)), Vec2::new(cw, ch));
                 ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
-                    paint_card(ui, &pal, rect, card, textures[i].as_ref(), busy.get(&card.id), needed.contains(&card.id), &mut actions);
+                    paint_card(ui, &pal, rect, card, textures[i].as_ref(), busy.get(&card.id), needed.contains(&card.id), !self.settings.module_update_pins.contains(&card.id), &mut actions);
                 });
             }
         });
@@ -313,6 +321,11 @@ impl App {
                 Action::Install(id) => self.module_install(&id),
                 Action::Remove(id) => self.module_remove(&id),
                 Action::Toggle(id, on) => self.module_set_enabled(&id, on),
+                Action::Automatic(id, on) => {
+                    if on { self.settings.module_update_pins.remove(&id); } else { self.settings.module_update_pins.insert(id); }
+                    self.save_settings();
+                }
+                Action::Rollback(id) => self.queue_module_rollback(&id),
                 Action::Refresh => {
                     self.mods.index = None;
                     self.modules_fetch_index();

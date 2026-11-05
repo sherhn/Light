@@ -167,6 +167,7 @@ impl eframe::App for App {
             h.kill();
         }
         self.stop_other_runs();
+        self.start_update_after_exit();
     }
 }
 

@@ -68,6 +68,7 @@ pub struct App {
     pub toasts: Vec<Toast>,
     /// Complete last error, retained until its details window is closed.
     pub error_details: Option<String>,
+    pub updater: crate::app_updates::UpdateState,
     pub hint: Option<(String, f64)>,
     /// The documentation popup of the name the pointer rests on.
     pub hover: crate::hover::HoverState,
@@ -200,6 +201,7 @@ impl App {
             completion: Completion::default(),
             toasts: vec![],
             error_details: None,
+            updater: Default::default(),
             hint: None,
             hover: Default::default(),
             checks: Default::default(),
@@ -262,7 +264,7 @@ impl App {
             shift_tap: (false, false, -10.0),
             settings,
         };
-        if !cfg!(test) { app.modules_init(); }
+        if !cfg!(test) && app.updates_init() { app.modules_init(); }
         app
     }
 
@@ -879,6 +881,7 @@ impl App {
 
     pub fn tick(&mut self, ctx: &egui::Context) {
         self.now = ctx.input(|i| i.time);
+        self.poll_updates(ctx);
         self.frame_no += 1;
         let dt = ctx.input(|i| i.unstable_dt) * 1000.0;
         if self.frame_no > 5 && dt > self.max_frame_ms && dt < 120_000.0 {

@@ -14,7 +14,7 @@ use crate::theme::Palette;
 use crate::widgets::{self, TextField};
 
 /// The settings pages; `WSL_PAGE` is the index of the Linux (WSL) one.
-pub const PAGES: [(&str, Icon); 8] = [("Appearance", Icon::Palette), ("Editor", Icon::Code), ("Lisp & REPL", Icon::Repl), ("Linux (WSL)", Icon::Linux), ("Modules", Icon::Puzzle), ("Version Control", Icon::Branch), ("Keymap", Icon::Keyboard), ("Project", Icon::Folder)];
+pub const PAGES: [(&str, Icon); 9] = [("Appearance", Icon::Palette), ("Editor", Icon::Code), ("Lisp & REPL", Icon::Repl), ("Linux (WSL)", Icon::Linux), ("Modules", Icon::Puzzle), ("Version Control", Icon::Branch), ("Keymap", Icon::Keyboard), ("Project", Icon::Folder), ("Updates", Icon::Download)];
 pub const WSL_PAGE: usize = 3;
 pub const LISP_PAGE: usize = 2;
 /// The settings of the open project (only while one is open).
@@ -173,6 +173,7 @@ impl App {
                 egui::ScrollArea::vertical().auto_shrink([false, false]).show_fading(&mut bui, |ui| {
                     ui.set_width(body.width() - 14.0);
                     match page {
+                        8 => self.draw_updates_settings(ui),
                         0 => {
                             group(ui, &pal, tr("Theme"), |ui, rows| {
                                 rows.row(ui, &pal, tr("Color theme"), tr("Dark, light, or your own with every color set by hand"), 280.0, |ui| {

@@ -3,6 +3,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app;
+mod app_updates;
 mod app_notes;
 mod viewer;
 mod app_check;
@@ -119,6 +120,7 @@ fn parse_args() -> Args {
 }
 
 fn main() -> eframe::Result {
+    if let Some(code) = app_updates::early_mode() { std::process::exit(code); }
     let started = std::time::Instant::now();
     if let Ok(executable) = std::env::current_exe()
         && let Some(path) = ide_core::bundle::tool_path(&executable, std::env::var_os("PATH").as_deref())
@@ -132,6 +134,13 @@ fn main() -> eframe::Result {
         crate::i18n::set(settings.language);
         return viewer::run(args.paths, settings, args.viewer_smoke, started);
     }
+    let _installation_guard = match app_updates::protect_startup() {
+        Ok(guard) => guard,
+        Err(error) => {
+            rfd::MessageDialog::new().set_title("Light").set_description(&error).set_level(rfd::MessageLevel::Error).show();
+            return Ok(());
+        }
+    };
     let (w, h) = args.size.unwrap_or((1280.0, 800.0));
     let mut viewport = egui::ViewportBuilder::default().with_inner_size([w, h]).with_min_inner_size([640.0, 400.0]).with_title("Light").with_decorations(false).with_app_id("light");
     // what the window starts with: Windows tells at once, the other systems are asked once the window is up
