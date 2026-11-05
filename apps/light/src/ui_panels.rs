@@ -1126,7 +1126,10 @@ impl App {
         });
         self.after_log(log_out, true);
         let id = egui::Id::unique("term_input");
+        let completion_target=self.terminal_completion_target();
+        if crate::path_completion::poll(ctx,id,&mut self.term.input,&completion_target) {self.term.hist_pos=None;}
         let mut submit = false;
+        let mut complete=false;
         if ctx.memory(|m| m.has_focus(id)) {
             let (enter, up, down, tab) = ctx.input(|i| (i.key_pressed(Key::Enter), i.key_pressed(Key::ArrowUp), i.key_pressed(Key::ArrowDown), i.key_pressed(Key::Tab) && !i.modifiers.any()));
             if enter && !ctx.input(|i| i.modifiers.shift) && !self.term.input.trim().is_empty() {
@@ -1141,10 +1144,11 @@ impl App {
             }
             if tab {
                 ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Tab));
-                self.terminal_complete(ctx, id);
+                complete=true;
             }
         }
         let resp = self.prompt_input(ui, id, "$", 1, tr("Type a command and press Enter"), input_h);
+        if complete {self.terminal_complete(ctx,id);ctx.request_repaint();}
         // Ctrl+C copies what is selected (the log did that above); with nothing selected it stops the running command
         if !log_out.copied && self.term_busy() && copy_requested {
             let input_selected = !self.term.input.is_empty() && egui::TextEdit::load_state(ctx, id).and_then(|s| s.cursor.char_range()).is_some_and(|r| r.primary != r.secondary);

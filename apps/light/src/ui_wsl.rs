@@ -387,7 +387,7 @@ impl App {
                 ui.label(RichText::new(tr("Install into:")).color(pal.text_dim).size(12.0));
                 ui.horizontal(|ui| {
                     let browse_w = ui.painter().layout_no_wrap(tr("Browse...").to_string(), fonts::ui(13.5), pal.text).size().x + 38.0;
-                    let r = TextField::new(&mut self.wsl.location).hint(tr("the default WSL folder")).icon(Icon::Folder).width((ui.available_width() - browse_w - 8.0).max(40.0)).height(32.0).show(ui, &pal);
+                    let r = TextField::new(&mut self.wsl.location).paths(crate::path_completion::Target::local(true)).hint(tr("the default WSL folder")).icon(Icon::Folder).width((ui.available_width() - browse_w - 8.0).max(40.0)).height(32.0).show(ui, &pal);
                     if r.lost_focus() {
                         act = Some(Act::Recheck);
                     }
@@ -499,7 +499,7 @@ impl App {
             let mut changed = false;
             group(ui, &pal, tr("Advanced"), |ui, rows| {
                 rows.row(ui, &pal, tr("SBCL in Linux"), tr("Command or absolute path inside the distribution; empty means sbcl from its PATH"), 10.0, |_| {});
-                let r = TextField::new(&mut self.settings.wsl_sbcl).hint("sbcl").icon(Icon::Terminal).show(ui, &pal);
+                let r = TextField::new(&mut self.settings.wsl_sbcl).paths(crate::path_completion::Target::linux(self.settings.wsl_distro.clone(),false)).hint("sbcl").icon(Icon::Terminal).show(ui, &pal);
                 changed = r.lost_focus();
                 ui.add_space(12.0);
             });

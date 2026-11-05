@@ -28,6 +28,7 @@ mod lang_completion;
 mod modules;
 mod module_marks;
 mod file_marks;
+mod path_completion;
 mod preview;
 mod pty;
 mod ui_preview;

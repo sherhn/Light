@@ -224,11 +224,12 @@ pub struct TextField<'a> {
     id: Option<egui::Id>,
     enabled: bool,
     password: bool,
+    paths: Option<crate::path_completion::Target>,
 }
 
 impl<'a> TextField<'a> {
     pub fn new(text: &'a mut String) -> Self {
-        TextField { text, hint: "", suffix: "", icon: None, width: None, height: FIELD_H, font: fonts::ui(13.5), id: None, enabled: true, password: false }
+        TextField { text, hint: "", suffix: "", icon: None, width: None, height: FIELD_H, font: fonts::ui(13.5), id: None, enabled: true, password: false, paths: None }
     }
     /// Show bullets instead of the characters (a token or password).
     pub fn password(mut self, on: bool) -> Self {
@@ -269,9 +270,11 @@ impl<'a> TextField<'a> {
         self.enabled = on;
         self
     }
+    pub fn paths(mut self,target:crate::path_completion::Target)->Self {self.paths=Some(target);self}
     pub fn show(self, ui: &mut egui::Ui, pal: &Palette) -> egui::Response {
         // derived from (not equal to) the id the allocation below gets, or the focusable edit clashes with that hover-only widget
         let id = self.id.unwrap_or_else(|| ui.next_auto_id().with("text_field"));
+        let (completed,complete)=if self.enabled {self.paths.as_ref().map_or((false,false),|target|crate::path_completion::field(ui.ctx(),id,self.text,target))}else{(false,false)};
         let w = self.width.unwrap_or_else(|| ui.available_width()).max(40.0);
         let (rect, _) = ui.allocate_exact_size(Vec2::new(w, self.height), Sense::hover());
         let bg = ui.interact(rect, id.with("field_bg"), Sense::click());
@@ -283,7 +286,8 @@ impl<'a> TextField<'a> {
         }
         let inner = Rect::from_min_max(Pos2::new(x, rect.min.y), Pos2::new((rect.max.x - 10.0).max(x + 10.0), rect.max.y));
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(inner).layout(egui::Layout::left_to_right(Align::Center)));
-        let te = egui::TextEdit::singleline(self.text)
+        let te = egui::TextEdit::singleline(&mut *self.text)
+            .lock_focus(self.paths.is_some())
             .id(id)
             .hint_text(egui::RichText::new(self.hint).font(self.font.clone()).color(pal.text_dim))
             .font(self.font.clone())
@@ -298,6 +302,10 @@ impl<'a> TextField<'a> {
             child.disable();
         }
         let output = te.show(&mut child);
+        if complete && let Some(target)=&self.paths {
+            if self.text.is_empty() {ui.memory_mut(|memory|memory.move_focus(egui::FocusDirection::Next));}
+            else {crate::path_completion::request(ui.ctx(),id,self.text,target);}
+        }
         if !self.suffix.is_empty() && !self.text.is_empty() && !self.password {
             let pos = output.galley_pos + Vec2::new(output.galley.size().x, 0.0);
             child.painter().with_clip_rect(inner.intersect(child.clip_rect())).text(pos, Align2::LEFT_TOP, self.suffix, self.font, pal.text_dim.gamma_multiply(0.65));
@@ -305,7 +313,9 @@ impl<'a> TextField<'a> {
         if self.enabled && bg.clicked() {
             ui.memory_mut(|m| m.request_focus(id));
         }
-        output.response.response
+        let mut response=output.response.response;
+        if completed {response.mark_changed();}
+        response
     }
 }
 

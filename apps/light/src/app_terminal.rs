@@ -184,12 +184,19 @@ impl App {
         self.term.hist_pos.is_some_and(|p| self.term.history.entries().get(p).is_some_and(|e| *e == self.term.input))
     }
 
-    /// Tab in the command line: complete the word at the cursor. When several names fit and nothing more can be
-    /// added to the word, they are listed in the output.
+    pub fn terminal_completion_target(&self)->crate::path_completion::Target {
+        crate::path_completion::Target::terminal(self.term.cwd.clone(),self.wsl_target().map(|target|target.distro))
+    }
+
+    /// Paths choose their first match on a worker; commands keep their common-prefix/list behavior.
     pub fn terminal_complete(&mut self, ctx: &egui::Context, id: egui::Id) {
         let chars = self.term.input.chars().count();
         let cursor_chars = egui::TextEdit::load_state(ctx, id).and_then(|s| s.cursor.char_range()).map_or(chars, |r| r.primary.index.0.min(chars));
         let cursor = self.term.input.char_indices().nth(cursor_chars).map_or(self.term.input.len(), |(i, _)| i);
+        if termcomplete::path_word(&self.term.input,cursor) {
+            crate::path_completion::request(ctx,id,&self.term.input,&self.terminal_completion_target());
+            return;
+        }
         let linux = self.wsl_target().is_some();
         const OWN: [&str; 9] = ["cd", "clear", "cls", "exit", "export", "help", "run", "scripts", "set"];
         if linux {
@@ -334,6 +341,8 @@ impl App {
 
     /// `cd`: Windows paths always; in WSL also Linux ones (`/home/me`, `/mnt/c/x`).
     fn terminal_cd(&self, arg: &str) -> Result<PathBuf, String> {
+        let arg=arg.trim();
+        let arg=arg.strip_prefix('"').and_then(|s|s.strip_suffix('"')).or_else(||arg.strip_prefix('\'').and_then(|s|s.strip_suffix('\''))).unwrap_or(arg);
         match self.wsl_target() {
             Some(t) if arg.trim().starts_with('/') => change_dir(&self.term.cwd, &wsl::to_windows(arg.trim(), &t).to_string_lossy()),
             _ => change_dir(&self.term.cwd, arg),

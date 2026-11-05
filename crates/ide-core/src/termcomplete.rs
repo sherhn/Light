@@ -29,6 +29,16 @@ pub struct Completion {
     pub matches: Vec<String>,
 }
 
+/// A complete replacement, including a partially typed suffix after the caret.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PathEdit { pub start: usize, pub end: usize, pub text: String, pub caret: usize }
+
+pub fn path_word(line: &str, cursor: usize) -> bool {
+    if cursor > line.len() || !line.is_char_boundary(cursor) { return false }
+    let word=scan(&line[..cursor]);
+    !word.first || word.text.contains(is_separator) || word.text.starts_with(['~','.']) || word.text.chars().nth(1)==Some(':')
+}
+
 /// Commands that only take directories.
 const DIRECTORY_COMMANDS: [&str; 5] = ["cd", "chdir", "pushd", "rmdir", "rd"];
 
@@ -149,8 +159,13 @@ fn complete_path(word: &Word, env: &Env) -> Option<Completion> {
         let home = env.home?;
         return Some(Completion { start: word.start, text: format!("~{}", env.separator), matches: vec![home.display().to_string()] });
     }
-    let split = word.text.rfind(is_separator).map_or(0, |i| i + 1);
-    let (dir_part, prefix) = word.text.split_at(split);
+    let (dir_part,prefix,names)=path_names(&word.text,env,None,DIRECTORY_COMMANDS.contains(&word.command.as_str()))?;
+    finish(word, &dir_part, &prefix, &names, true, env)
+}
+
+fn path_names(text: &str, env: &Env, root: Option<&Path>, only_directories: bool) -> Option<(String,String,Vec<String>)> {
+    let split = text.rfind(is_separator).map_or(0, |i| i + 1);
+    let (dir_part, prefix) = text.split_at(split);
     // the folder as the file system reads it: a shell that writes `\` means `/` (only Windows itself reads both)
     let on_disk = if env.separator == '\\' { dir_part.replace('\\', "/") } else { dir_part.to_string() };
     let dir = if on_disk.is_empty() {
@@ -158,12 +173,13 @@ fn complete_path(word: &Word, env: &Env) -> Option<Completion> {
     } else if let Some(rest) = on_disk.strip_prefix('~') {
         let home = env.home?;
         home.join(rest.trim_start_matches(is_separator))
+    } else if on_disk.starts_with('/') && root.is_some() {
+        root?.join(on_disk.trim_start_matches('/'))
     } else if Path::new(&on_disk).is_absolute() || on_disk.starts_with(is_separator) {
         PathBuf::from(&on_disk)
     } else {
         env.cwd.join(&on_disk)
     };
-    let only_directories = DIRECTORY_COMMANDS.contains(&word.command.as_str());
     let mut names = Vec::new();
     for entry in fs::read_dir(&dir).ok()?.flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
@@ -176,8 +192,71 @@ fn complete_path(word: &Word, env: &Env) -> Option<Completion> {
         }
         names.push(if is_dir { format!("{name}{}", env.separator) } else { name });
     }
-    names.sort_by_key(|n| n.to_lowercase());
-    finish(word, dir_part, prefix, &names, true, env)
+    names.sort_by_cached_key(|n| (n.to_lowercase(),n.clone()));
+    Some((dir_part.into(),prefix.into(),names))
+}
+
+/// Complete a literal path field. Spaces are literal; shell quoting is never inserted.
+/// `root` maps absolute Linux paths to a WSL UNC root when running on Windows.
+pub fn path_field(text: &str, cursor: usize, env: &Env, root: Option<&Path>, directories_only: bool) -> Option<PathEdit> {
+    if cursor > text.len() || !text.is_char_boundary(cursor) || cursor==0 { return None }
+    let before=&text[..cursor];
+    let replacement=if before=="~" && env.home.is_some() {format!("~{}",env.separator)}
+    else if cfg!(windows) && before.len()==2 && before.ends_with(':') && before.as_bytes()[0].is_ascii_alphabetic() {
+        let drive=format!("{before}\\");if !Path::new(&drive).is_dir() {return None} drive
+    } else {
+        let (directory,_,names)=path_names(before,env,root,directories_only)?;
+        format!("{directory}{}",names.first()?)
+    };
+    let mut end=text[cursor..].find(is_separator).map_or(text.len(),|index|cursor+index);
+    if replacement.ends_with(is_separator) && end<text.len() {end+=1;}
+    let caret=replacement.len();
+    Some(PathEdit {start:0,end,text:replacement,caret})
+}
+
+/// Complete an argument/path in a command line with the first matching entry.
+/// Command-name completion keeps its existing common-prefix/list behavior in `complete`.
+pub fn first_path(line: &str, cursor: usize, env: &Env, root: Option<&Path>) -> Option<PathEdit> {
+    if !path_word(line,cursor) {return None}
+    let word=scan(&line[..cursor]);
+    let mut full=if word.text=="~" && env.home.is_some() {format!("~{}",env.separator)}
+    else if cfg!(windows) && word.text.len()==2 && word.text.ends_with(':') && word.text.as_bytes()[0].is_ascii_alphabetic() {
+        let drive=format!("{}\\",word.text);if !Path::new(&drive).is_dir() {return None} drive
+    } else {
+        let (directory,_,names)=path_names(&word.text,env,root,DIRECTORY_COMMANDS.contains(&word.command.as_str()))?;
+        format!("{directory}{}",names.first()?)
+    };
+    // An absolute spelling works both in cmd.exe (which does not expand ~) and
+    // inside shell quotes (where POSIX shells deliberately do not expand it).
+    if let Some(rest)=full.strip_prefix("~/").or_else(||full.strip_prefix("~\\")) {
+        let home=env.home?;
+        let displayed=if let Some(root)=root {format!("/{}",home.strip_prefix(root).ok()?.to_string_lossy().replace('\\',"/"))}
+            else {home.to_string_lossy().into_owned()};
+        full=format!("{}{sep}{rest}",displayed.trim_end_matches(is_separator),sep=env.separator);
+    }
+    let directory=full.ends_with(is_separator);
+    let windows=env.separator=='\\';
+    let dangerous=full.contains(['&','|',';','<','>','(',')','$','`','!','\'','"']);
+    let quoted=word.quote.is_some()||full.contains(char::is_whitespace)||dangerous;
+    let quote=if !windows && dangerous {'\''}else{word.quote.unwrap_or('"')};
+    let mut text=if quoted {
+        let escaped=if windows {full} else if quote=='\'' {full.replace('\'',"'\\''")} else {full.replace('\\',"\\\\").replace('"',"\\\"").replace('$',"\\$").replace('`',"\\`")};
+        format!("{quote}{escaped}{quote}")
+    } else {full};
+    let mut end=cursor;let mut open=word.quote;
+    for (index,ch) in line[cursor..].char_indices() {
+        if let Some(quote)=open {if ch==quote {open=None;}}
+        else if ch.is_whitespace()||matches!(ch,';'|'|'|'&') {break;}
+        else if matches!(ch,'\''|'"') {open=Some(ch);}
+        end=cursor+index+ch.len_utf8();
+    }
+    let mut caret=word.start+text.len();
+    if directory && quoted {caret-=1;}
+    else if !directory {
+        if let Some(ch)=line[end..].chars().next().filter(|c|c.is_whitespace()) {caret+=ch.len_utf8();}
+        else {text.push(' ');caret+=1;}
+    }
+    Some(PathEdit {start:word.start,end,text,caret})
 }
 
 /// Turn the matches into the text that replaces the word: the longest common start (the whole name when there is
@@ -273,6 +352,54 @@ mod tests {
 
     fn run(line: &str, env: &Env) -> Option<Completion> {
         complete(line, line.len(), env)
+    }
+
+    fn apply(line:&str,edit:PathEdit)->(String,usize) {
+        let mut line=line.to_string();line.replace_range(edit.start..edit.end,&edit.text);(line,edit.caret)
+    }
+    #[test]
+    fn first_path_chooses_a_complete_name_when_several_entries_match() {
+        let d=tree();let env=env(d.path(),&[]);
+        let line="cd s";let (line,caret)=apply(line,first_path(line,line.len(),&env,None).unwrap());
+        assert_eq!(line,"cd scripts/");assert_eq!(caret,line.len());
+        let line="cat src/ma";assert_eq!(apply(line,first_path(line,line.len(),&env,None).unwrap()).0,"cat src/macros.lisp ");
+        assert!(!path_word("ca",2));assert!(first_path("ca",2,&env,None).is_none());
+    }
+    #[test]
+    fn literal_fields_keep_spaces_unicode_and_the_suffix_after_the_completed_component() {
+        let d=tree();fs::create_dir(d.path().join("Мои проекты")).unwrap();let env=env(d.path(),&[]);
+        let path="Мои пр";let (path,_)=apply(path,path_field(path,path.len(),&env,None,true).unwrap());
+        assert_eq!(path,"Мои проекты/");
+        let path="src/maTYPO";assert_eq!(apply(path,path_field(path,6,&env,None,false).unwrap()).0,"src/macros.lisp");
+        let path="docs/guTYPO/more";assert_eq!(apply(path,path_field(path,7,&env,None,true).unwrap()).0,"docs/guide/more");
+        assert!(path_field("src/ma",6,&env,None,true).is_none());
+    }
+    #[test]
+    fn first_path_replaces_partial_suffixes_and_closes_quotes_without_losing_arguments() {
+        let d=tree();let env=env(d.path(),&[]);
+        let line="cat \"My NoTYPO.txt\" --flag";let cursor=line.find("TYPO").unwrap();
+        let (line,caret)=apply(line,first_path(line,cursor,&env,None).unwrap());
+        assert_eq!(line,"cat \"My Notes.txt\" --flag");assert_eq!(&line[caret..],"--flag");
+        fs::create_dir(d.path().join("My Folder")).unwrap();
+        let line="cd My F"; // A path containing spaces must be quoted in a command.
+        assert!(first_path(line,line.len(),&env,None).is_none());
+        let line="cd \"My F";let (line,caret)=apply(line,first_path(line,line.len(),&env,None).unwrap());
+        assert_eq!(line,"cd \"My Folder/\"");assert_eq!(&line[caret..],"\"");
+    }
+    #[test]
+    fn linux_absolute_paths_can_be_mapped_to_a_virtual_wsl_root() {
+        let d=tree();let root=d.path().join("linux");fs::create_dir_all(root.join("home/user/projects")).unwrap();
+        let env=env(d.path(),&[]);
+        let path="/home/us";assert_eq!(apply(path,path_field(path,path.len(),&env,Some(&root),true).unwrap()).0,"/home/user/");
+        let line="cd /home/us";assert_eq!(apply(line,first_path(line,line.len(),&env,Some(&root)).unwrap()).0,"cd /home/user/");
+        fs::create_dir(root.join("home/user/My Projects")).unwrap();
+        let home=root.join("home/user");let env=Env {home:Some(&home),..env};
+        let line="cat ~/My";assert_eq!(apply(line,first_path(line,line.len(),&env,Some(&root)).unwrap()).0,"cat \"/home/user/My Projects/\"");
+    }
+    #[test]
+    fn posix_shell_metacharacters_in_file_names_are_quoted_as_data() {
+        let d=tree();fs::write(d.path().join("data$(whoami)&test.txt"),"").unwrap();let env=env(d.path(),&[]);
+        let line="cat data";assert_eq!(apply(line,first_path(line,line.len(),&env,None).unwrap()).0,"cat 'data$(whoami)&test.txt' ");
     }
 
     #[test]

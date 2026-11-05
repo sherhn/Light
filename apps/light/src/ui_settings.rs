@@ -294,7 +294,7 @@ impl App {
                                         redetect = true;
                                     }
                                 });
-                                let r = TextField::new(&mut lisp_path).hint(tr("auto-detect")).icon(Icon::Terminal).show(ui, &pal);
+                                let r = TextField::new(&mut lisp_path).paths(crate::path_completion::Target::local(false)).hint(tr("auto-detect")).icon(Icon::Terminal).show(ui, &pal);
                                 if r.lost_focus() {
                                     redetect = true;
                                 }
@@ -324,7 +324,10 @@ impl App {
                                         registry_changed = true;
                                     }
                                 });
-                                let r = TextField::new(&mut self.settings.registry_url).hint(tr("the published registry")).icon(Icon::Globe).show(ui, &pal);
+                                let local=!self.settings.registry_url.contains("://");
+                                let field=TextField::new(&mut self.settings.registry_url).hint(tr("the published registry")).icon(Icon::Globe);
+                                let field=if local {field.paths(crate::path_completion::Target::local(true))}else{field};
+                                let r = field.show(ui, &pal);
                                 if r.lost_focus() {
                                     registry_changed = true;
                                 }
@@ -369,7 +372,7 @@ impl App {
                                         self.settings.clone_dir = d.to_string_lossy().into_owned();
                                     }
                                 });
-                                TextField::new(&mut self.settings.clone_dir).hint("~/LightProjects").icon(Icon::Folder).show(ui, &pal);
+                                TextField::new(&mut self.settings.clone_dir).paths(crate::path_completion::Target::local(true)).hint("~/LightProjects").icon(Icon::Folder).show(ui, &pal);
                                 ui.add_space(12.0);
                                 if widgets::secondary_button(ui, &pal, tr("Clone a repository...")).clicked() {
                                     self.run_command(ctx, "file.clone");

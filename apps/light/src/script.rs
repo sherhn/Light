@@ -105,6 +105,7 @@ impl App {
             "git_behind" => self.git.rx.is_none() && self.git.op_rx.is_none() && self.git.fetch_rx.is_none() && self.commits_to_pull() as u64 == cond["value"].as_u64().unwrap_or(1),
             "git_clean" => self.git.rx.is_none() && self.git.changes.is_empty(),
             "term_idle" => !self.term_busy(),
+            "term_input" => self.term.input==cond["value"].as_str().unwrap_or(""),
             "script_done" => self.term.script.is_none() && self.term.handle.is_none(),
             "term_contains" => {
                 let t = cond["value"].as_str().unwrap_or("");
@@ -119,6 +120,7 @@ impl App {
             "file_contains" => cond["path"].as_str().and_then(|path| std::fs::read_to_string(path).ok()).is_some_and(|text| text.contains(cond["value"].as_str().unwrap_or(""))),
             "wsl_idle" => !self.wsl.busy(),
             "project_browser_idle" => matches!(&self.popup, Popup::ProjectBrowser(browser) if browser.idle()) && !self.wsl.probing(),
+            "path_input" => matches!(&self.popup,Popup::ProjectBrowser(browser) if browser.shown().address()==cond["value"].as_str().unwrap_or("")),
             "new_project_idle" => matches!(&self.popup, Popup::NewProject { location, creating, .. } if location.job.is_none() && !creating),
             "clone_idle" => matches!(&self.popup, Popup::Clone(state) if state.run.is_none()),
             // the registry has answered (with a list or an error)

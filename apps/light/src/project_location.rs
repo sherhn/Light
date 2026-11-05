@@ -76,7 +76,7 @@ impl ProjectLocation {
                         explorer.start();
                         self.browse = Some(Box::new(explorer));
                     }
-                    TextField::new(&mut self.parent).hint("~/projects").icon(crate::icons::Icon::Linux).show(ui, pal);
+                    TextField::new(&mut self.parent).paths(crate::path_completion::Target::linux(self.distro.clone(),true)).hint("~/projects").icon(crate::icons::Icon::Linux).show(ui, pal);
                 });
                 ui.label(
                     RichText::new(tr(
@@ -95,7 +95,7 @@ impl ProjectLocation {
                     {
                         *local_parent = dir.to_string_lossy().into_owned();
                     }
-                    TextField::new(local_parent).show(ui, pal);
+                    TextField::new(local_parent).paths(crate::path_completion::Target::local(true)).show(ui, pal);
                 });
             }
         });

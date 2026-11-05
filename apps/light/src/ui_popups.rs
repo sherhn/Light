@@ -395,7 +395,7 @@ impl App {
                     }
                     let hint = if is_dir { tr("directory name") } else if extension.is_empty() { tr("file name with its extension") } else { tr("file name") };
                     let ghost = crate::new_file::ghost(&input, &extension, &filenames);
-                    let r = TextField::new(&mut input).id(name_id).hint(hint).suffix(&ghost).show(ui, &pal);
+                    let r = TextField::new(&mut input).paths(crate::path_completion::Target::local(true).at(dir.clone())).id(name_id).hint(hint).suffix(&ghost).show(ui, &pal);
                     widgets::focus_once(ui, &r, &mut just_opened);
                     // a module of several languages: which of its extensions
                     if let Some(k) = kinds.get(kind).filter(|k| k.extensions.len() > 1) {

@@ -88,6 +88,8 @@ def run_one(script_path):
     http_server = None
     try:
         proj = make_fixture(tmp)
+        if "@path_completion" in script_path.read_text(encoding="utf-8"):
+            (proj / "My Projects").mkdir()
         if "@file_icons" in script_path.read_text(encoding="utf-8"):
             icons = proj / "icons"
             icons.mkdir()

@@ -225,7 +225,7 @@ impl App {
                             });
                         }
                         let suffix = clone_dir_suffix(&st.linux_dir, &repo_name, true);
-                        TextField::new(&mut st.linux_dir).hint("~/projects").suffix(&suffix).icon(Icon::Linux).enabled(!running).show(ui, &pal);
+                        TextField::new(&mut st.linux_dir).paths(crate::path_completion::Target::linux(st.linux_distro.clone(),true)).hint("~/projects").suffix(&suffix).icon(Icon::Linux).enabled(!running).show(ui, &pal);
                     });
                     ui.label(RichText::new(tr("Projects belong to your regular WSL user. ~ is their home folder.")).color(pal.text_dim).size(12.0));
                 } else {
@@ -239,7 +239,8 @@ impl App {
                             st.dir_touched = true;
                         }
                         let suffix = clone_dir_suffix(&st.parent, &repo_name, false);
-                        TextField::new(&mut st.parent).suffix(&suffix).icon(Icon::Folder).enabled(!running).show(ui, &pal);
+                        let response=TextField::new(&mut st.parent).paths(crate::path_completion::Target::local(true)).suffix(&suffix).icon(Icon::Folder).enabled(!running).show(ui, &pal);
+                        st.dir_touched|=response.changed();
                     });
                     if !distros.is_empty() {
                         ui.add_space(8.0);

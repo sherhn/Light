@@ -144,6 +144,7 @@ impl Explorer {
     pub fn current_path(&self) -> Option<&Path> {
         self.current.as_deref()
     }
+    pub fn address(&self)->&str {&self.path}
 
     pub fn items(&self) -> &[Item] {
         &self.items
@@ -159,6 +160,9 @@ impl Explorer {
     }
 
     pub fn navigate(&mut self, path: String) {
+        let path=if !path.starts_with(['~','/','\\']) && !Path::new(&path).is_absolute() {
+            self.current.as_ref().map_or(path.clone(),|current|display_path(&current.join(&path)))
+        }else{path};
         if let Some(current) = &self.current {
             let shown = display_path(current);
             if shown != path && self.back.last() != Some(&shown) {
@@ -268,7 +272,13 @@ fn resolve_local(input: &str) -> Result<PathBuf, String> {
     if !path.is_absolute() {
         return Err(tr("Enter a full path, such as C:\\Projects, or ~ for your home folder.").into());
     }
-    Ok(path)
+    // Keep breadcrumb navigation stable after completing a trailing separator or
+    // a relative address, without changing symlinks into their target spelling.
+    let mut clean=PathBuf::new();
+    for part in path.components() {
+        match part {std::path::Component::ParentDir=>{clean.pop();},std::path::Component::CurDir=>{},part=>clean.push(part.as_os_str())}
+    }
+    Ok(clean)
 }
 
 fn resolve_folder(distro: &str, input: &str) -> Result<PathBuf, String> {
@@ -517,6 +527,7 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
     let mut outcome = Outcome::None;
     let ctx = ui.ctx().clone();
     let address_id = egui::Id::unique(("explorer_address", ex.side == Side::Linux));
+    if ctx.input_mut(|input|input.consume_key(egui::Modifiers::CTRL,Key::L)) {ex.editing=true;ctx.memory_mut(|memory|memory.request_focus(address_id));}
     let search_id = egui::Id::unique(("explorer_search", ex.side == Side::Linux));
     let mut navigate: Option<String> = None;
     let busy = ex.request.is_some() || ex.changed_at.is_some();
@@ -569,7 +580,9 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
         }
         let w = (ui.available_width() - 40.0).max(120.0);
         if ex.editing {
-            let response = TextField::new(&mut ex.path).id(address_id).hint(if ex.side == Side::Linux { "~/projects" } else { "C:\\Projects" }).width(w).show(ui, pal);
+            let target=if ex.side==Side::Linux {crate::path_completion::Target::linux(ex.distro.clone(),true)}else{crate::path_completion::Target::local(true)};
+            let target=if let Some(root)=ex.current.clone() {target.at(root)}else{target};
+            let response = TextField::new(&mut ex.path).paths(target).id(address_id).hint(if ex.side == Side::Linux { "~/projects" } else { "C:\\Projects" }).width(w).show(ui, pal);
             if !response.has_focus() && !response.lost_focus() {
                 response.request_focus();
             }
