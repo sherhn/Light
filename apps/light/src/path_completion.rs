@@ -100,6 +100,9 @@ pub fn field(ctx:&egui::Context,id:Id,text:&mut String,target:&Target)->(bool,bo
         let shift=ctx.input_mut(|input|input.consume_key(Modifiers::SHIFT,Key::Tab));
         if shift {ctx.memory_mut(|memory|memory.move_focus(egui::FocusDirection::Previous));}
         else if ctx.input_mut(|input|input.consume_key(Modifiers::NONE,Key::Tab)) {
+            // egui decides focus traversal at frame start, before events are consumed.
+            // Cancel that decision even on the first frame after requesting focus.
+            ctx.memory_mut(|memory|memory.move_focus(egui::FocusDirection::None));
             complete=true;
         }
     }
@@ -136,7 +139,6 @@ mod tests {
         let target=Target::local(true).at(dir.path().into());let ctx=egui::Context::default();crate::fonts::install(&ctx);
         let id=Id::unique("path-field-test");let mut text="My P".to_owned();
         frame(&ctx,id,&mut text,&target,vec![],true);
-        frame(&ctx,id,&mut text,&target,vec![],false);
         frame(&ctx,id,&mut text,&target,vec![tab()],false);
         let deadline=Instant::now()+Duration::from_secs(5);
         while text=="My P" && Instant::now()<deadline {std::thread::sleep(Duration::from_millis(2));frame(&ctx,id,&mut text,&target,vec![],false);}

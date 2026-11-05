@@ -1144,6 +1144,7 @@ impl App {
             }
             if tab {
                 ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Tab));
+                  ctx.memory_mut(|memory|memory.move_focus(egui::FocusDirection::None));
                 complete=true;
             }
         }
