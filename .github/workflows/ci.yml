@@ -55,6 +55,8 @@ jobs:
           Remove-Item Env:LIGHT_E2E_SIZE
           Remove-Item Env:LIGHT_E2E_SHORT_PATHS
           python tests/run_e2e.py --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/run_viewer_smoke.py --release
       - name: GUI diagnostics on failure
         if: failure() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4

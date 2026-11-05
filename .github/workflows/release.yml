@@ -118,6 +118,11 @@ jobs:
           Remove-Item Env:LIGHT_E2E_SIZE
           Remove-Item Env:LIGHT_E2E_SHORT_PATHS
           python tests/run_e2e.py --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/run_viewer_smoke.py --release
+      - name: Windows file association regression
+        if: runner.os == 'Windows'
+        run: python tests/run_association_smoke.py --makensis "C:/Program Files (x86)/NSIS/makensis.exe"
       - name: GUI diagnostics on failure
         if: failure() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
