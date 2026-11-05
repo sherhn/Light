@@ -67,6 +67,7 @@ pub struct Doc {
     /// Folded forms, identified by (text of the form's first line, occurrence index).
     pub folds: std::collections::HashSet<(String, usize)>,
     pub outline_cache: Option<(u64, Vec<lisp_syntax::outline::Definition>)>,
+    pub runnable_cache:Option<crate::app_code_runs::Cache>,
     /// The rendered preview of a Markdown or reStructuredText document: its mode, scroll and caches.
     pub preview: crate::preview::PreviewState,
     /// The picture of an image tab, or the drawing beside the code of an SVG document (made when first shown).
@@ -109,6 +110,7 @@ impl Doc {
             git_ignored: false,
             folds: Default::default(),
             outline_cache: None,
+            runnable_cache:None,
             preview: Default::default(),
             picture: None,
         })
@@ -139,6 +141,7 @@ impl Doc {
             git_ignored: false,
             folds: Default::default(),
             outline_cache: None,
+            runnable_cache:None,
             preview: Default::default(),
             picture: None,
         }

@@ -75,7 +75,7 @@ impl App {
             Some(t) => (wsl::to_linux(&path, t), wsl::to_linux(dir, t)),
             None => (path.display().to_string().replace('\\', "/"), dir.display().to_string().replace('\\', "/")),
         };
-        let line = def.command_line(&file_s, &dir_s, target.is_none());
+        let line = def.command_line(&file_s, &dir_s, cfg!(windows)&&target.is_none());
         let launch = match &target {
             Some(t) => {
                 let marker = wsl::new_marker();

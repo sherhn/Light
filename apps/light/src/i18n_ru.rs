@@ -2,6 +2,16 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Run function '{}'", "Запустить функцию '{}'"),
+    ("Run function '{symbol}'", "Запустить функцию '{symbol}'"),
+    ("Run file '{}'", "Запустить файл '{}'"),
+    ("Save modified files before running this action", "Сохраните изменённые файлы перед запуском"),
+    ("This run target changed or its module was disabled", "Код для запуска изменился или его модуль отключён"),
+    ("Docker: Build stage '{symbol}'", "Docker: собрать стадию '{symbol}'"),
+    ("Compose: Build service '{symbol}'", "Compose: собрать сервис '{symbol}'"),
+    ("Compose: Start service '{symbol}'", "Compose: запустить сервис '{symbol}'"),
+    ("Compose: Stop service '{symbol}'", "Compose: остановить сервис '{symbol}'"),
+    ("Compose: Service logs '{symbol}'", "Compose: журналы сервиса '{symbol}'"),
     ("Browse Files / Linux (WSL)...", "Файлы / Linux (WSL)..."),
     ("View file", "Просмотреть файл"),
     ("Copy to Windows...", "Копировать в Windows..."),

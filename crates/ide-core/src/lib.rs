@@ -6,6 +6,7 @@ pub mod bundle;
 pub mod clone;
 pub mod cmdhistory;
 pub mod cmdscript;
+pub mod code_actions;
 pub mod commands;
 pub mod conflicts;
 pub mod containers;

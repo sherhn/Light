@@ -263,7 +263,7 @@ impl App {
             None => (file.display().to_string().replace('\\', "/"), dir.display().to_string().replace('\\', "/")),
         };
         let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        let mut line = def.command_line(&file_s, &dir_s, t.is_none());
+        let mut line = def.command_line(&file_s, &dir_s, cfg!(windows)&&t.is_none());
         // a run that measures coverage has a tab of its own and a folder for its report
         let key = if !def.coverage.is_empty() { format!("coverage:{}", file.display()) } else if !def.profile.is_empty() { format!("profile:{}", file.display()) } else { format!("file:{}", file.display()) };
         let title = format!("{} '{}'", def.name, name);
@@ -459,6 +459,8 @@ mod browser_tests {
 pub enum RunRequest {
     File(PathBuf),
     Language(ide_core::modules::RunDef, PathBuf),
+    CodeAction(ide_core::modules::CodeActionDef,PathBuf,String),
+    LispFunction(PathBuf,ide_core::code_actions::LispFunction),
     Make(String),
     Asdf(String, bool),
     Scenario(String),
@@ -517,6 +519,8 @@ impl App {
         match self.run_request.clone() {
             Some(RunRequest::File(path)) => { self.open_file(&path); self.run_current_file(); }
             Some(RunRequest::Language(def, path)) => self.run_language_command(&def, &path),
+            Some(RunRequest::CodeAction(def,path,symbol))=>self.run_code_action(&path,&def,&symbol),
+            Some(RunRequest::LispFunction(path,function))=>self.run_lisp_function(&path,&function),
             Some(RunRequest::Make(target)) => self.run_make(&target),
             Some(RunRequest::Asdf(system, test)) => self.run_asdf_system(&system, test),
             Some(RunRequest::Scenario(name)) => self.run_scenario(&name),

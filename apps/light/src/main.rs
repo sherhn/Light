@@ -9,6 +9,7 @@ mod app_transfer;
 mod viewer;
 mod app_check;
 mod app_tasks;
+mod app_code_runs;
 mod app_testing;
 mod app_http;
 mod app_conflicts;

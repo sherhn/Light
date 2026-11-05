@@ -497,7 +497,7 @@ impl App {
         // build with what the debugger needs, in a Run tab; the debugging starts when that succeeds
         let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
         let run = ide_core::modules::RunDef { command: prepare.clone(), ..Default::default() };
-        let line = run.command_line(&crate::app_run::shell_path(path, t.as_ref()), &crate::app_run::shell_path(&dir, t.as_ref()), t.is_none());
+        let line = run.command_line(&crate::app_run::shell_path(path, t.as_ref()), &crate::app_run::shell_path(&dir, t.as_ref()), cfg!(windows)&&t.is_none());
         let launch = crate::app_run::shell_launch(&line, &dir, t.as_ref(), &[]);
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let title = i18n::fmt("Build {} for debugging", &[&name]);

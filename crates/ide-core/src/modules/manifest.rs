@@ -29,6 +29,29 @@ pub struct RunDef {
     pub profile: String,
 }
 
+/// A run action attached to matching code. Older IDEs ignore this optional list.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct CodeActionDef {
+    pub language:String,
+    pub name:String,
+    /// Multiline regexp; an optional named group `symbol` identifies the target.
+    pub pattern:String,
+    /// Optional regexp selecting regions in which the declaration may occur.
+    pub context:String,
+    /// Limit matches to the first indentation level inside each context region.
+    pub direct_children:bool,
+    /// The usual file placeholders plus `{symbol}`. Captured names are validated.
+    pub command:String,
+    pub windows:String,
+}
+impl CodeActionDef {
+    pub fn command_line(&self,symbol:&str,file:&str,dir:&str,windows:bool)->Option<String> {
+        if !crate::code_actions::safe_symbol(symbol) || symbol.is_empty()&&(self.command.contains("{symbol}")||self.windows.contains("{symbol}")) {return None}
+        Some(RunDef {command:self.command.replace("{symbol}",symbol),windows:self.windows.replace("{symbol}",symbol),..Default::default()}.command_line(file,dir,windows))
+    }
+}
+
 impl RunDef {
     /// The command line that runs `file`, with the placeholders filled in. `file` and `dir` are the paths as the shell
     /// that runs the line sees them (slashes, not backslashes); `windows`: the project runs on Windows.
@@ -301,6 +324,7 @@ pub struct Manifest {
     pub builtin: String,
     pub languages: Vec<LangDef>,
     pub run: Vec<RunDef>,
+    pub code_actions:Vec<CodeActionDef>,
     /// Syntax checks of the language's files, run when a file is saved.
     pub check: Vec<CheckDef>,
     pub tools: Vec<ToolDef>,
@@ -339,6 +363,14 @@ impl Manifest {
             if !self.languages.iter().any(|l| l.id == r.language) && self.builtin.is_empty() {
                 return Err(format!("{}: the run command {:?} is for the unknown language {:?}", self.id, r.name, r.language));
             }
+        }
+        for action in &self.code_actions {
+            if !self.languages.iter().any(|l|l.id==action.language) && self.builtin.is_empty() {return Err(format!("{}: code action for unknown language {}",self.id,action.language))}
+            if action.name.trim().is_empty()||action.command.trim().is_empty() {return Err(format!("{}: code actions need a name and command",self.id))}
+            let pattern=crate::code_actions::compile(&action.pattern)?;
+            if !action.context.is_empty() {crate::code_actions::compile(&action.context)?;}
+            if action.direct_children&&action.context.is_empty() {return Err("A direct-child code action needs a context pattern".into())}
+            if (action.command.contains("{symbol}")||action.windows.contains("{symbol}")) && !pattern.capture_names().any(|name|name==Some("symbol")) {return Err(format!("{}: code action {} needs a symbol capture",self.id,action.name))}
         }
         for c in &self.check {
             if !self.languages.iter().any(|l| l.id == c.language) {

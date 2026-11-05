@@ -94,10 +94,12 @@ impl App {
     /// Run `task` of the file `path` in a Run tab of its own, in the file's folder.
     pub fn run_task(&mut self, def: &TaskDef, path: &Path, task: &str) {
         self.save_all();
+        let text=self.docs.iter().find(|doc|doc.path.as_deref()==Some(path)).map(|doc|doc.ed.text().to_string()).or_else(||std::fs::read_to_string(path).ok()).unwrap_or_default();
+        if !def.tasks_in(&text).iter().any(|name|name==task) {self.toast(tr("This run target changed or its module was disabled"),crate::editor_view::Sev::Weak);return}
         let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
         let t = self.wsl_target();
         let root = self.project_root().map(Path::to_path_buf).unwrap_or_else(|| dir.clone());
-        let line = def.command_line(task, &shell_path(path, t.as_ref()), &shell_path(&dir, t.as_ref()), &shell_path(&root, t.as_ref()), t.is_none());
+        let line = def.command_line(task, &shell_path(path, t.as_ref()), &shell_path(&dir, t.as_ref()), &shell_path(&root, t.as_ref()), cfg!(windows)&&t.is_none());
         let launch = shell_launch(&line, &dir, t.as_ref(), &[]);
         let title = format!("{} {task}", def.name);
         if self.start_run(format!("task:{}:{}:{task}", def.name, path.display()), title.clone(), launch, &title, dir, t) {

@@ -73,6 +73,21 @@ try:
             {"op": "screenshot", "path": str(shots / "real_wsl_files.png")},
             {"op": "file_browser_button", "value": "Open in IDE"},
             {"op": "assert_text_contains", "value": "Заметки из WSL"},
+            {"op": "open_project", "path": str(source)},
+            {"op": "wait", "what": "index", "timeout": 60},
+            {"op": "open", "path": str(source / "src/main.py")},
+            {"op": "frames", "value": 3},
+            {"op": "gutter_icon_click", "line": 1},
+            {"op": "frames", "value": 3},
+            {"op": "gutter_menu_click", "value": "Run function 'main'"},
+            {"op": "wait", "what": "run_done", "timeout": 60},
+            {"op": "assert_run_contains", "value": "WSL Unicode: привет"},
+            {"op": "terminal_mode", "value": "commands"},
+            {"op": "key", "value": "Alt+F12"},
+            {"op": "frames", "value": 3},
+            {"op": "text", "value": "cat /etc/pas"},
+            {"op": "key", "value": "Tab"},
+            {"op": "wait", "what": "term_input", "value": "cat /etc/passwd ", "timeout": 30},
             {"op": "copy_file", "path": str(source), "destination": str(target)},
             {"op": "wait", "what": "file_transfer_idle", "timeout": 60},
             {"op": "assert_file_copy"},
@@ -100,7 +115,7 @@ try:
         assert viewer.returncode == 0 and "QUICK VIEW READY" in viewer_log, viewer_log
         assert (config / "settings.json").read_bytes() == before
         assert (source / "src/main.py").read_text(encoding="utf-8") == content
-        print(f"PASS real {distro}: UNC browser, Unicode Tab completion, IDE opening, verified folder copy, empty directories and read-only quick view")
+        print(f"PASS real {distro}: UNC browser, field/terminal Tab completion, Python function button, verified folder copy, empty directories, symlink rejection and read-only quick view")
         print(viewer_log.strip())
 finally:
     # The exact mktemp result was validated before any files were created.

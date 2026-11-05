@@ -9,6 +9,6 @@ pub mod registry;
 pub mod sha256;
 pub mod store;
 
-pub use manifest::{CheckDef, DebugDef, Detect, DownloadDef, FixedTask, Manifest, RunDef, TaskDef, Template, TestDef, ToolDef, is_newer};
+pub use manifest::{CheckDef, CodeActionDef, DebugDef, Detect, DownloadDef, FixedTask, Manifest, RunDef, TaskDef, Template, TestDef, ToolDef, is_newer};
 pub use registry::{FileEntry, Index, IndexEntry, Source, default_sources, fetch_index};
 pub use store::{Installed, ModuleStore, State};
