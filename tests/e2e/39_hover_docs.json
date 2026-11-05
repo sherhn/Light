@@ -101,7 +101,7 @@
 
   {"op": "log", "value": "Find Usages in the language of a module"},
   {"op": "command", "value": "find.usages"},
-  {"op": "frames", "value": 10},
+  {"op": "wait", "what": "find_done", "timeout": 30},
   {"op": "assert_find_results", "min": 4},
   {"op": "screenshot", "path": "${SHOTS}/${NAME}_usages.png"},
 
@@ -128,7 +128,7 @@
   {"op": "open", "path": "${PROJ}/native/boot.asm"},
   {"op": "caret", "line": 5, "col": 3},
   {"op": "command", "value": "find.usages"},
-  {"op": "frames", "value": 10},
+  {"op": "wait", "what": "find_done", "timeout": 30},
   {"op": "assert_find_results", "min": 3},
 
   {"op": "open", "path": "${PROJ}/native/calc.c"},

@@ -53,7 +53,7 @@
   {"op":"log","value":"who calls inner: outer, in this file; tracing shows the calls in the REPL"},
   {"op":"caret","line":1,"col":8},
   {"op":"command","value":"repl.who_calls"},
-  {"op":"frames","value":10},
+  {"op":"wait","what":"find_results","min":1,"timeout":30},
   {"op":"assert_bottom","value":"find"},
   {"op":"assert_find_results","min":1},
   {"op":"command","value":"repl.trace"},

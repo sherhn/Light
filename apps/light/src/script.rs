@@ -133,6 +133,7 @@ impl App {
             "popup" => !matches!(self.popup, Popup::None),
             "all_saved" => self.docs.iter().all(|d| !d.ed.is_modified() || d.path.is_none()),
             "document_conflict" => self.doc().is_some_and(|doc| doc.conflict),
+            "find_results" => self.find_results.hits.len() as u64 >= cond["min"].as_u64().unwrap_or(1),
             "find_done" => self.find_rx.is_none(),
             "ask_open" => matches!(self.popup, Popup::OpenProject { .. }),
             "no_popup" => matches!(self.popup, Popup::None),
