@@ -20,6 +20,8 @@ Add the languages and tools your project needs.
 
 Modules are installed inside the IDE. Compilers and interpreters are configured separately.
 
+Project/file [notes and Quick View](docs/notes-and-quick-view.md), [signed background updates with rollback](docs/auto-updates.md), and [themes with live contrast control](docs/themes.md) are part of the core IDE.
+
 Official modules and their sources live in [Light-Modules](https://github.com/sherhn/Light-Modules). The IDE downloads versioned ZIPs and verifies both archive and file checksums. Installers include the pinned offline module catalog. See [module development and source builds](docs/modules.md).
 
 Licensed under [MIT](LICENSE).
@@ -47,6 +49,8 @@ Light — открытая модульная IDE на Rust и egui для Windo
 - Локальная история, предпросмотр документов (Markdown, reStructuredText, SVG), просмотр изображений (PNG, JPEG, GIF, BMP, WebP, ICO) и настраиваемые темы.
 
 Модули устанавливаются внутри IDE. Компиляторы и интерпретаторы настраиваются отдельно.
+
+В ядро IDE входят [заметки и быстрый просмотр](docs/notes-and-quick-view.md), [подписанные фоновые обновления с откатом](docs/auto-updates.md) и [темы с регулировкой контрастности](docs/themes.md).
 
 Официальные модули и их исходники находятся в [Light-Modules](https://github.com/sherhn/Light-Modules). IDE загружает архивы конкретных версий и проверяет контрольные суммы архива и файлов. В установщик входит закреплённый набор модулей для установки без интернета. Подробнее — [модули и сборка из исходников](docs/modules.md).
 
