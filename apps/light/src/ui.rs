@@ -68,6 +68,7 @@ impl eframe::App for App {
         self.tick(&ctx);
         self.handle_input(&ctx);
         self.script_step(&ctx);
+        crate::file_marks::apply(&ctx,self.settings.file_icon_style);
         self.handle_dropped_files(&ctx);
         // the shell of Linux says again, when it is drawn, whether it has the keyboard
         self.term.shell_focused = false;

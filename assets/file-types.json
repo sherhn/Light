@@ -1,0 +1,265 @@
+[
+  {
+    "id": "lisp",
+    "name": "Lisp",
+    "extensions": [
+      "asd",
+      "cl",
+      "clj",
+      "cljs",
+      "edn",
+      "el",
+      "lisp",
+      "lsp",
+      "scm",
+      "ss"
+    ],
+    "files": []
+  },
+  {
+    "id": "c-cpp",
+    "name": "C and C++",
+    "extensions": [
+      "c",
+      "c++",
+      "cc",
+      "cpp",
+      "cxx",
+      "h",
+      "hh",
+      "hpp",
+      "hxx",
+      "inl",
+      "ipp",
+      "ld",
+      "lds",
+      "tpp"
+    ],
+    "files": [
+      "meson.build"
+    ]
+  },
+  {
+    "id": "python",
+    "name": "Python",
+    "extensions": [
+      "py",
+      "pyi",
+      "pyw",
+      "pyx"
+    ],
+    "files": [
+      "Pipfile",
+      "SConscript",
+      "SConstruct",
+      "pyproject.toml",
+      "requirements.txt",
+      "setup.py"
+    ]
+  },
+  {
+    "id": "assembler",
+    "name": "Assembler",
+    "extensions": [
+      "asm",
+      "fasm",
+      "inc",
+      "nasm",
+      "s"
+    ],
+    "files": []
+  },
+  {
+    "id": "html",
+    "name": "HTML",
+    "extensions": [
+      "htm",
+      "html",
+      "xhtml"
+    ],
+    "files": []
+  },
+  {
+    "id": "css",
+    "name": "CSS",
+    "extensions": [
+      "css"
+    ],
+    "files": []
+  },
+  {
+    "id": "markdown",
+    "name": "Markdown",
+    "extensions": [
+      "markdown",
+      "md",
+      "mdown",
+      "mdx",
+      "mkd"
+    ],
+    "files": [
+      "CHANGELOG",
+      "LICENSE",
+      "README"
+    ]
+  },
+  {
+    "id": "restructuredtext",
+    "name": "reStructuredText",
+    "extensions": [
+      "rest",
+      "rst"
+    ],
+    "files": [
+      "conf.py"
+    ]
+  },
+  {
+    "id": "docker",
+    "name": "Docker",
+    "extensions": [
+      "dockerfile"
+    ],
+    "files": [
+      "*.dockerignore",
+      ".dockerignore",
+      "Containerfile",
+      "Containerfile.*",
+      "Dockerfile",
+      "Dockerfile.*",
+      "compose.*.yaml",
+      "compose.*.yml",
+      "compose.yaml",
+      "compose.yml",
+      "docker-compose.*.yaml",
+      "docker-compose.*.yml",
+      "docker-compose.yaml",
+      "docker-compose.yml"
+    ]
+  },
+  {
+    "id": "javascript",
+    "name": "JavaScript",
+    "extensions": [
+      "cjs",
+      "js",
+      "jsx",
+      "mjs"
+    ],
+    "files": [
+      "package-lock.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "yarn.lock"
+    ]
+  },
+  {
+    "id": "shell-make",
+    "name": "Shell and Make",
+    "extensions": [
+      "bash",
+      "bash_profile",
+      "bashrc",
+      "cmake",
+      "conf",
+      "gitignore",
+      "ksh",
+      "mak",
+      "mk",
+      "profile",
+      "properties",
+      "sh",
+      "zsh",
+      "zshrc"
+    ],
+    "files": [
+      ".bash_profile",
+      ".bashrc",
+      ".gitattributes",
+      ".gitignore",
+      ".profile",
+      ".zshrc",
+      "CMakeLists.txt",
+      "Dockerfile",
+      "GNUmakefile",
+      "Makefile",
+      "makefile"
+    ]
+  },
+  {
+    "id": "json",
+    "name": "JSON",
+    "extensions": [
+      "json",
+      "jsonc",
+      "jsonl",
+      "ndjson"
+    ],
+    "files": []
+  },
+  {
+    "id": "toml",
+    "name": "TOML",
+    "extensions": [
+      "toml"
+    ],
+    "files": []
+  },
+  {
+    "id": "yaml",
+    "name": "YAML",
+    "extensions": [
+      "yaml",
+      "yml"
+    ],
+    "files": []
+  },
+  {
+    "id": "ini",
+    "name": "INI",
+    "extensions": [
+      "cfg",
+      "ini"
+    ],
+    "files": [
+      ".editorconfig",
+      ".gitconfig",
+      ".gitmodules"
+    ]
+  },
+  {
+    "id": "dotenv",
+    "name": "Environment",
+    "extensions": [
+      "env"
+    ],
+    "files": [
+      "*.env",
+      "*.env.*",
+      ".env",
+      ".env.*"
+    ]
+  },
+  {
+    "id": "http",
+    "name": "HTTP Client",
+    "extensions": [
+      "http"
+    ],
+    "files": [
+      "http-client.env.json"
+    ]
+  },
+  {
+    "id": "source",
+    "name": "Source code",
+    "extensions": [
+      "als",
+      "rs",
+      "ts",
+      "tsx",
+      "txt"
+    ],
+    "files": []
+  }
+]

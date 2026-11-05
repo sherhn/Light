@@ -213,10 +213,9 @@ impl App {
                 let kind = self.git_change_of(&row.path);
                 if row.is_dir {
                     icons::paint(ui.painter(), ir, if row.expanded { Icon::FolderOpen } else { Icon::Folder }, if row.ignored { pal.text_dim.gamma_multiply(0.7) } else { pal.builtin.gamma_multiply(0.85) });
-                } else if lisp_syntax::dialect::is_lisp_file(&row.path) {
-                    icons::paint(ui.painter(), ir, Icon::Lisp, if row.ignored { pal.text_dim.gamma_multiply(0.7) } else { pal.keyword_form });
                 } else {
-                    icons::paint(ui.painter(), ir, Icon::File, pal.text_dim);
+                    let language = self.mods.langs.find(&row.path,None);
+                    crate::file_marks::paint(ui.painter(),ir,Some(&row.path),language.as_ref().map(|l|l.id()),&pal,row.ignored);
                 }
                 let dirty_dir = row.is_dir && self.git.dirty_dirs.contains(&row.path) && row.depth > 0;
                 let color = if row.ignored {
@@ -1387,12 +1386,8 @@ impl App {
                     ui.horizontal(|ui| {
                         ui.add_space(14.0);
                         let (r, _) = ui.allocate_exact_size(Vec2::splat(16.0), Sense::hover());
-                        let (icon, color) = if self.lisp_enabled() && lisp_syntax::dialect::is_lisp_file(&h.path) {
-                            (Icon::Lisp, pal.keyword_form)
-                        } else {
-                            (Icon::File, pal.text_dim)
-                        };
-                        icons::paint(ui.painter(), r, icon, color);
+                        let language = self.mods.langs.find(&h.path,None);
+                        crate::file_marks::paint(ui.painter(),r,Some(&h.path),language.as_ref().map(|l|l.id()),&pal,false);
                         ui.label(RichText::new(rel).font(fonts::semibold(13.0)));
                     });
                 }

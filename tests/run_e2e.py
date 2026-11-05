@@ -88,6 +88,11 @@ def run_one(script_path):
     http_server = None
     try:
         proj = make_fixture(tmp)
+        if "@file_icons" in script_path.read_text(encoding="utf-8"):
+            icons = proj / "icons"
+            icons.mkdir()
+            for filename in ["a.lsp","b.cpp","c.py","d.asm","e.html","f.css","g.md","h.rst","Dockerfile","i.js","Makefile","j.jsonc","k.toml","l.yaml","m.ini",".env.local","n.http"]:
+                (icons / filename).write_text("# file icon sample\n",encoding="utf-8")
         text = script_path.read_text(encoding="utf-8")
         if "@http_server" in text:
             http_server = fake_http.Server().start()

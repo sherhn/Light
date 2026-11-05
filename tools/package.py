@@ -109,6 +109,7 @@ def main():
         shutil.copy2(src, dist / src.name)
 
     shutil.copytree(ROOT / "apps/light/assets/module-marks", dist / "licenses/module-marks")
+    shutil.copytree(ROOT / "assets/file-icons", dist / "file-icons")
 
     shutil.copy2(sbcl_exe, dist / "lisp" / f"sbcl{EXE}")
     shutil.copy2(sbcl_core, dist / "lisp" / "sbcl.core")

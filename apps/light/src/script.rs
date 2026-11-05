@@ -1775,6 +1775,24 @@ impl App {
             }
             // the theme: `value` is dark, light or custom; for custom, `dark` picks the palette it starts from, `set` is
             // a map of colour keys to hex codes and `reset` a list of keys (or `true`: all) to give back
+            "file_icons" => {
+                self.settings.file_icon_style=match sval.as_str() {
+                    "colored"=>ide_core::settings::FileIconStyle::Colored,
+                    "monochrome"=>ide_core::settings::FileIconStyle::Monochrome,
+                    "standard"=>ide_core::settings::FileIconStyle::Standard,
+                    _=>{self.fail(format!("unknown file icon style {sval}"));return;}
+                };
+                crate::file_marks::apply(ctx,self.settings.file_icon_style);
+            }
+            "assert_file_icons" => {
+                let got=match self.settings.file_icon_style {
+                    ide_core::settings::FileIconStyle::Colored=>"colored",
+                    ide_core::settings::FileIconStyle::Monochrome=>"monochrome",
+                    ide_core::settings::FileIconStyle::Standard=>"standard",
+                };
+                if got!=sval {self.fail(format!("file icon style {got}, expected {sval}"));}
+                if crate::file_marks::style(ctx)!=self.settings.file_icon_style {self.fail("file icon rendering preference was not applied".into());}
+            }
             "theme" => {
                 use ide_core::settings::{Theme, parse_color};
                 self.settings.theme = match sval.as_str() {

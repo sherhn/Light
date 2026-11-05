@@ -14,6 +14,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Light"
+REGISTRY_PREFIX = "Software"
 
 
 def reset_directory(path, parent):
@@ -101,16 +102,21 @@ def windows(dist, version, architecture, compiler=None):
     output = dist.parent / f"{dist.name}-Setup.exe"
     manifest = dist.parent / f".{dist.name}-uninstall.nsh"
     manifest.write_text(uninstall_manifest(dist), encoding="utf-8")
+    from file_types import nsis_macros
+    associations = dist.parent / f".{dist.name}-file-types.nsh"
+    associations.write_text(nsis_macros(REGISTRY_PREFIX), encoding="utf-8")
     definitions = {
         "APP_VERSION": version, "OUTPUT_FILE": output, "PAYLOAD_DIR": dist,
         "APP_ICON": ROOT / "assets/icon/light.ico", "UNINSTALL_KEY": UNINSTALL_KEY,
         "UNINSTALL_MANIFEST": manifest,
+        "FILE_ASSOCIATIONS": associations,
         "PAYLOAD_KIB": sum(p.stat().st_size for p in dist.rglob("*") if p.is_file()) // 1024,
     }
     try:
         subprocess.run([str(compiler), "/V2", "/INPUTCHARSET", "UTF8"] + [f"/D{k}={v}" for k, v in definitions.items()] + [str(ROOT / "tools/installers/light.nsi")], check=True)
     finally:
         manifest.unlink(missing_ok=True)
+        associations.unlink(missing_ok=True)
     return output
 
 

@@ -208,6 +208,17 @@ impl App {
                             if self.settings.theme == Theme::Custom && crate::ui_theme::theme_editor(ui, &pal, &mut self.settings.custom_theme, self.settings.theme_contrast) {
                                 changed_theme = true;
                             }
+                            group(ui, &pal, tr("File icons"), |ui, rows| {
+                                rows.row(ui,&pal,tr("Style"),tr("Colored marks, monochrome marks, or the standard file icon in lists and tabs"),320.0,|ui| {
+                                    use ide_core::settings::FileIconStyle;
+                                    let styles=[FileIconStyle::Colored,FileIconStyle::Monochrome,FileIconStyle::Standard];
+                                    let current=styles.iter().position(|style|*style==self.settings.file_icon_style).unwrap_or(0);
+                                    if let Some(index)=widgets::segmented(ui,&pal,&[tr("Colored"),tr("Monochrome"),tr("Standard")],current) {
+                                        self.settings.file_icon_style=styles[index];
+                                        crate::file_marks::apply(ui.ctx(),styles[index]);
+                                    }
+                                });
+                            });
                             group(ui, &pal, tr("Logo"), |ui, rows| {
                                 rows.row(ui, &pal, tr("Logo inside the application"), tr("The light logo suits dark backgrounds, the dark one light ones. Automatic follows the theme inside the window and the system's light or dark setting for the window's icon (taskbar, Dock). Light and Dark never ask the system."), 280.0, |ui| {
                                     use ide_core::settings::LogoStyle;

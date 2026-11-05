@@ -2,6 +2,12 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("File icons", "Значки файлов"),
+    ("Style", "Вид"),
+    ("Colored", "Цветные"),
+    ("Monochrome", "Чёрно-белые"),
+    ("Standard", "Стандартные"),
+    ("Colored marks, monochrome marks, or the standard file icon in lists and tabs", "Цветные знаки языков, чёрно-белые или обычный значок файла в списках и вкладках"),
     ("Contrast", "Контрастность"),
     ("Reset contrast", "Сбросить контрастность"),
     ("Adjust text, syntax and outlines together. Your custom colors stay saved.", "Контраст текста, подсветки и границ. Заданные вами цвета сохраняются."),

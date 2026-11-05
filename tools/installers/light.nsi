@@ -87,6 +87,7 @@ Section "$(LightCore)" Core
   File /r "${PAYLOAD_DIR}\*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   ; Offer Light through Open With / Default Apps without changing UserChoice.
+  !include "${FILE_ASSOCIATIONS}"
   WriteRegStr HKCU "Software\Classes\Applications\light.exe" "FriendlyAppName" "Light Quick View"
   WriteRegStr HKCU "Software\Classes\Applications\light.exe\shell\open\command" "" '$\"$INSTDIR\light.exe$\" --view $\"%1$\"'
   WriteRegStr HKCU "Software\Classes\Light.Source" "" "Source code (Light)"
@@ -200,6 +201,7 @@ Section "$(LightCore)" Core
   WriteRegStr HKCU "Software\Classes\Applications\light.exe\SupportedTypes" ".mk" ""
   WriteRegStr HKCU "Software\Classes\.mk\OpenWithProgids" "Light.Source" ""
   WriteRegStr HKCU "Software\Light\Capabilities\FileAssociations" ".mk" "Light.Source"
+  !insertmacro RegisterFileTypes
 
   CreateDirectory "$SMPROGRAMS\Light"
   CreateShortcut "$SMPROGRAMS\Light\Light.lnk" "$INSTDIR\light.exe"
@@ -240,6 +242,7 @@ Section "Uninstall"
     DeleteRegKey HKCU "Software\Light\Installer"
     DeleteRegKey HKCU "Software\Classes\Applications\light.exe"
     DeleteRegKey HKCU "Software\Classes\Light.Source"
+    !insertmacro UnregisterFileTypes
     DeleteRegKey HKCU "Software\Light\Capabilities"
     DeleteRegValue HKCU "Software\RegisteredApplications" "Light"
     DeleteRegValue HKCU "Software\Classes\.txt\OpenWithProgids" "Light.Source"

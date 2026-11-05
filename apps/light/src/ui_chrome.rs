@@ -546,19 +546,19 @@ impl App {
             }
             let ir = Rect::from_min_size(Pos2::new(r.min.x + 14.0, r.center().y - 8.0), Vec2::splat(16.0));
             let is_diff = self.docs[i].diff.is_some();
-            let is_lisp = !is_diff && self.docs[i].ed.is_lisp();
             let (tab_icon, tab_icon_color) = if self.docs[i].is_picture_tab() {
                 (Icon::Preview, pal.accent)
             } else if self.docs[i].page.is_some() {
                 (Icon::Puzzle, pal.accent)
             } else if is_diff {
                 (Icon::FileDiff, pal.accent)
-            } else if is_lisp {
-                (Icon::Lisp, pal.keyword_form)
             } else {
                 (Icon::File, pal.text_dim)
             };
-            icons::paint(ui.painter(), ir, tab_icon, tab_icon_color);
+            if tab_icon == Icon::File || self.docs[i].is_picture_tab() {
+                let doc = &self.docs[i];
+                crate::file_marks::paint(ui.painter(),ir,doc.path.as_deref(),doc.ed.language().map(|l| l.id()).or_else(||doc.ed.is_lisp().then_some("common-lisp")),&pal,false);
+            } else { icons::paint(ui.painter(), ir, tab_icon, tab_icon_color); }
             let has_err = problems.iter().any(|p| p.path == self.docs[i].path && p.path.is_some() && p.sev == Sev::Error);
             let git_color = self.docs[i].path.as_ref().and_then(|p| self.git_change_of(p)).map(|k| self.git_color(k));
             let text_color = if has_err { pal.error } else if let Some(c) = git_color { c } else if active { pal.text } else { pal.text_dim };

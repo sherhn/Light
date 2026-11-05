@@ -17,6 +17,8 @@ pub fn source(id: &str) -> Option<&'static str> {
         "lisp" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="2.5" d="M5 3h4l7 17h4M12 10L5 21"/></svg>"#,
         "assembler" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="black" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M8 1v4m8-4v4M8 19v4m8-4v4M1 8h4m-4 8h4m14-8h4m-4 8h4"/></g></svg>"#,
         "http" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="black" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/><path d="M2 12h20M4 6h16M4 18h16"/></g></svg>"#,
+        "source" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="2" d="m8 5-6 7 6 7m8-14 6 7-6 7M14 3l-4 18"/></svg>"#,
+        "default-file" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="2" stroke-linejoin="round" d="M14 2H5v20h14V7zM14 2v5h5M8 12h8m-8 4h8"/></svg>"#,
         "ini" | "restructuredtext" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="black" stroke-width="2"><path d="M14 2H5v20h14V7zM14 2v5h5M8 12h8m-8 4h8"/></g></svg>"#,
         _ => return None,
     })

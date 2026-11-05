@@ -14,13 +14,6 @@ pub struct FileKind {
     pub filenames: Vec<String>,
 }
 
-impl FileKind {
-    /// What the badge of the kind says: its usual extension (`PY`), or nothing for a file of any name.
-    pub fn badge(&self) -> String {
-        self.extensions.first().map(|e| e.chars().take(4).collect::<String>().to_uppercase()).unwrap_or_default()
-    }
-}
-
 /// The extension a language's files are usually given, when its list starts with a rarer one (`cc` before `cpp`).
 fn main_extension(lang: &LangDef) -> Option<String> {
     const USUAL: [&str; 3] = ["cpp", "yaml", "md"];
@@ -103,11 +96,11 @@ mod tests {
         let kinds = kinds(&installed, true);
         let titles: Vec<&str> = kinds.iter().map(|k| k.title.as_str()).collect();
         assert_eq!(titles, ["", "Assembler", "C and C++", "Docker", "Lisp", "Python"]);
-        assert!(kinds[0].extensions.is_empty() && kinds[0].badge().is_empty());
+        assert!(kinds[0].extensions.is_empty());
         assert_eq!(kinds[1].extensions, ["asm", "s"]);
         assert_eq!(kinds[2].extensions, ["c", "h", "cpp", "hpp"]);
         assert_eq!(kinds[3].filenames, ["Dockerfile", "compose.yaml"]);
-        assert_eq!(kinds[5].badge(), "PY");
+        assert_eq!(kinds[5].extensions[0], "py");
         // without the Lisp module there is no Lisp
         assert!(!super::kinds(&installed, false).iter().any(|k| k.title == "Lisp"));
     }

@@ -173,8 +173,13 @@ impl App {
                         }
                         let bc = badge_color(self, &it.badge);
                         let br = Rect::from_min_size(Pos2::new(r.min.x + 10.0, r.center().y - 12.0), Vec2::splat(24.0));
-                        ui.painter().rect_filled(br, CornerRadius::same(7), bc.gamma_multiply(0.22));
-                        ui.painter().text(br.center(), Align2::CENTER_CENTER, &it.badge, fonts::semibold(12.0), bc);
+                        if let PTarget::File(path)=&it.target {
+                            let language=self.mods.langs.find(path,None);
+                            crate::file_marks::paint(ui.painter(),br.shrink(3.0),Some(path),language.as_ref().map(|l|l.id()),&pal,false);
+                        } else {
+                            ui.painter().rect_filled(br, CornerRadius::same(7), bc.gamma_multiply(0.22));
+                            ui.painter().text(br.center(), Align2::CENTER_CENTER, &it.badge, fonts::semibold(12.0), bc);
+                        }
                         let job = highlighted(&it.label, &it.hits, fonts::ui(14.0), pal.text, pal.accent);
                         let g = ui.painter().layout_job(job);
                         let gw = g.size().x;
@@ -366,7 +371,8 @@ impl App {
                                         crate::icons::paint(ui.painter(), badge.shrink(4.0), Icon::Blank, pal.text_dim);
                                     } else {
                                         ui.painter().rect_filled(badge, CornerRadius::same(7), pal.accent.gamma_multiply(if chosen { 0.35 } else { 0.18 }));
-                                        ui.painter().text(badge.center(), Align2::CENTER_CENTER, k.badge(), fonts::semibold(10.5), pal.accent);
+                                        let sample = format!("file.{}",k.extensions[0]);
+                                        crate::file_marks::paint(ui.painter(),Rect::from_center_size(badge.center(),Vec2::splat(20.0)),Some(std::path::Path::new(&sample)),Some("source"),&pal,false);
                                     }
                                     let title = if k.extensions.is_empty() { tr("File").to_string() } else { k.title.clone() };
                                     let detail = if k.extensions.is_empty() { tr("any name, as typed").to_string() } else { k.extensions.iter().map(|e| format!(".{e}")).collect::<Vec<_>>().join("  ") };

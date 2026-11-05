@@ -704,7 +704,9 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
                     }
                     let icon = if item.project { Icon::FolderGit } else if item.is_dir { Icon::Folder } else { Icon::Blank };
                     let color = if !item.is_dir { pal.text_dim.gamma_multiply(0.7) } else if item.project { pal.accent } else { pal.builtin.gamma_multiply(0.85) };
-                    icons::paint(ui.painter(), Rect::from_center_size(Pos2::new(r.min.x + 16.0, r.center().y), Vec2::splat(16.0)), icon, color);
+                    let icon_rect = Rect::from_center_size(Pos2::new(r.min.x + 16.0, r.center().y), Vec2::splat(16.0));
+                    if item.is_dir { icons::paint(ui.painter(),icon_rect,icon,color); }
+                    else { crate::file_marks::paint(ui.painter(),icon_rect,Some(std::path::Path::new(&item.path)),None,pal,true); }
                     let name_color = if item.is_dir { pal.text } else { pal.text_dim.gamma_multiply(0.8) };
                     let painter = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
                     let name_end = painter.text(Pos2::new(r.min.x + 32.0, r.center().y), Align2::LEFT_CENTER, &item.name, fonts::ui(13.5), name_color).max.x;

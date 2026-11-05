@@ -94,6 +94,7 @@ impl eframe::App for ViewerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let v = &mut self.viewer;
         let ctx = ui.ctx().clone();
+        crate::file_marks::apply(&ctx,v.settings.file_icon_style);
         while let Ok((generation, result)) = v.rx.try_recv() {
             if generation == v.generation { match result { Ok(text) => v.doc = Some(document(&v.paths[v.active], &text)), Err(e) => v.error = Some(e) } }
         }
@@ -110,7 +111,7 @@ impl eframe::App for ViewerApp {
             ui.horizontal_wrapped(|ui| {
                 let mut next = v.active;
                 for (i, path) in v.paths.iter().enumerate() {
-                    if ui.selectable_label(i == v.active, path.file_name().unwrap_or_default().to_string_lossy()).on_hover_text(path.display().to_string()).clicked() { next = i; }
+                    if crate::file_marks::selectable(ui,path,&v.pal,i==v.active).clicked() { next=i; }
                 }
                 if next != v.active { v.active = next; v.load(); }
             });

@@ -18,6 +18,15 @@ pub enum Theme {
     Custom,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FileIconStyle {
+    #[default]
+    Colored,
+    Monochrome,
+    /// One standard document icon for every file.
+    Standard,
+}
+
 impl Theme {
     pub fn toggled(self) -> Theme {
         match self {
@@ -171,6 +180,7 @@ pub struct Settings {
     pub custom_theme: CustomTheme,
     /// Contrast percentage, applied to the derived palette without rewriting custom colors.
     pub theme_contrast: u16,
+    pub file_icon_style: FileIconStyle,
     pub language: Language,
     pub font_size: f32,
     pub show_line_numbers: bool,
@@ -230,6 +240,7 @@ impl Default for Settings {
             theme: Theme::Dark,
             custom_theme: CustomTheme::default(),
             theme_contrast: 100,
+            file_icon_style: FileIconStyle::Colored,
             language: Language::English,
             font_size: 14.0,
             show_line_numbers: true,
@@ -362,7 +373,7 @@ mod tests {
     fn roundtrip_and_defaults() {
         let d = TempDir::new("settings");
         let f = d.path().join("cfg/settings.json");
-        let mut s = Settings { theme: Theme::Light, theme_contrast: 140, font_size: 17.0, logo: LogoStyle::Light, external_logo: LogoStyle::Dark, ..Settings::default() };
+        let mut s = Settings { theme: Theme::Light, theme_contrast: 140, file_icon_style: FileIconStyle::Monochrome, font_size: 17.0, logo: LogoStyle::Light, external_logo: LogoStyle::Dark, ..Settings::default() };
         s.push_recent_project("E:/p");
         s.save_to(&f).unwrap();
         let back = Settings::load_from(&f);
@@ -382,6 +393,7 @@ mod tests {
         assert_eq!(s.font_size, MAX_FONT, "clamped");
         assert!(s.show_line_numbers, "missing fields use defaults");
         assert_eq!(s.theme_contrast, 100, "older settings keep the standard contrast");
+        assert_eq!(s.file_icon_style,FileIconStyle::Colored);
         fs::write(&f, r#"{"theme_contrast":999}"#).unwrap();
         assert_eq!(Settings::load_from(&f).theme_contrast, 150);
     }
