@@ -15,6 +15,19 @@ from legal_sources import require_sbcl_version
 
 
 class LicensePolicyTests(unittest.TestCase):
+    def test_transient_corrupt_download_retries_without_accepting_a_wrong_hash(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = Path(temp) / "source.tar"
+            expected = legal.digest(b"original")
+            with patch.object(legal.urllib.request, "urlopen", side_effect=[io.BytesIO(b"corrupt"), io.BytesIO(b"original")]), patch.object(legal.time, "sleep"):
+                legal.download("https://example.test/source", destination, expected)
+            self.assertEqual(destination.read_bytes(), b"original")
+            with patch.object(legal.urllib.request, "urlopen", side_effect=[io.BytesIO(b"wrong") for _ in range(3)]), patch.object(legal.time, "sleep"):
+                with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+                    legal.download("https://example.test/source", destination, legal.digest(b"other"))
+            self.assertEqual(destination.read_bytes(), b"original")
+            self.assertFalse(destination.with_suffix(".tar.download").exists())
+
     def test_font_and_unicode_obligations_survive_alternative_selection(self):
         self.assertEqual(legal.choose_license("(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0"), ["MIT", "OFL-1.1", "Ubuntu-font-1.0"])
         self.assertEqual(legal.choose_license("(Apache-2.0 OR MIT) AND Unicode-3.0"), ["MIT", "Unicode-3.0"])

@@ -17,6 +17,7 @@ import struct
 import subprocess
 import tarfile
 import threading
+import time
 import tomllib
 import urllib.request
 
@@ -74,7 +75,15 @@ def download(url, destination, expected=None, maximum=150_000_000):
     with _locks_guard:
         mutex = _locks.setdefault(str(Path(destination).resolve()), threading.Lock())
     with mutex:
-        return _download(url, destination, expected, maximum)
+        for attempt in range(3):
+            try:
+                return _download(url, destination, expected, maximum)
+            except (OSError, ValueError) as error:
+                if isinstance(error, ValueError) and not str(error).startswith("SHA-256 mismatch:"):
+                    raise
+                if attempt == 2:
+                    raise
+                time.sleep(attempt + 1)
 
 
 def metadata():
