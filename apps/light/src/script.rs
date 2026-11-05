@@ -120,6 +120,7 @@ impl App {
             "file_contains" => cond["path"].as_str().and_then(|path| std::fs::read_to_string(path).ok()).is_some_and(|text| text.contains(cond["value"].as_str().unwrap_or(""))),
             "wsl_idle" => !self.wsl.busy(),
             "project_browser_idle" => matches!(&self.popup, Popup::ProjectBrowser(browser) if browser.idle()) && !self.wsl.probing(),
+            "file_transfer_idle"=>!self.transfer.busy(),
             "path_input" => matches!(&self.popup,Popup::ProjectBrowser(browser) if browser.shown().address()==cond["value"].as_str().unwrap_or("")),
             "new_project_idle" => matches!(&self.popup, Popup::NewProject { location, creating, .. } if location.job.is_none() && !creating),
             "clone_idle" => matches!(&self.popup, Popup::Clone(state) if state.run.is_none()),
@@ -952,6 +953,15 @@ impl App {
             "focus_editor" => self.editor_focus = true,
             // the Open Project dialog: `side` shows this computer (`local`) or Linux; `go` goes to a folder (as typed in
             // the address); `select` picks a folder of the listing by name; `open`: Ctrl+Enter
+            "copy_file"=>self.start_file_copy(Path::new(step["path"].as_str().unwrap_or("")),Path::new(step["destination"].as_str().unwrap_or(""))),
+            "assert_file_copy"=>{
+                let error=match &self.transfer.result {Some(Ok(_))=>None,Some(Err(error))=>Some(error.clone()),None=>Some("No completed file copy".into())};
+                if step["error"].as_str().is_some_and(|want|error.as_ref().is_some_and(|error|error.contains(want))) {}else if error.is_some()||step["error"].is_string() {self.fail(format!("assert_file_copy: {error:?}; expected error {:?}",step["error"]));}
+            },
+            "file_browser_button"=>{
+                let position=ctx.data(|data|data.get_temp::<Vec<(String,egui::Rect)>>(egui::Id::unique("file_browser_buttons"))).and_then(|rows|rows.into_iter().find(|(label,_)|*label==sval)).map(|(_,rect)|rect.center());
+                if let Some(pos)=position {self.script.as_mut().unwrap().steps.push_front(serde_json::json!({"op":"click","x":pos.x,"y":pos.y}));}else{self.fail(format!("File browser button not found: {sval}"));}
+            },
             "project_browser" => {
                 let mut missing = None;
                 if let Popup::ProjectBrowser(browser) = &mut self.popup {
@@ -965,7 +975,7 @@ impl App {
                         ex.navigate(path.to_string());
                     }
                     if let Some(name) = step["select"].as_str() {
-                        let found = ex.items().iter().find(|i| i.name == name && i.is_dir).map(|i| i.path.clone());
+                        let found = ex.items().iter().find(|i| i.name == name && (i.is_dir||ex.purpose==crate::ui_project_browser::Purpose::Files)).map(|i| i.path.clone());
                         if found.is_none() {
                             missing = Some(format!("project_browser: no folder {name:?} listed"));
                         }

@@ -73,6 +73,7 @@ pub enum Side {
 pub enum Purpose {
     Open,
     Pick,
+    Files,
 }
 
 /// What a frame of the explorer asks for.
@@ -85,6 +86,9 @@ pub enum Outcome {
     Native,
     /// Open the settings of Linux (WSL).
     Setup,
+    View(PathBuf),
+    Edit(PathBuf),
+    Copy(PathBuf),
 }
 
 pub struct Explorer {
@@ -198,6 +202,7 @@ impl Explorer {
         }
         let (side, distro, path, query) = (self.side, self.distro.clone(), self.path.clone(), self.query.clone());
         let (hidden, recursive) = (self.hidden, self.recursive);
+        let files=self.purpose==Purpose::Files;
         let cancel = Arc::new(AtomicBool::new(false));
         let worker_cancel = cancel.clone();
         let (tx, rx) = mpsc::channel();
@@ -208,7 +213,7 @@ impl Explorer {
             };
             let result = root.and_then(|root| {
                 if recursive && !query.is_empty() {
-                    scan_folders(root, &query, hidden, true, &worker_cancel)
+                    scan_entries(root, &query, hidden, true, files, &worker_cancel)
                 } else {
                     list_folder(root, hidden, &worker_cancel)
                 }
@@ -372,7 +377,7 @@ fn list_folder(root: PathBuf, hidden: bool, cancel: &AtomicBool) -> Result<Listi
 }
 
 /// Searches directory names, never file contents or symlink targets. An empty query lists one level.
-fn scan_folders(root: PathBuf, query: &str, hidden: bool, recursive: bool, cancel: &AtomicBool) -> Result<Listing, String> {
+fn scan_entries(root: PathBuf, query: &str, hidden: bool, recursive: bool, files:bool, cancel: &AtomicBool) -> Result<Listing, String> {
     let mut listing = Listing { root: root.clone(), items: vec![], found: true, limited: false, skipped: 0 };
     let query = query.to_lowercase();
     let searching = !query.is_empty() && recursive;
@@ -419,14 +424,16 @@ fn scan_folders(root: PathBuf, query: &str, hidden: bool, recursive: bool, cance
                 }
             };
             // Symlink folders remain selectable; do not recurse through them (cycles, mounts).
-            if !kind.is_dir() && !(kind.is_symlink() && entry.path().is_dir()) {
+            let is_dir=kind.is_dir() || (kind.is_symlink() && entry.path().is_dir());
+            if !is_dir && !(files&&kind.is_file()) {
                 continue;
             }
             let path = entry.path();
             if query.is_empty() || name.to_lowercase().contains(&query) {
                 let shown = path.strip_prefix(&root).unwrap_or(&path).to_string_lossy().replace('\\', "/");
-                let project = path.join(".git").exists();
-                listing.items.push(Item { path: path.clone(), name: shown, is_dir: true, size: 0, modified: None, project });
+                let project = is_dir&&path.join(".git").exists();
+                let metadata=entry.metadata().ok();
+                listing.items.push(Item { path: path.clone(), name: shown, is_dir, size: if is_dir {0}else{metadata.as_ref().map_or(0,|m|m.len())}, modified:metadata.and_then(|m|m.modified().ok()), project });
                 if listing.items.len() >= MAX_RESULTS {
                     listing.limited = true;
                     break;
@@ -533,7 +540,7 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
     let busy = ex.request.is_some() || ex.changed_at.is_some();
     let typing = ctx.memory(|m| m.has_focus(address_id)) || (ctx.memory(|m| m.has_focus(search_id)) && !ex.query.is_empty());
     let visible: Vec<Item> = ex.visible().into_iter().cloned().collect();
-    let folders: Vec<&Item> = visible.iter().filter(|i| i.is_dir).collect();
+    let folders: Vec<&Item> = visible.iter().filter(|i| i.is_dir || ex.purpose==Purpose::Files).collect();
 
     // the keyboard: arrows choose a folder, Enter goes into it, Backspace up, Ctrl+Enter opens it
     let mut moved = false;
@@ -552,10 +559,12 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
         }
         if ex.error.is_none() && ctx.input_mut(|i| i.consume_key(egui::Modifiers::CTRL, Key::Enter)) {
             if let Some(t) = ex.target() {
-                outcome = Outcome::Choose(t.clone());
+                outcome = if ex.purpose==Purpose::Files && ex.items.iter().any(|item|item.path==*t&&!item.is_dir) {Outcome::View(t.clone())}else{Outcome::Choose(t.clone())};
             }
         } else if ex.selected.is_some() && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Enter)) {
-            navigate = ex.selected.as_ref().map(|p| display_path(p));
+            if ex.purpose==Purpose::Files && ex.selected.as_ref().is_some_and(|path|ex.items.iter().any(|item|item.path==*path&&!item.is_dir)) {
+                outcome=Outcome::View(ex.selected.clone().unwrap());
+            }else{navigate = ex.selected.as_ref().map(|p| display_path(p));}
         }
         if !typing && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Backspace))
             && let Some(parent) = ex.current.as_ref().and_then(|p| p.parent())
@@ -710,9 +719,10 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
                     return;
                 }
                 for item in &visible {
-                    let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 32.0), if item.is_dir { Sense::click() } else { Sense::hover() });
+                    let interactive=item.is_dir||ex.purpose==Purpose::Files;
+                    let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 32.0), if interactive { Sense::click() } else { Sense::hover() });
                     let chosen = ex.selected.as_ref() == Some(&item.path);
-                    if item.is_dir {
+                    if interactive {
                         widgets::row_background(ui, pal, r.expand2(Vec2::new(6.0, 0.0)), chosen, resp.hovered());
                     }
                     let icon = if item.project { Icon::FolderGit } else if item.is_dir { Icon::Folder } else { Icon::Blank };
@@ -734,12 +744,13 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
                         let g = painter.layout_no_wrap(text, fonts::ui(11.5), pal.text_dim);
                         painter.galley(Pos2::new(next, r.center().y - g.size().y / 2.0), g, pal.text_dim);
                     }
-                    if item.is_dir {
+                    if interactive {
                         if resp.clicked() {
                             ex.selected = Some(item.path.clone());
                         }
                         if resp.double_clicked() {
-                            navigate = Some(display_path(&item.path));
+                            if item.is_dir {navigate = Some(display_path(&item.path));}
+                            else {outcome=Outcome::View(item.path.clone());}
                         }
                         if chosen && moved {
                             resp.scroll_to_me(Some(egui::Align::Center));
@@ -777,12 +788,28 @@ fn explorer_ui(ui: &mut egui::Ui, pal: &Palette, ex: &mut Explorer, list_h: f32,
 fn outcome_is_none(o: &Outcome) -> bool {
     matches!(o, Outcome::None)
 }
+fn file_button(ui:&mut egui::Ui,pal:&Palette,label:&str,enabled:bool,primary:bool)->bool {
+    let response=ui.add_enabled_ui(enabled,|ui|if primary {widgets::primary_button(ui,pal,label)}else{widgets::secondary_button(ui,pal,label)}).inner;
+    ui.data_mut(|data|data.get_temp_mut_or_default::<Vec<(String,Rect)>>(egui::Id::unique("file_browser_buttons")).push((label.into(),response.rect)));
+    response.clicked()
+}
 
 /// The footer of an explorer's dialog: where it points, and its buttons. `native`: offer the system's folder dialog.
 fn explorer_footer(ui: &mut egui::Ui, pal: &Palette, ex: &Explorer, native: bool) -> Outcome {
     let mut outcome = Outcome::None;
     ui.add_space(10.0);
     let target = ex.target().cloned();
+    if ex.purpose==Purpose::Files {
+        ui.data_mut(|data|data.insert_temp(egui::Id::unique("file_browser_buttons"),Vec::<(String,Rect)>::new()));
+        let file=ex.selected.as_ref().filter(|path|ex.items.iter().any(|item|item.path==**path&&!item.is_dir));
+        ui.horizontal_wrapped(|ui| {
+            if file_button(ui,pal,tr("View file"),ex.idle()&&file.is_some(),true) {outcome=Outcome::View(file.unwrap().clone());}
+            if file_button(ui,pal,tr("Open in IDE"),ex.idle()&&file.is_some(),false) {outcome=Outcome::Edit(file.unwrap().clone());}
+            if ex.side==Side::Linux && cfg!(windows) && file_button(ui,pal,tr("Copy to Windows..."),ex.idle()&&ex.error.is_none()&&target.is_some(),false) {outcome=Outcome::Copy(target.clone().unwrap());}
+            if widgets::secondary_button(ui,pal,tr("Close")).clicked() {outcome=Outcome::Close;}
+        });
+        return outcome;
+    }
     widgets::right_row(ui, 38.0, |ui| {
         ui.spacing_mut().item_spacing.x = 8.0;
         let label = if ex.purpose == Purpose::Open { tr("Open Project") } else { tr("Choose This Folder") };
@@ -950,6 +977,13 @@ fn no_distro(ui: &mut egui::Ui, pal: &Palette, probing: bool, list_h: f32, outco
 }
 
 impl App {
+    pub fn open_file_browser(&mut self) {
+        self.open_project_browser();
+        if let Popup::ProjectBrowser(browser)=&mut self.popup {
+            browser.local.purpose=Purpose::Files;browser.linux.purpose=Purpose::Files;
+            if cfg!(windows) {browser.switch(Side::Linux);}
+        }
+    }
     pub fn open_project_browser(&mut self) {
         if cfg!(windows) && self.wsl.probe.is_none() && !self.wsl.probing() {
             self.wsl_probe();
@@ -1011,7 +1045,7 @@ impl App {
             widgets::glass_frame(&pal).show(ui, |ui| {
                 ui.set_width(width);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(tr("Open Project")).font(fonts::semibold(17.0)));
+                    ui.label(RichText::new(tr(if st.local.purpose==Purpose::Files {"Files"}else{"Open Project"})).font(fonts::semibold(17.0)));
                     ui.add_space(12.0);
                     // where the project is: this computer first, Linux beside it
                     if cfg!(windows) {
@@ -1053,6 +1087,9 @@ impl App {
             st.switch(side);
         }
         match outcome {
+            Outcome::View(path)=>{self.view_file_window(&path);self.popup=Popup::ProjectBrowser(st);},
+            Outcome::Edit(path)=>{self.open_file(&path);},
+            Outcome::Copy(path)=>{self.pick_copy_to_windows(&path);self.popup=Popup::ProjectBrowser(st);},
             Outcome::Close => {}
             Outcome::Native => {
                 let mut dialog = rfd::FileDialog::new().set_title(tr("Open Project"));
@@ -1066,7 +1103,7 @@ impl App {
                 }
             }
             Outcome::Setup => self.open_settings_page(crate::ui_settings::WSL_PAGE),
-            Outcome::Choose(path) => self.request_open_project(&path),
+            Outcome::Choose(path) => if st.local.purpose==Purpose::Files {st.shown_mut().navigate(display_path(&path));self.popup=Popup::ProjectBrowser(st);}else{self.request_open_project(&path)},
             Outcome::None => {
                 if probing {
                     ctx.request_repaint_after(Duration::from_millis(50));
@@ -1093,7 +1130,7 @@ mod tests {
             std::fs::create_dir_all(self.0.join(name)).unwrap();
         }
         fn scan(&self, query: &str, hidden: bool, recursive: bool) -> Vec<PathBuf> {
-            scan_folders(self.0.clone(), query, hidden, recursive, &AtomicBool::new(false)).unwrap().items.into_iter().map(|i| i.path).collect()
+            scan_entries(self.0.clone(), query, hidden, recursive, false, &AtomicBool::new(false)).unwrap().items.into_iter().map(|i| i.path).collect()
         }
     }
     impl Drop for Fixture {
@@ -1121,6 +1158,14 @@ mod tests {
         assert!(list_folder(f.0.join("missing"), false, &AtomicBool::new(false)).is_err());
         assert!(list_folder(f.0.clone(), false, &AtomicBool::new(true)).is_err());
     }
+    #[test]
+    fn file_browser_search_includes_files_without_following_dependency_trees() {
+        let f=Fixture::new();f.folder("src/nested");f.folder("node_modules/package");
+        std::fs::write(f.0.join("src/nested/main.py"),"code").unwrap();std::fs::write(f.0.join("node_modules/package/main.py"),"dependency").unwrap();
+        let result=scan_entries(f.0.clone(),"main.py",false,true,true,&AtomicBool::new(false)).unwrap();
+        assert_eq!(result.items.len(),1);assert_eq!(result.items[0].name,"src/nested/main.py");assert!(!result.items[0].is_dir);assert_eq!(result.items[0].size,4);
+        assert!(scan_entries(f.0.clone(),"main.py",false,true,false,&AtomicBool::new(false)).unwrap().items.is_empty());
+    }
 
     #[test]
     fn recursive_search_matches_names_and_skips_dependencies() {
@@ -1134,7 +1179,7 @@ mod tests {
         // Dependency folders can still be opened directly.
         assert_eq!(f.scan("node_modules", false, true), [f.0.join("node_modules")]);
         // the found folders are named by their place below the folder searched
-        let found = scan_folders(f.0.clone(), "my project", false, true, &AtomicBool::new(false)).unwrap();
+        let found = scan_entries(f.0.clone(), "my project", false, true, false, &AtomicBool::new(false)).unwrap();
         assert_eq!(found.items[0].name, "work/My Project");
         assert!(found.found);
     }
@@ -1145,12 +1190,12 @@ mod tests {
         for index in 0..MAX_RESULTS + 2 {
             f.folder(&format!("project-{index}"));
         }
-        let found = scan_folders(f.0.clone(), "", false, false, &AtomicBool::new(false)).unwrap();
+        let found = scan_entries(f.0.clone(), "", false, false, false, &AtomicBool::new(false)).unwrap();
         assert_eq!(found.items.len(), MAX_RESULTS);
         assert!(found.limited);
         assert!(list_folder(f.0.clone(), false, &AtomicBool::new(false)).unwrap().limited);
-        assert!(scan_folders(f.0.clone(), "", false, false, &AtomicBool::new(true)).is_err());
-        assert!(scan_folders(f.0.join("missing"), "", false, false, &AtomicBool::new(false)).is_err());
+        assert!(scan_entries(f.0.clone(), "", false, false, false, &AtomicBool::new(true)).is_err());
+        assert!(scan_entries(f.0.join("missing"), "", false, false, false, &AtomicBool::new(false)).is_err());
     }
 
     #[test]

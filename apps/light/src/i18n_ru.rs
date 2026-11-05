@@ -2,6 +2,19 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Browse Files / Linux (WSL)...", "Файлы / Linux (WSL)..."),
+    ("View file", "Просмотреть файл"),
+    ("Copy to Windows...", "Копировать в Windows..."),
+    ("Copy to Windows", "Копирование в Windows"),
+    ("Choose a folder on Windows for the copy", "Выберите папку Windows для копирования"),
+    ("File copy stopped unexpectedly; the source was preserved", "Копирование прервалось. Исходные файлы сохранены."),
+    ("Verifying copied files...", "Проверка скопированных файлов..."),
+    ("Copying files...", "Копирование файлов..."),
+    ("files", "файлов"),
+    ("Copy verified. The source was preserved.", "Копия проверена. Исходные файлы сохранены."),
+    ("Show in File Manager", "Показать в проводнике"),
+    ("Copy error", "Скопировать ошибку"),
+    ("Cannot open file: {}", "Не удалось открыть файл: {}"),
     ("File icons", "Значки файлов"),
     ("Style", "Вид"),
     ("Colored", "Цветные"),

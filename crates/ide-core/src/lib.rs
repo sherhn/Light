@@ -28,6 +28,7 @@ pub mod modules;
 pub mod search;
 pub mod testing;
 pub mod termcomplete;
+pub mod transfer;
 pub mod todo;
 pub mod settings;
 pub mod updates;

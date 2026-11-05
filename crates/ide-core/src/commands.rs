@@ -61,6 +61,7 @@ cmds! {
     "file.open_project", "Open Project...", File, ["Ctrl+Shift+O"];
     "file.clone", "Get from Version Control...", File, [];
     "file.open_file", "Open File...", File, ["Ctrl+O"];
+    "file.browse_files", "Browse Files / Linux (WSL)...", File, [];
     "file.reopen_last", "Reopen Last Project", File, [];
     "file.save", "Save", File, ["Ctrl+S"];
     "file.save_all", "Save All", File, [];

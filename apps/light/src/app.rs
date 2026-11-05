@@ -69,6 +69,7 @@ pub struct App {
     /// Complete last error, retained until its details window is closed.
     pub error_details: Option<String>,
     pub updater: crate::app_updates::UpdateState,
+    pub transfer: crate::app_transfer::TransferState,
     pub hint: Option<(String, f64)>,
     /// The documentation popup of the name the pointer rests on.
     pub hover: crate::hover::HoverState,
@@ -202,6 +203,7 @@ impl App {
             toasts: vec![],
             error_details: None,
             updater: Default::default(),
+            transfer: Default::default(),
             hint: None,
             hover: Default::default(),
             checks: Default::default(),
@@ -882,6 +884,7 @@ impl App {
     pub fn tick(&mut self, ctx: &egui::Context) {
         self.now = ctx.input(|i| i.time);
         self.poll_updates(ctx);
+        self.poll_transfer(ctx);
         self.frame_no += 1;
         let dt = ctx.input(|i| i.unstable_dt) * 1000.0;
         if self.frame_no > 5 && dt > self.max_frame_ms && dt < 120_000.0 {

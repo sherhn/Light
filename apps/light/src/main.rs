@@ -5,6 +5,7 @@
 mod app;
 mod app_updates;
 mod app_notes;
+mod app_transfer;
 mod viewer;
 mod app_check;
 mod app_tasks;

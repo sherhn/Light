@@ -56,7 +56,7 @@ impl App {
             ui.spacing_mut().button_padding = Vec2::new(10.0, 6.0);
             ui.spacing_mut().item_spacing.x = 2.0;
             ui.menu_button(tr("File"), |ui| {
-                self.menu_items(ui, ctx, &["file.new", "file.new_project", "file.open_project", "file.clone", "file.open_file", "file.reopen_last"]);
+                self.menu_items(ui, ctx, &["file.new", "file.new_project", "file.open_project", "file.clone", "file.open_file", "file.browse_files", "file.reopen_last"]);
                 let recent = self.settings.recent_projects.clone();
                 widgets::submenu_row(ui, &pal, Some(Icon::History), tr("Recent Projects"), |ui| {
                     if recent.is_empty() {

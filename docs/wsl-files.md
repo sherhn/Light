@@ -1,0 +1,9 @@
+# WSL files
+
+File → Browse Files / Linux (WSL) opens a browser for this computer and installed WSL distributions. Files and folders can be selected with the mouse or arrow keys. Enter opens a folder or previews a file; Ctrl+L edits the address, with Tab completion. Double-click or View File starts the read-only Quick View for text files. Open in IDE opens the selected file without opening or replacing a project.
+
+Copy to Windows asks for a Windows destination folder and copies the selected file/folder, or the displayed folder if nothing is selected. Work runs in the background with progress, verification and cancellation. Files are first copied into a new temporary folder beside the destination. Source and copied contents are compared with SHA-256 before publishing the copy under its original name. Existing destinations are never overwritten, including ones created while copying. A cancellation or error removes this operation's staging folder. The WSL originals are always preserved; there is no automatic deletion or shell `mv`.
+
+Symbolic links, special files, Windows-incompatible names, case collisions and destinations inside the source are rejected. Choose the real file/folder instead of a link. The copy transfers file contents and empty directories; Linux ownership, modes, links and extended attributes are not converted into Windows permissions. Close programs that are actively rewriting the source. A crash may leave a `.light-transfer-*` staging folder at the destination, while originals stay intact.
+
+Automated coverage includes cancellation, concurrent creation of an existing destination, source changes, Unicode, nested and empty folders, the browser's actual Open in IDE button, and a real Ubuntu-24.04 smoke test (`tests/run_wsl_files_smoke.py`). The real test creates and cleans only its own temporary WSL and Windows folders.

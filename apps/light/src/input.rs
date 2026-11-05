@@ -302,6 +302,7 @@ impl App {
             "file.open_project" => {
                 self.open_project_browser();
             }
+            "file.browse_files"=>self.open_file_browser(),
             "file.open_file" => {
                 let mut dlg = rfd::FileDialog::new().set_title(tr("Open File"));
                 if let Some(r) = self.project_root() {
