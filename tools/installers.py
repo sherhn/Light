@@ -136,6 +136,7 @@ def linux(dist, version, architecture):
         root = work / "root"
         payload = root / "opt/light"
         shutil.copytree(dist, payload)
+        (payload / ".light-package-manager").write_text("dpkg\n", encoding="utf-8")
         for name in ("light", "light-cli", "lisp/sbcl"):
             (payload / name).chmod(0o755)
         for name in ("light", "light-cli"):
@@ -238,6 +239,8 @@ def macos(dist, version, architecture):
         resources = contents / "Resources"
         resources.mkdir()
         for source in dist.iterdir():
+            if source.name == "update-manifest.json":
+                continue
             target = (binaries if source.name in ("light", "light-cli") else resources) / source.name
             if source.is_dir():
                 shutil.copytree(source, target)
@@ -259,8 +262,11 @@ def macos(dist, version, architecture):
         }
         (contents / "Info.plist").write_bytes(plistlib.dumps(info))
         macos_libraries(contents)
+        from update_archives import inventory, package as update_package
+        inventory(contents.parent, version, "Contents/MacOS/light", "Contents/Resources/light-update-manifest.json")
         subprocess.run(["codesign", "--force", "--sign", "-", str(contents.parent)], check=True)
         subprocess.run(["codesign", "--verify", "--deep", "--strict", str(contents.parent)], check=True)
+        update_package(contents.parent, dist.parent / f"{dist.name}-update.zip", version, "Contents/MacOS/light", refresh=False)
         (image / "Applications").symlink_to("/Applications", target_is_directory=True)
         (image / "Install.txt").write_text("Drag Light.app to Applications, then open Light from Applications.\n", encoding="utf-8")
         subprocess.run(["hdiutil", "create", "-volname", "Light", "-srcfolder", str(image), "-format", "UDZO", "-ov", str(output)], check=True)

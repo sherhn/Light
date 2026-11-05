@@ -19,6 +19,8 @@ jobs:
         run: python -m unittest discover -s tools -p test_prepare_modules.py
       - name: Installer safety tests
         run: python -m unittest discover -s tools -p test_installers.py
+      - name: Update archive safety tests
+        run: python -m unittest discover -s tools -p test_updates.py
       - name: License and source-package regression tests
         run: python -m unittest discover -s tools -p test_licenses.py
       - name: Reviewed notices cover the locked dependencies
@@ -57,6 +59,8 @@ jobs:
           python tests/run_e2e.py --release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/run_viewer_smoke.py --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/run_update_smoke.py --release
       - name: GUI diagnostics on failure
         if: failure() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4

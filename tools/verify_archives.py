@@ -10,6 +10,10 @@ from license_bundle import verify
 
 
 def check_archive(path):
+    if path.name.endswith("-update.zip"):
+        from update_archives import verify as verify_update
+        verify_update(path)
+        return
     if path.name.startswith("Git-") and path.name.endswith("-sources.zip"):
         verify_kit(path)
         return

@@ -151,9 +151,13 @@ def main():
         encoding="utf-8",
     )
 
+    from update_archives import inventory, package as update_package
+    inventory(dist, ver, f"light{EXE}")
     size = sum(f.stat().st_size for f in dist.rglob("*") if f.is_file()) / 1e6
     print(f"built {dist}  ({size:.0f} MB, {sbcl_ver})")
     if not a.no_zip:
+        suffix = "-portable" if platform.system() == "Darwin" else ""
+        update_package(dist, dist.parent / f"{name}{suffix}-update.zip", ver, f"light{EXE}", refresh=False)
         # a zip for Windows; a tarball elsewhere, since it keeps the executable bits
         archive = dist.parent / (f"{name}.zip" if os.name == "nt" else f"{name}.tar.gz")
         if archive.exists():
