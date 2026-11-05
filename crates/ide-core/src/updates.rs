@@ -361,7 +361,7 @@ mod tests {
     fn python_macho_hashes_survive_resigning_and_reject_code_edits_and_bad_ranges() {
         let fixture: serde_json::Value = serde_json::from_str(include_str!("../tests/fixtures/macho-hash.json")).unwrap();
         let d = TempDir::new("macho-hash"); let path = d.path().join("light");
-        let decode = |text: &str| text.as_bytes().chunks_exact(2).map(|chunk| u8::from_str_radix(std::str::from_utf8(chunk).unwrap(),16).unwrap()).collect::<Vec<_>>();
+        let decode = |text: &str| text.as_bytes().as_chunks::<2>().0.iter().map(|chunk| u8::from_str_radix(std::str::from_utf8(chunk).unwrap(),16).unwrap()).collect::<Vec<_>>();
         for key in ["bytes", "resigned"] {
             let bytes = decode(fixture[key].as_str().unwrap()); fs::write(&path,&bytes).unwrap();
             assert_eq!(macho_hash(&path).unwrap(), fixture["sha256"].as_str().unwrap());
