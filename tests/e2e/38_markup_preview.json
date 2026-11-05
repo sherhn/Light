@@ -10,7 +10,7 @@
 
   {"op": "log", "value": "scrolling the code scrolls the preview"},
   {"op": "caret", "line": 60, "col": 1},
-  {"op": "frames", "value": 40},
+  {"op": "sleep", "value": 0.4},
   {"op": "assert_preview", "scrolled": true, "in_sync": true},
   {"op": "screenshot", "path": "${SHOTS}/${NAME}_followed.png"},
 
