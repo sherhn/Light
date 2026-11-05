@@ -18,7 +18,7 @@ def inventory(root, version, entrypoint, manifest="update-manifest.json"):
     root = Path(root)
     files = {}
     for path in sorted(root.rglob("*")):
-        if path.is_file() and path != root / manifest and path.relative_to(root).as_posix() != "Contents/_CodeSignature/CodeResources":
+        if path.is_file() and path != root / manifest:
             files[path.relative_to(root).as_posix()] = digest(path)
     if entrypoint not in files:
         raise ValueError("update entrypoint is missing")
@@ -59,11 +59,9 @@ def verify(path):
             parts = name.split("/")
             if "\\" in name or ":" in name or any(part in ("", ".", "..") for part in parts):
                 raise ValueError("unsafe update path")
-        inventory_name = "update-manifest.json" if "update-manifest.json" in names else "Contents/Resources/light-update-manifest.json"
+        inventory_name = "update-manifest.json" if "update-manifest.json" in names else "Contents/_CodeSignature/light-update-manifest.json"
         value = json.loads(archive.read(inventory_name))
         expected = set(value["files"]) | {inventory_name}
-        if value["entrypoint"].startswith("Contents/MacOS/"):
-            expected |= {"Contents/_CodeSignature/CodeResources"}
         if not set(names) <= expected or not set(value["files"]) <= set(names):
             raise ValueError("update inventory has missing or extra files")
         for name, expected_hash in value["files"].items():

@@ -26,16 +26,18 @@ class UpdateArchiveTests(unittest.TestCase):
                 self.assertEqual(set(manifest["files"]), {"light.exe", "licenses/NOTICE"})
                 self.assertEqual(manifest["files"]["light.exe"], hashlib.sha256(b"program").hexdigest())
 
-    def test_mac_signature_material_is_allowed_but_extra_files_are_rejected(self):
+    def test_final_mac_signature_bytes_are_inventoried_and_extra_files_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "Light.app"
             binary = root / "Contents/MacOS/light"
             binary.parent.mkdir(parents=True)
             binary.write_bytes(b"program")
-            update_archives.inventory(root, "1.3.0", "Contents/MacOS/light", "Contents/Resources/light-update-manifest.json")
             signature = root / "Contents/_CodeSignature/CodeResources"
             signature.parent.mkdir()
-            signature.write_text("generated after inventory")
+            signature.write_text("final signature seal")
+            binary.write_bytes(b"final codesigned executable")
+            value = update_archives.inventory(root, "1.3.0", "Contents/MacOS/light", "Contents/_CodeSignature/light-update-manifest.json")
+            self.assertIn("Contents/_CodeSignature/CodeResources", value["files"])
             output = Path(directory) / "update.zip"
             update_archives.package(root, output, "1.3.0", "Contents/MacOS/light", refresh=False)
             update_archives.verify(output)

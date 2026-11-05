@@ -109,7 +109,7 @@ pub fn safe_relative(text: &str) -> bool {
 }
 pub fn inventory_path(root: &Path) -> PathBuf {
     let direct = root.join("update-manifest.json");
-    if direct.is_file() { direct } else { root.join("Contents/Resources/light-update-manifest.json") }
+    if direct.is_file() { direct } else { root.join("Contents/_CodeSignature/light-update-manifest.json") }
 }
 pub fn read_inventory(root: &Path) -> Result<Inventory, String> {
     let data = fs::read(inventory_path(root)).map_err(|e| e.to_string())?;
@@ -117,7 +117,7 @@ pub fn read_inventory(root: &Path) -> Result<Inventory, String> {
     serde_json::from_slice(&data).map_err(|e| e.to_string())
 }
 fn auxiliary_owned(name: &str, inventory: &Inventory) -> bool {
-    name == "update-manifest.json" || (inventory.entrypoint.starts_with("Contents/MacOS/") && matches!(name, "Contents/Resources/light-update-manifest.json" | "Contents/_CodeSignature/CodeResources"))
+    name == "update-manifest.json" || (inventory.entrypoint.starts_with("Contents/MacOS/") && name == "Contents/_CodeSignature/light-update-manifest.json")
 }
 pub fn validate_tree(root: &Path, expected_version: &str) -> Result<Inventory, String> {
     let inventory = read_inventory(root)?;
