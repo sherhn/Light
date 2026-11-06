@@ -34,6 +34,7 @@ pub struct GutterMenu {
     pub items: Vec<(Icon, String, GutterAction)>,
     /// Where the rows were drawn (the UI tests click them).
     pub rows: Vec<(String, Rect)>,
+    pub bounds:Option<Rect>,
 }
 
 /// Where the gutter buttons of the focused editor were drawn last, for the UI tests.
@@ -67,7 +68,7 @@ impl App {
             return;
         }
         let items = self.gutter_actions(idx, line);
-        self.gutter_menu = (!items.is_empty()).then_some(GutterMenu { doc_id, line, anchor, items, rows: vec![] });
+        self.gutter_menu = (!items.is_empty()).then_some(GutterMenu { doc_id, line, anchor, items, rows: vec![],bounds:None });
     }
 
     pub fn do_gutter_action(&mut self, action: GutterAction) {
@@ -98,7 +99,11 @@ impl App {
         let area = egui::Area::new(egui::Id::unique("gutter_menu")).order(egui::Order::Foreground).fixed_pos(menu.anchor).show(ctx, |ui| {
             egui::Frame::new().fill(pal.popup_bg.to_opaque()).corner_radius(CornerRadius::same(12)).inner_margin(Margin::same(6)).show(ui, |ui| {
                 ui.set_min_width(220.0);
-                egui::ScrollArea::vertical().max_height((ctx.content_rect().height()-80.0).clamp(100.0,480.0)).show(ui,|ui| {for (icon, label, action) in &menu.items {
+                let height=(ctx.content_rect().height()-80.0).clamp(100.0,480.0);
+                // Area restores the previous menu size. A ScrollArea otherwise
+                // keeps that short height and clips newly added actions forever.
+                ui.set_max_height(height);
+                egui::ScrollArea::vertical().id_salt((menu.doc_id,menu.line)).max_height(height).show(ui,|ui| {for (icon, label, action) in &menu.items {
                     let resp = widgets::menu_row(ui, &pal, Some(*icon), label, "");
                     rows.push((label.clone(), resp.rect));
                     if resp.clicked() {
@@ -109,6 +114,7 @@ impl App {
         });
         if let Some(m) = self.gutter_menu.as_mut() {
             m.rows = rows;
+            m.bounds=Some(area.response.rect);
         }
         // a click anywhere else closes the menu (the click that opened it is in the gutter, below the anchor's row)
         let outside = ctx.input(|i| i.pointer.any_pressed() && i.pointer.interact_pos().is_some_and(|p| !area.response.rect.contains(p) && (p.y < menu.anchor.y - 40.0 || p.y > menu.anchor.y || p.x > menu.anchor.x + 40.0)));
@@ -117,6 +123,27 @@ impl App {
             self.do_gutter_action(action);
         } else if outside {
             self.gutter_menu = None;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn a_larger_menu_after_a_short_menu_keeps_coverage_actions_clickable() {
+        let ctx=egui::Context::default();crate::fonts::install(&ctx);
+        let mut app=App::new(ide_core::settings::Settings::default());app.docs.push(crate::doc::Doc::untitled(0));app.active=0;
+        let doc_id=app.docs[0].id;
+        for names in [vec!["Run test","Run all tests"],vec!["Run test","Run all tests","Run test with Coverage","Run all tests with Coverage"]] {
+            app.gutter_menu=Some(GutterMenu {doc_id,line:0,anchor:egui::pos2(300.0,200.0),items:names.into_iter().map(|label|(Icon::Play,label.into(),GutterAction::RunFile(PathBuf::from("test.lisp")))).collect(),rows:vec![],bounds:None});
+            for _ in 0..4 {
+                let mut output=ctx.run_ui(egui::RawInput {screen_rect:Some(Rect::from_min_size(Pos2::ZERO,egui::vec2(1280.0,800.0))),..Default::default()},|ui|app.draw_gutter_menu(ui.ctx()));
+                output.textures_delta.clear();
+            }
+            let menu=app.gutter_menu.as_ref().unwrap();let bounds=menu.bounds.unwrap();
+            assert_eq!(menu.rows.len(),menu.items.len());
+            for (label,rect) in &menu.rows {assert!(bounds.contains(rect.center()),"{label}: {rect:?} outside {bounds:?}");}
         }
     }
 }

@@ -1029,7 +1029,15 @@ impl App {
                 s.steps.push_front(serde_json::json!({"op": "sleep", "value": 0.35}));
             }
             "click" => {
-                let (x, y) = (step["x"].as_f64().unwrap_or(0.0) as f32, step["y"].as_f64().unwrap_or(0.0) as f32);
+                let (x,y)=if let Some(line)=step["line"].as_u64() {
+                    let (Some(rect),Some(doc))=(self.editor_rect,self.doc())else{self.fail("click: no editor on screen".into());return};
+                    let line=line.saturating_sub(1) as usize;let col=step["col"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
+                    let rows=crate::folding::rows(doc.ed.line_count(),&crate::folding::regions(&doc.ed),&doc.folds);let row=rows.row_of_line(line);
+                    let width=ctx.fonts_mut(|fonts|fonts.glyph_width(&egui::FontId::monospace(self.settings.font_size),'M')).max(1.0);
+                    let display=crate::editor_view::display_col(doc.ed.line_text(line),col);
+                    let height=crate::editor_view::line_height_for(self.settings.font_size);
+                    (rect.min.x+6.0+(display as f32+0.1)*width-doc.view.scroll.x,rect.min.y+(row as f32+0.5)*height-doc.view.scroll.y)
+                }else{(step["x"].as_f64().unwrap_or(0.0) as f32,step["y"].as_f64().unwrap_or(0.0) as f32)};
                 let s = self.script.as_mut().unwrap();
                 let pos = Pos2::new(x, y);
                 s.pending.push(Event::PointerMoved(pos));
