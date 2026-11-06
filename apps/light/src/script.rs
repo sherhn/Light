@@ -2087,6 +2087,27 @@ impl App {
                     self.fail(format!("assert_github: {}", errors.join("; ")));
                 }
             }
+            "segmented_click" => {
+                let label=crate::i18n::tr_dyn(&sval);
+                let scroll=egui::Id::unique("scroll_to_segmented_option");
+                let target=ctx.data(|data|data.get_temp::<(egui::Rect,egui::Rect)>(egui::Id::unique(("segmented_option",label.as_ref()))));
+                let pos=target.filter(|(rect,clip)|clip.contains(rect.center())).map(|(rect,_)|rect.center());
+                let stable=pos.is_some_and(|p|step["seen"].as_array().is_some_and(|seen|seen.len()==2&&(seen[0].as_f64().unwrap_or(0.0)-p.x as f64).abs()<0.5&&(seen[1].as_f64().unwrap_or(0.0)-p.y as f64).abs()<0.5));
+                if step["tries"].as_u64().unwrap_or(0)>=60 {
+                    ctx.data_mut(|data|data.remove::<String>(scroll));
+                    self.fail(format!("segmented_click: {sval:?} is not visible and stable; target={target:?}, seen={}",step["seen"]));
+                }else if !stable {
+                    ctx.data_mut(|data|data.insert_temp(scroll,label.into_owned()));
+                    let mut again=step.clone();again["tries"]=serde_json::json!(step["tries"].as_u64().unwrap_or(0)+1);again["seen"]=pos.map_or(serde_json::Value::Null,|p|serde_json::json!([p.x,p.y]));
+                    let script=self.script.as_mut().unwrap();script.steps.push_front(again);script.wait_frames=3;
+                }else if let Some(pos)=pos {
+                    ctx.data_mut(|data|data.remove::<String>(scroll));
+                    let script=self.script.as_mut().unwrap();
+                    script.pending.push(Event::PointerMoved(pos));
+                    script.pending.push(Event::PointerButton {pos,button:egui::PointerButton::Primary,pressed:true,modifiers:egui::Modifiers::NONE});
+                    script.pending.push(Event::PointerButton {pos,button:egui::PointerButton::Primary,pressed:false,modifiers:egui::Modifiers::NONE});
+                }
+            }
             "settings_page" => {
                 if let Popup::Settings { page, .. } = &mut self.popup {
                     *page = step["value"].as_u64().unwrap_or(0) as usize;

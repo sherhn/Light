@@ -480,6 +480,12 @@ pub fn segmented(ui: &mut egui::Ui, pal: &Palette, options: &[&str], selected: u
     for (i, o) in options.iter().enumerate() {
         let r = Rect::from_min_size(Pos2::new(x, rect.min.y + 4.0), Vec2::new(widths[i], rect.height() - 8.0));
         let resp = ui.interact(r, base.with(("seg", i, *o)), Sense::click());
+        // Semantic targets for native UI scripts; coordinates depend on window
+        // size, translated labels and the settings scroll position.
+        ui.ctx().data_mut(|data|data.insert_temp(egui::Id::unique(("segmented_option",*o)),(r,ui.clip_rect())));
+        if !ui.clip_rect().contains(r.center()) && ui.ctx().data(|data|data.get_temp::<String>(egui::Id::unique("scroll_to_segmented_option"))).as_deref()==Some(*o) {
+            ui.scroll_to_rect_animation(r,Some(egui::Align::Center),egui::style::ScrollAnimation::none());
+        }
         if i == selected {
             ui.painter().rect_filled(r, CornerRadius::same(9), pal.tab_active_bg);
         } else if resp.hovered() {
