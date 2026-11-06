@@ -2108,6 +2108,14 @@ impl App {
                     script.pending.push(Event::PointerButton {pos,button:egui::PointerButton::Primary,pressed:false,modifiers:egui::Modifiers::NONE});
                 }
             }
+            "assert_word_highlights" => {
+                if let Some(doc)=self.doc() {
+                    let highlights=&doc.view.word_highlights;
+                    if highlights.len()!=step["count"].as_u64().unwrap_or(0) as usize || highlights.iter().filter(|(_,_,active)|*active).count()!=step["active"].as_u64().unwrap_or(0) as usize || highlights.iter().any(|(start,end,_)|doc.ed.text().get(*start..*end)!=Some(sval.as_str())) {
+                        self.fail(format!("word highlights: {highlights:?}, expected {step}"));
+                    }
+                }
+            }
             "borders_click" => {
                 if let Some(rect)=ctx.data(|data|data.get_temp::<egui::Rect>(egui::Id::unique("settings_border_toggle"))) {
                     let pos=rect.center();let script=self.script.as_mut().unwrap();

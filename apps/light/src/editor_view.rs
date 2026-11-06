@@ -12,6 +12,28 @@ use crate::folding::{self, FoldKey, Region};
 use crate::icons::{self, Icon};
 use crate::theme::Palette;
 
+fn word_occurrences<'a>(ed: &'a Editor, line: &'a str, line_start: usize, word: &'a str) -> impl Iterator<Item=(usize,usize)> + 'a {
+    line.match_indices(word).filter_map(move |(start,_)| {
+        let range=(line_start+start,line_start+start+word.len());
+        (ed.identifier_range_at(range.0+word.chars().next()?.len_utf8())==range).then_some(range)
+    })
+}
+
+#[cfg(test)]
+mod occurrence_tests {
+    use super::*;
+    #[test]
+    fn highlights_whole_identifiers_with_unicode_and_exact_case() {
+        let ed=Editor::new("prime prime_count Prime prime2 prime\nчисло число2 число",lisp_syntax::Dialect::CommonLisp);
+        let text=ed.text();
+        assert_eq!(word_occurrences(&ed,text,0,"prime").collect::<Vec<_>>(),vec![(0,5),(31,36)]);
+        let offset=text.find("число").unwrap();
+        let ranges=word_occurrences(&ed,&text[offset..],offset,"число").collect::<Vec<_>>();
+        assert_eq!(ranges.len(),2);
+        for (start,end) in ranges { assert_eq!(&text[start..end],"число"); }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Sev {
     Error,
@@ -37,6 +59,8 @@ pub struct ViewState {
     max_cols: Option<(u64, usize)>,
     pub last_viewport_lines: usize,
     pub last_text_rect: Option<Rect>,
+    /// Visible whole-word occurrences: byte range and whether it contains the caret.
+    pub word_highlights: Vec<(usize, usize, bool)>,
     /// The (fractional) source line at the top of the view, as of the last frame.
     pub top_line_f: f32,
     /// Scroll so that this (fractional) source line is at the top (used to keep a preview beside the code in step).
@@ -288,6 +312,11 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
 
     let (sel_s, sel_e) = ed.selection();
     let caret = ed.caret();
+    let word_range = ed.identifier_range_at(caret);
+    let word = (cfg.focused && sel_s == sel_e && word_range.0 < word_range.1)
+        .then(|| &text[word_range.0..word_range.1])
+        .filter(|word| word.chars().any(|ch| ch.is_alphabetic() || ch == '_'));
+    state.word_highlights.clear();
     let bracket = ed.matching_bracket(caret);
     let now = ui.input(|i| i.time);
     let blink_on = ((now - state.last_input_time).max(0.0) * 1.7) as i64 % 2 == 0;
@@ -411,6 +440,19 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
             // current line highlight
             if line_no == caret_line && sel_s == sel_e {
                 painter.rect_filled(Rect::from_min_size(Pos2::new(text_rect.min.x, y), Vec2::new(rect.width().max(text_rect.width()), lh)), CornerRadius::ZERO, pal.current_line);
+            }
+            // Only scan visible lines, even for very large files. A single click
+            // keeps an ordinary caret; the tint is not an editable selection.
+            if let Some(word) = word {
+                for (start, end) in word_occurrences(ed, line, ls, word) {
+                    let active = (start, end) == word_range;
+                    state.word_highlights.push((start, end, active));
+                    let xa = x0 + display_col(line, line[..start-ls].chars().count()) as f32 * cw;
+                    let xb = x0 + display_col(line, line[..end-ls].chars().count()) as f32 * cw;
+                    let rect = Rect::from_min_max(Pos2::new(xa,y+1.0),Pos2::new(xb,y+lh-1.0));
+                    painter.rect_filled(rect,CornerRadius::ZERO,if active {pal.find_current} else {pal.find_match});
+                    if active { painter.rect_stroke(rect,CornerRadius::ZERO,Stroke::new(1.0,pal.accent.gamma_multiply(0.75)),egui::StrokeKind::Inside); }
+                }
             }
             // selection background
             if sel_s != sel_e && sel_s <= le && sel_e >= ls {
