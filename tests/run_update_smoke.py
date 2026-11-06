@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,8 +27,8 @@ def save(path, value):
     path.write_text(json.dumps(value), encoding="utf-8")
 
 
-def run(executable, *args, env, success=True):
-    result = subprocess.run([str(executable), *map(str, args)], env=env, capture_output=True, text=True, timeout=240)
+def run(executable, *args, env, success=True, timeout=240):
+    result = subprocess.run([str(executable), *map(str, args)], env=env, capture_output=True, text=True, timeout=timeout)
     if success:
         assert result.returncode == 0, (result.returncode, result.stdout, result.stderr)
     else:
@@ -91,7 +92,12 @@ def main():
             archive.parent.mkdir(parents=True)
             shutil.copyfile(args.archive, archive)
             save(pending, {"envelope": envelope, "destination": str(installation), "base_version": old_version})
-            run(bootstrap, "--light-apply-update", pending, env=env)
+            # Full runtime bundles contain over ten thousand files. Durable
+            # extraction can exceed four minutes on Windows with virus scanning.
+            started = time.monotonic()
+            print(f"Applying published {old_version} → {new_version} package; waiting for durable extraction and verification", flush=True)
+            run(bootstrap, "--light-apply-update", pending, env=env, timeout=900)
+            print(f"Published package applied in {time.monotonic() - started:.1f}s", flush=True)
             assert version(installation / name, env) == new_version
             assert not pending.exists()
             assert (installation / "personal-notes.md").read_text() == "Keep this note"
@@ -101,7 +107,8 @@ def main():
             save(rollback, record)
             helper = cache / name
             shutil.copy2(installation / name, helper)
-            run(helper, "--light-rollback-update", rollback, env=env)
+            print("Checking rollback of the published package", flush=True)
+            run(helper, "--light-rollback-update", rollback, env=env, timeout=900)
             assert version(installation / name, env) == old_version
             assert (installation / "after-update.md").read_text() == "New note after update"
             assert (installation / "personal-notes.md").read_text() == "Keep this note"
