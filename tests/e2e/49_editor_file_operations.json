@@ -5,7 +5,7 @@
   {"op":"frames","value":4},
   {"op":"click","x":275,"y":117},
   {"op":"assert_popup","value":"new_file"},
-  {"op":"new_file_set","value":"app","extension":"js"},
+  {"op":"new_file_set","value":"app.js"},
   {"op":"frames","value":4},
   {"op":"screenshot","path":"${SHOTS}/${NAME}_extension.png"},
   {"op":"key","value":"Enter"},

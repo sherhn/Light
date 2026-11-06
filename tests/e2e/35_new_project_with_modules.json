@@ -23,6 +23,9 @@
   {"op": "log", "value": "Lisp projects also start empty, even for legacy template requests"},
   {"op": "module_install", "value": "lisp"},
   {"op": "wait", "what": "modules_idle", "timeout": 30},
+  {"op": "key", "value": "Alt+Insert"},
+  {"op": "assert_new_file_kinds", "value": ["", "Markdown", "Python"]},
+  {"op": "key", "value": "Escape"},
   {"op": "command", "value": "file.new_project"},
   {"op": "new_project_set", "parent": "${PROJ}_new", "name": "Lisp Demo", "modules": ["lisp"], "template": "@auto"},
   {"op": "key", "value": "Enter"},
@@ -32,5 +35,8 @@
   {"op": "wait", "what": "index"},
   {"op": "assert_empty_directory", "path": "${PROJ}_new/lisp-demo"},
   {"op": "assert_project_config", "path": "${PROJ}_new/lisp-demo", "value": "lisp"},
+  {"op": "key", "value": "Alt+Insert"},
+  {"op": "assert_new_file_kinds", "value": ["", "Lisp"]},
+  {"op": "key", "value": "Escape"},
   {"op": "quit"}
 ]

@@ -2,6 +2,7 @@
   {"op": "log", "value": "@modules python,assembler: New File offers a file of any name and one kind per module that is on"},
   {"op": "open_project", "path": "${PROJ}"},
   {"op": "wait", "what": "index"},
+  {"op": "project_modules_set", "value": ["lisp", "python", "assembler"]},
   {"op": "key", "value": "Alt+Insert"},
   {"op": "assert_popup", "value": "new_file"},
   {"op": "assert_new_file_kinds", "value": ["", "Assembler", "Lisp", "Python"]},

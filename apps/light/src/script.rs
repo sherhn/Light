@@ -756,7 +756,7 @@ impl App {
                 }
             }
             "new_file_set" => {
-                let kinds = crate::new_file::kinds(&self.mods.installed, self.lisp_enabled());
+                let kinds = self.new_file_kinds();
                 if let Popup::NewFile { input, extension, kind, .. } = &mut self.popup {
                     *input = sval.clone();
                     *extension = step["extension"].as_str().unwrap_or("").into();
@@ -766,7 +766,7 @@ impl App {
             }
             // the New File dialog: pick a kind by its title (`File` for any name), as a click on its tile does
             "new_file_kind" => {
-                let kinds = crate::new_file::kinds(&self.mods.installed, self.lisp_enabled());
+                let kinds = self.new_file_kinds();
                 let found = kinds.iter().position(|k| k.title == sval || (sval == "File" && k.extensions.is_empty()));
                 match (&mut self.popup, found) {
                     (Popup::NewFile { kind, extension, .. }, Some(i)) => {
@@ -779,7 +779,7 @@ impl App {
             }
             // the kinds the New File dialog offers, by title (the first, a file of any name, has none)
             "assert_new_file_kinds" => {
-                let titles: Vec<String> = crate::new_file::kinds(&self.mods.installed, self.lisp_enabled()).into_iter().map(|k| k.title).collect();
+                let titles: Vec<String> = self.new_file_kinds().into_iter().map(|k| k.title).collect();
                 let want: Vec<String> = step["value"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(String::from)).collect();
                 if titles != want {
                     self.fail(format!("assert_new_file_kinds: {titles:?}, expected {want:?}"));
@@ -800,6 +800,13 @@ impl App {
             "assert_empty_directory" => {
                 let empty = path.as_ref().and_then(|p| std::fs::read_dir(p).ok()).is_some_and(|mut entries| entries.next().is_none());
                 if !empty { self.fail(format!("directory is not empty: {path:?}")); }
+            }
+            "project_modules_set" => {
+                self.project_cfg.modules=step["value"].as_array().into_iter().flatten().filter_map(|value|value.as_str().map(String::from)).collect();
+                if let Some(root)=self.project_root() {
+                    if let Err(error)=crate::app_env::save_config(root,&self.project_cfg) {self.fail(error.to_string());}
+                    self.refresh_needed_modules();
+                } else {self.fail("project_modules_set: no project".into());}
             }
             "assert_project_modules" => {
                 let wanted: Vec<_> = step["names"].as_array().into_iter().flatten().filter_map(|v| v.as_str()).collect();

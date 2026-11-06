@@ -338,8 +338,11 @@ impl App {
                 let (mut ok, mut cancel) = (enter, esc);
                 let rel = self.project_root().map(|r| ide_core::workspace::relative(r, &dir)).unwrap_or_default();
                 let project_name = self.project.as_ref().map(|p| p.name.clone()).unwrap_or_else(|| dir.display().to_string());
-                let kinds = if is_dir { vec![] } else { crate::new_file::kinds(&self.mods.installed, self.lisp_enabled()) };
+                let kinds = if is_dir { vec![] } else { self.new_file_kinds() };
                 kind = kind.min(kinds.len().saturating_sub(1));
+                if !is_dir && (kind==0 || !kinds[kind].extensions.contains(&extension)) {
+                    kind=0;extension.clear();
+                }
                 // Up and Down pick the kind while the name is typed
                 if kinds.len() > 1 {
                     let (up, down) = ctx.input_mut(|i| (i.consume_key(egui::Modifiers::NONE, Key::ArrowUp), i.consume_key(egui::Modifiers::NONE, Key::ArrowDown)));

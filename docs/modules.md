@@ -13,6 +13,8 @@ The same preparation runs in CI and before packaging. It verifies the snapshot a
 
 The online catalog is independent of the IDE release. Catalog entries specify `min_ide`; incompatible packages cannot be installed. A module update downloads an HTTPS ZIP from a versioned release, verifies its size and SHA-256, validates all file paths and hashes, and checks the manifest id/version before replacing the installed version. Failed downloads or validation preserve the installed module. Legacy registries containing loose files remain supported.
 
+New File offers types only from enabled, installed modules selected for the current project. Modules installed for other projects do not add choices. Legacy projects without a module list use the languages detected in their indexed files. The generic File choice always accepts any name; disabling a selected module clears its pending extension instead of silently creating the wrong file type.
+
 To update the bundled modules, publish and verify a new Light-Modules catalog first, update `modules.lock.json` to its versioned snapshot and SHA-256, run preparation, then run Rust and packaging tests before publishing the IDE.
 
 ## Your own registry

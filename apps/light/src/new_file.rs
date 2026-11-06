@@ -20,12 +20,12 @@ fn main_extension(lang: &LangDef) -> Option<String> {
     lang.extensions.iter().find(|e| USUAL.contains(&e.to_lowercase().as_str())).or_else(|| lang.extensions.first()).map(|e| e.to_lowercase())
 }
 
-/// The kinds of file: any name first, then one per module that is on (Lisp too), by title. A module of several
+/// The kinds of file: any name first, then each enabled module of this project (Lisp too), by title. A module of several
 /// languages offers the usual extension of each, and the header extensions of C and C++.
-pub fn kinds(installed: &[Installed], lisp: bool) -> Vec<FileKind> {
+pub fn kinds(installed: &[Installed], lisp: bool, project_modules: &[String]) -> Vec<FileKind> {
     let mut modules: Vec<FileKind> = installed
         .iter()
-        .filter(|m| m.enabled)
+        .filter(|m| m.enabled && project_modules.contains(&m.manifest.id))
         .filter_map(|m| {
             let mut extensions: Vec<String> = Vec::new();
             for lang in &m.manifest.languages {
@@ -44,13 +44,28 @@ pub fn kinds(installed: &[Installed], lisp: bool) -> Vec<FileKind> {
             (!extensions.is_empty()).then(|| FileKind { title: m.manifest.name.clone(), extensions, filenames })
         })
         .collect();
-    if lisp && !modules.iter().any(|k| k.extensions.iter().any(|e| e == "lisp")) {
+    let project_lisp=project_modules.iter().any(|id|id=="lisp" || installed.iter().any(|m| &m.manifest.id==id && m.manifest.builtin=="lisp"));
+    if lisp && project_lisp && !modules.iter().any(|k| k.extensions.iter().any(|e| e == "lisp")) {
         modules.push(FileKind { title: "Lisp".into(), extensions: vec!["lisp".into(), "asd".into()], filenames: vec![] });
     }
     modules.sort_by_key(|k| k.title.to_lowercase());
     let mut all = vec![FileKind { title: String::new(), extensions: vec![], filenames: vec![] }];
     all.extend(modules);
     all
+}
+
+impl crate::app::App {
+    /// Project choices are authoritative, including an empty newly-created project.
+    /// Legacy projects without choices use their indexed files; never scan disk on the UI thread.
+    pub fn new_file_kinds(&self) -> Vec<FileKind> {
+        let wanted=if let Some(project)=&self.project {
+            if self.project_cfg.modules.is_empty() {
+                let (extensions,names)=ide_core::modules::detect::scan_files(project.files.iter().map(std::path::PathBuf::as_path));
+                ide_core::modules::detect::needed_in(&extensions,&names,&self.mods.detectors())
+            } else {self.project_cfg.modules.clone()}
+        } else {vec![]};
+        kinds(&self.mods.installed,self.lisp_enabled(),&wanted)
+    }
 }
 
 /// Does `name` need no extension: it has one already, starts with a dot, or is a name the kind's files have as it is?
@@ -93,7 +108,8 @@ mod tests {
             module("CSS", &[(&["css"], &[])], false),
             module("Docker", &[(&["dockerfile"], &["Dockerfile", "Dockerfile.*"]), (&[], &["compose.yaml"])], true),
         ];
-        let kinds = kinds(&installed, true);
+        let wanted=["python","assembler","candc","css","docker","lisp"].map(String::from);
+        let kinds = kinds(&installed, true,&wanted);
         let titles: Vec<&str> = kinds.iter().map(|k| k.title.as_str()).collect();
         assert_eq!(titles, ["", "Assembler", "C and C++", "Docker", "Lisp", "Python"]);
         assert!(kinds[0].extensions.is_empty());
@@ -102,7 +118,15 @@ mod tests {
         assert_eq!(kinds[3].filenames, ["Dockerfile", "compose.yaml"]);
         assert_eq!(kinds[5].extensions[0], "py");
         // without the Lisp module there is no Lisp
-        assert!(!super::kinds(&installed, false).iter().any(|k| k.title == "Lisp"));
+        assert!(!super::kinds(&installed, false,&wanted).iter().any(|k| k.title == "Lisp"));
+    }
+
+    #[test]
+    fn installed_modules_of_other_projects_and_disabled_modules_are_not_offered() {
+        let installed=[module("Python",&[(&["py"],&[])],true),module("Assembler",&[(&["asm"],&[])],true),module("CSS",&[(&["css"],&[])],false)];
+        let wanted=["python","css","missing"].map(String::from);
+        assert_eq!(kinds(&installed,true,&wanted).iter().map(|kind|kind.title.as_str()).collect::<Vec<_>>(),["","Python"]);
+        assert_eq!(kinds(&installed,true,&[]).len(),1);
     }
 
     #[test]
