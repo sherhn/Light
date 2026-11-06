@@ -3,6 +3,7 @@
   {"op": "open_project", "path": "${PROJ}"},
   {"op": "open", "path": "${PROJ}/src/main.lisp"},
   {"op": "wait", "what": "index"},
+  {"op": "theme", "value": "dark", "contrast": 100},
   {"op": "assert_theme", "value": "dark", "dark": true},
 
   {"op": "log", "value": "Settings > Appearance > Custom: it starts from the look that is on screen"},
@@ -14,7 +15,7 @@
   {"op": "screenshot", "path": "${SHOTS}/${NAME}_custom_start.png"},
 
   {"op": "log", "value": "type a hex code into the field of a colour: it is taken at once, the sample and the whole window follow"},
-  {"op": "wheel", "x": 760, "y": 420, "dy": -700},
+  {"op": "wheel", "x": 760, "y": 420, "dy": -756},
   {"op": "frames", "value": 40},
   {"op": "screenshot", "path": "${SHOTS}/${NAME}_custom_scrolled.png"},
   {"op": "log", "value": "the swatch opens a colour picker"},

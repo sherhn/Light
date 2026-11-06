@@ -219,7 +219,7 @@ impl Palette {
             panel_bg: Color32::from_rgba_unmultiplied(24, 27, 29, 244),
             editor_bg: c(0x121416),
             gutter_bg: c(0x121416),
-            border: Color32::from_rgba_unmultiplied(213, 225, 218, 30),
+            border: Color32::from_rgb(10, 13, 11),
             hover: Color32::from_rgba_unmultiplied(179, 214, 173, 18),
             selected: Color32::from_rgba_unmultiplied(179, 214, 173, 35),
             accent: c(0xB3D6AD),
@@ -288,7 +288,7 @@ impl Palette {
             panel_bg: Color32::from_rgba_unmultiplied(244, 246, 242, 244),
             editor_bg: c(0xF8FAF6),
             gutter_bg: c(0xF8FAF6),
-            border: Color32::from_rgba_unmultiplied(42, 57, 46, 42),
+            border: Color32::from_rgba_unmultiplied(42, 57, 46, 100),
             hover: Color32::from_rgba_unmultiplied(75, 105, 79, 16),
             selected: Color32::from_rgba_unmultiplied(75, 105, 79, 30),
             accent: c(0x46674B),
@@ -361,18 +361,20 @@ impl Palette {
             Theme::Custom => Palette::custom(&s.custom_theme),
             t => Palette::for_theme(t),
         };
-        palette.with_contrast(s.theme_contrast)
+        let mut palette=palette.with_contrast(s.theme_contrast);
+        if !s.show_borders { palette.border=Color32::TRANSPARENT; }
+        palette
     }
 
     /// Adjust readability while preserving backgrounds, hues and the user's stored color definitions.
     pub fn with_contrast(mut self, percent: u16) -> Palette {
-        let amount = percent.clamp(75, 150) as f32 / 100.0;
+        let amount = percent.clamp(75, 300) as f32 / 100.0;
         if amount == 1.0 { return self }
         fn foreground(color: Color32, background: Color32, amount: f32) -> Color32 {
             let [r, g, b, a] = color.to_srgba_unmultiplied();
             let bright = 0.2126 * background.r() as f32 + 0.7152 * background.g() as f32 + 0.0722 * background.b() as f32;
             let pole = if bright < 128.0 { Color32::WHITE } else { Color32::BLACK };
-            let (target, weight) = if amount > 1.0 { (pole, (amount - 1.0) * 0.65) } else { (background, (1.0 - amount) * 0.65) };
+            let (target, weight) = if amount > 1.0 { (pole, (1.0 - 1.0 / amount) * 0.65) } else { (background, (1.0 - amount) * 0.65) };
             let mix = |value: u8, target: u8| (value as f32 + (target as f32 - value as f32) * weight).round() as u8;
             Color32::from_rgba_unmultiplied(mix(r, target.r()), mix(g, target.g()), mix(b, target.b()), a)
         }
@@ -384,7 +386,7 @@ impl Palette {
             }
         }
         self.text_on_accent = foreground(self.text_on_accent, self.accent, amount);
-        for key in ["border", "hover", "selected", "tab_active_bg", "current_line", "selection", "match_bracket", "indent_guide", "whitespace"] {
+        for key in ["hover", "selected", "tab_active_bg", "current_line", "selection", "match_bracket", "indent_guide", "whitespace"] {
             let [r,g,b,a] = self.color(key).unwrap().to_srgba_unmultiplied();
             self.set_color(key, Color32::from_rgba_unmultiplied(r,g,b,(a as f32 * amount).round().min(255.0) as u8));
         }
@@ -529,13 +531,28 @@ mod tests {
                 assert!(contrast(high.color(key).unwrap(), base.editor_bg) > contrast(base.color(key).unwrap(), base.editor_bg), "{key}");
             }
             assert_eq!(high.editor_bg, base.editor_bg);
-            assert!(high.border.a() > base.border.a());
+            assert_eq!(high.border, base.border, "outlines stay dark at every contrast");
             let [r,g,b,a] = high.selection.to_srgba_unmultiplied();
             let mix = |fg: u8, bg: u8| ((fg as u32 * a as u32 + bg as u32 * (255-a as u32))/255) as u8;
             let selection = Color32::from_rgb(mix(r,high.editor_bg.r()),mix(g,high.editor_bg.g()),mix(b,high.editor_bg.b()));
             assert!(contrast(high.plain, selection) >= 4.5);
             assert!(contrast(high.text_on_accent, high.accent) >= 4.5);
             assert_eq!(format!("{:?}",base.with_contrast(100)), format!("{base:?}"));
+        }
+    }
+    #[test]
+    fn bright_default_and_optional_outlines_keep_text_readable() {
+        for theme in [Theme::Dark,Theme::Light] {
+            let mut settings=Settings {theme,..Default::default()};
+            assert_eq!(settings.theme_contrast,300);
+            let palette=Palette::for_settings(&settings);
+            assert!(contrast(palette.plain,palette.editor_bg)>=7.0);
+            assert!(palette.border.r()<80 && palette.border.g()<80 && palette.border.b()<80);
+            settings.show_borders=false;
+            let hidden=Palette::for_settings(&settings);
+            assert_eq!(hidden.border,Color32::TRANSPARENT);
+            assert_eq!(hidden.plain,palette.plain);
+            assert_ne!(palette.keyword_form,palette.string);
         }
     }
     #[test]

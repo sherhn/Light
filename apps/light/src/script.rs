@@ -1824,7 +1824,7 @@ impl App {
                         return;
                     }
                 };
-                if let Some(contrast) = step["contrast"].as_u64() { self.settings.theme_contrast = contrast.clamp(75,150) as u16; }
+                if let Some(contrast) = step["contrast"].as_u64() { self.settings.theme_contrast = contrast.clamp(75,300) as u16; }
                 if let Some(d) = step["dark"].as_bool() {
                     self.settings.custom_theme.dark = d;
                 }
@@ -2107,6 +2107,18 @@ impl App {
                     script.pending.push(Event::PointerButton {pos,button:egui::PointerButton::Primary,pressed:true,modifiers:egui::Modifiers::NONE});
                     script.pending.push(Event::PointerButton {pos,button:egui::PointerButton::Primary,pressed:false,modifiers:egui::Modifiers::NONE});
                 }
+            }
+            "borders_click" => {
+                if let Some(rect)=ctx.data(|data|data.get_temp::<egui::Rect>(egui::Id::unique("settings_border_toggle"))) {
+                    let pos=rect.center();let script=self.script.as_mut().unwrap();
+                    script.pending.push(Event::PointerMoved(pos));
+                    script.pending.push(Event::PointerButton {pos,button:egui::PointerButton::Primary,pressed:true,modifiers:egui::Modifiers::NONE});
+                    script.pending.push(Event::PointerButton {pos,button:egui::PointerButton::Primary,pressed:false,modifiers:egui::Modifiers::NONE});
+                } else {self.fail("border toggle is not visible".into());}
+            }
+            "assert_borders" => {
+                let expected=step["value"].as_bool().unwrap_or(true);
+                if self.settings.show_borders!=expected || (crate::theme::Palette::for_settings(&self.settings).border.a()!=0)!=expected {self.fail("border preference and painted palette differ".into());}
             }
             "settings_page" => {
                 if let Popup::Settings { page, .. } = &mut self.popup {

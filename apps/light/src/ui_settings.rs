@@ -194,10 +194,15 @@ impl App {
                                 });
                                 rows.row(ui, &pal, tr("Contrast"), tr("Adjust text, syntax and outlines together. Your custom colors stay saved."), 280.0, |ui| {
                                     if widgets::icon_button(ui, &pal, Icon::Undo, 28.0, pal.text_dim, tr("Reset contrast")).clicked() {
-                                        self.settings.theme_contrast = 100;
+                                        self.settings.theme_contrast = 300;
                                         changed_theme = true;
                                     }
-                                    changed_theme |= ui.add(egui::Slider::new(&mut self.settings.theme_contrast, 75..=150).suffix("%")).changed();
+                                    changed_theme |= ui.add(egui::Slider::new(&mut self.settings.theme_contrast, 75..=300).suffix("%")).changed();
+                                });
+                                rows.row(ui,&pal,tr("Show borders"),tr("Dark outlines around panels and controls"),44.0,|ui| {
+                                    let response=widgets::toggle(ui,&pal,&mut self.settings.show_borders);
+                                    ui.ctx().data_mut(|data|data.insert_temp(egui::Id::unique("settings_border_toggle"),response.rect));
+                                    changed_theme |= response.changed();
                                 });
                                 if self.settings.theme != Theme::Custom {
                                     ui.add_space(10.0);
