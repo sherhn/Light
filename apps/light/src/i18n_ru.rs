@@ -2,6 +2,7 @@
 //! must stay the same on both sides (a unit test checks it).
 
 pub const RU: &[(&str, &str)] = &[
+    ("Copy value", "Скопировать значение"),
     ("Show borders", "Показывать границы"),
     ("Dark outlines around panels and controls", "Тёмные границы панелей и элементов интерфейса"),
     ("Run function '{}'", "Запустить функцию '{}'"),

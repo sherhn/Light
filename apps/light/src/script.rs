@@ -418,9 +418,14 @@ impl App {
             "assert_debug_variable" => {
                 let name = step["name"].as_str().unwrap_or_default();
                 let found: Vec<String> = self.debug.variables.values().flatten().filter(|v| v.name == name).map(|v| v.value.clone()).collect();
-                if !found.contains(&sval) {
+                if !found.iter().any(|value| if step["contains"].as_bool().unwrap_or(false) {value.contains(&sval)}else{value==&sval}) {
                     self.fail(format!("assert_debug_variable: {name} = {sval:?} not among {found:?}"));
                 }
+            }
+            "debug_variable_hover" => {
+                if let Some(rect)=ctx.data(|data|data.get_temp::<egui::Rect>(egui::Id::unique(("debug_variable_row",sval.as_str())))) {
+                    self.script.as_mut().unwrap().pending.push(Event::PointerMoved(rect.center()));
+                } else {self.fail(format!("no visible debug variable {sval:?}"));}
             }
             "assert_debug_console" => {
                 if !self.debug.console.iter().any(|l| l.text.contains(&sval)) {

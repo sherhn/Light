@@ -10,6 +10,51 @@ use crate::i18n::{self, tr};
 use crate::icons::{self, Icon};
 use crate::widgets::{self, ROW_H};
 
+/// Adapter values are arbitrary text, not a single display line (Node strings
+/// can contain entire HTML documents). Keep rows compact without changing data.
+fn value_preview(value: &str) -> String {
+    let mut preview=String::new();
+    for (index,ch) in value.chars().enumerate() {
+        if index==2048 {preview.push('…');break}
+        match ch {
+            '\n'|'\u{2028}'|'\u{2029}'=>preview.push_str("\\n"),
+            '\r'=>preview.push_str("\\r"), '\t'=>preview.push_str("\\t"),
+            ch if ch.is_control()=>preview.push('�'),
+            ch=>preview.push(ch),
+        }
+    }
+    preview
+}
+
+fn row_text(ui: &egui::Ui, text: &str, font: egui::FontId, color: egui::Color32, width: f32) -> std::sync::Arc<egui::Galley> {
+    let mut job=egui::text::LayoutJob::simple(value_preview(text),font,color,width.max(0.0));
+    job.break_on_newline=false;
+    job.wrap.max_rows=1;job.wrap.break_anywhere=true;job.wrap.overflow_character=Some('…');
+    ui.painter().layout_job(job)
+}
+
+fn variable_row(ui: &mut egui::Ui, pal: &crate::theme::Palette, depth: usize, name: &str, value: &str, branch: Option<bool>) -> egui::Response {
+    let (rect,response)=ui.allocate_exact_size(Vec2::new(ui.available_width(),ROW_H-6.0),Sense::click());
+    let painter=ui.painter_at(rect.intersect(ui.clip_rect()));
+    widgets::row_background(ui,pal,rect,false,response.hovered());
+    let x=rect.min.x+8.0+depth as f32*14.0;
+    if let Some(open)=branch {
+        icons::paint(&painter,Rect::from_min_size(Pos2::new(x,rect.center().y-5.0),Vec2::splat(10.0)),if open {Icon::ChevronDown}else{Icon::ChevronRight},pal.text_dim);
+    }
+    let name_start=x+14.0;
+    let available=(rect.max.x-name_start-8.0).max(0.0);
+    let name_width=if value.is_empty(){available}else{available*0.45};
+    let name=row_text(ui,name,if depth==0{fonts::semibold(12.5)}else{egui::FontId::monospace(12.5)},if depth==0{pal.text_dim}else{pal.special_var},name_width);
+    let end=name_start+name.size().x;
+    painter.galley(Pos2::new(name_start,rect.center().y-name.size().y/2.0),name,pal.text);
+    if !value.is_empty() {
+        let value=row_text(ui,&format!("= {}",value_preview(value)),egui::FontId::monospace(12.5),pal.text,rect.max.x-end-14.0);
+        painter.galley(Pos2::new(end+6.0,rect.center().y-value.size().y/2.0),value,pal.text);
+    }
+    response
+}
+
+
 /// `0x...` of an address.
 fn hex_address(a: u64) -> String {
     format!("0x{a:016x}")
@@ -275,8 +320,9 @@ impl App {
                             widgets::row_background(ui, &pal, r, n == s.frame, resp.hovered());
                             let place = f.path.as_ref().and_then(|p| p.file_name()).map(|n| format!("{}:{}", n.to_string_lossy(), f.line)).unwrap_or_default();
                             let color = if f.path.is_some() { pal.text } else { pal.text_dim };
-                            let end = ui.painter().text(Pos2::new(r.min.x + 10.0, r.center().y), egui::Align2::LEFT_CENTER, &f.name, fonts::ui(13.0), color).max.x;
-                            ui.painter().text(Pos2::new(end + 8.0, r.center().y), egui::Align2::LEFT_CENTER, place, fonts::ui(11.5), pal.text_dim);
+                            let painter=ui.painter_at(r.intersect(ui.clip_rect()));
+                            let end = painter.text(Pos2::new(r.min.x + 10.0, r.center().y), egui::Align2::LEFT_CENTER, value_preview(&f.name), fonts::ui(13.0), color).max.x;
+                            painter.text(Pos2::new(end + 8.0, r.center().y), egui::Align2::LEFT_CENTER, place, fonts::ui(11.5), pal.text_dim);
                             if resp.clicked() {
                                 frame_click = Some(n);
                             }
@@ -313,16 +359,19 @@ impl App {
                         walk(self, s.reference, 1, &mut rows);
                     }
                     for (depth, name, value, reference) in rows {
-                        let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), ROW_H - 6.0), Sense::click());
-                        widgets::row_background(ui, &pal, r, false, resp.hovered());
-                        let x = r.min.x + 8.0 + depth as f32 * 14.0;
-                        if reference != 0 {
-                            let open = self.debug.expanded.contains(&reference);
-                            icons::paint(ui.painter(), Rect::from_min_size(Pos2::new(x, r.center().y - 5.0), Vec2::splat(10.0)), if open { Icon::ChevronDown } else { Icon::ChevronRight }, pal.text_dim);
-                        }
-                        let end = ui.painter().text(Pos2::new(x + 14.0, r.center().y), egui::Align2::LEFT_CENTER, &name, if depth == 0 { fonts::semibold(12.5) } else { egui::FontId::monospace(12.5) }, if depth == 0 { pal.text_dim } else { pal.special_var }).max.x;
+                        let resp=variable_row(ui,&pal,depth,&name,&value,(reference!=0).then(||self.debug.expanded.contains(&reference)));
+                        ui.ctx().data_mut(|data|data.insert_temp(egui::Id::unique(("debug_variable_row",name.as_str())),resp.rect));
                         if !value.is_empty() {
-                            ui.painter().text(Pos2::new(end + 6.0, r.center().y), egui::Align2::LEFT_CENTER, format!("= {value}"), egui::FontId::monospace(12.5), pal.text);
+                            resp.clone().on_hover_ui(|ui| {
+                                ui.set_max_width(600.0);
+                                ui.label(RichText::new(&name).strong());
+                                if ui.button(tr("Copy value")).clicked(){ui.ctx().copy_text(value.clone());}
+                                egui::ScrollArea::vertical().max_height(300.0).show(ui,|ui| {
+                                    let mut text=value.as_str();
+                                    ui.add(egui::TextEdit::multiline(&mut text).font(egui::FontId::monospace(12.5)).desired_width(580.0));
+                                });
+                            });
+                            resp.context_menu(|ui| {if ui.button(tr("Copy value")).clicked(){ui.ctx().copy_text(value.clone());ui.close();}});
                         }
                         if reference != 0 && resp.clicked() {
                             expand = Some(reference);
@@ -360,5 +409,34 @@ impl App {
         if let Some(r) = expand {
             self.expand_variables(r);
         }
+    }
+}
+
+#[cfg(test)]
+mod variable_layout_tests {
+    use super::*;
+    #[test]
+    fn multiline_values_and_long_names_stay_in_their_row_and_column() {
+        let original="<table>\r\n\t<td>Пример</td>\n</table>\u{2028}end";
+        assert!(!value_preview(original).contains(['\n','\r','\t','\u{2028}']));
+        for width in [80.0,160.0,400.0] {
+            let ctx=egui::Context::default();crate::fonts::install(&ctx);
+            let mut output=ctx.run_ui(egui::RawInput::default(),|ui| {
+                ui.set_width(width);
+                let pal=crate::theme::Palette::dark();
+                let first=variable_row(ui,&pal,1,&"long_name".repeat(100),original,None);
+                let second=variable_row(ui,&pal,1,"next","42",None);
+                assert!(first.rect.max.y<=second.rect.min.y);
+            });
+            output.textures_delta.clear();
+            for shape in output.shapes {
+                if let egui::Shape::Text(text)=shape.shape {
+                    assert_eq!(text.galley.rows.len(),1);
+                    assert!(shape.clip_rect.width()<=width+1.0);
+                    assert!(text.galley.size().y<=ROW_H-6.0);
+                }
+            }
+        }
+        assert!(value_preview(&"я".repeat(100_000)).chars().count()<=2049);
     }
 }
