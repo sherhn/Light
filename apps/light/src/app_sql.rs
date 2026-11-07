@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use ide_core::db::{self, DbEvent, DbSchema, DbWorker, ResultSet, Statement};
+use ide_core::db::{self, DbEvent, DbSchema, DbTable, DbWorker, ResultSet, Statement};
 
 use crate::app::App;
 use crate::doc::Doc;
@@ -48,6 +48,37 @@ pub struct SqlState {
 const DB_EXTENSIONS: &[&str] = &["db", "sqlite", "sqlite3", "db3"];
 
 impl App {
+    /// What the database offers where a word is being written: the tables after `FROM`/`JOIN`/`INTO`/`UPDATE`/
+    /// `TABLE`, the columns of the table an alias names after its dot, and elsewhere every table plus the columns
+    /// of the tables the statement reads. `word_start` is where the word begins in `text`.
+    pub fn sql_completions(&self, text: &str, word_start: usize) -> Vec<(String, &'static str, u8)> {
+        let Some(schema) = &self.sql.schema else { return vec![] };
+        let before = &text[..word_start];
+        // `u.`: the columns of the table `u` names
+        if let Some(alias) = alias_before_dot(before) {
+            let statement = statement_around(text, word_start);
+            let named = sql_aliases(&statement).into_iter().find(|(table, name)| alias == *name).map(|(table, _)| table);
+            if let Some(table) = named.and_then(|t| schema.table(&t).map(|t| t.to_owned())) {
+                return table.columns.iter().map(|c| (c.name.clone(), "v", 0u8)).collect();
+            }
+            return vec![];
+        }
+        // where a table belongs: after the words that ask for one
+        if matches!(ends_with_word(before).as_deref(), Some("FROM" | "JOIN" | "INTO" | "UPDATE" | "TABLE")) {
+            return schema.tables.iter().map(|t| (t.name.clone(), "C", 1u8)).collect();
+        }
+        // anywhere else: the tables, and the columns of what the statement reads
+        let statement = statement_around(text, word_start);
+        let tables: Vec<&ide_core::db::DbTable> = sql_aliases(&statement).into_iter().filter_map(|(t, _)| schema.table(&t)).collect();
+        let mut out: Vec<(String, &'static str, u8)> = schema.tables.iter().map(|t| (t.name.clone(), "C", 3u8)).collect();
+        for t in tables {
+            for c in &t.columns {
+                out.push((c.name.clone(), "v", 2u8));
+            }
+        }
+        out
+    }
+
     /// Is document `idx` a SQL console: its language is one of a module with the SQL engine?
     pub fn is_sql_doc(&self, idx: usize) -> bool {
         let Some(doc) = self.docs.get(idx).filter(|d| d.diff.is_none() && d.page.is_none()) else { return false };
@@ -306,6 +337,94 @@ fn file_stem(p: &Path) -> String {
     p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()
 }
 
+/// The words of SQL text, upper-case, with the byte range each came from. Quoted identifiers count as words
+/// (their quotes are taken away).
+fn sql_words(text: &str) -> Vec<(String, usize, usize)> {
+    let b = text.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < b.len() {
+        let c = b[i];
+        if c.is_ascii_alphanumeric() || c == b'_' || c == b'$' {
+            let start = i;
+            while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_' || b[i] == b'$') {
+                i += 1;
+            }
+            out.push((text[start..i].to_ascii_uppercase(), start, i));
+        } else if c == b'"' || c == b'`' {
+            // a quoted identifier: one word without its quotes
+            let start = i;
+            i += 1;
+            while i < b.len() && b[i] != c {
+                i += 1;
+            }
+            i = (i + 1).min(b.len());
+            out.push((text[start + 1..(i - 1).min(text.len())].to_ascii_uppercase(), start, i));
+        } else {
+            i += 1;
+        }
+    }
+    out
+}
+
+/// Words that cannot be the alias of a table in `FROM t [AS] a`.
+const NOT_AN_ALIAS: &[&str] = &[
+    "WHERE", "GROUP", "ORDER", "HAVING", "LIMIT", "OFFSET", "UNION", "INTERSECT", "EXCEPT", "INNER", "LEFT",
+    "RIGHT", "FULL", "OUTER", "CROSS", "NATURAL", "JOIN", "ON", "USING", "SET", "VALUES", "SELECT", "AS",
+];
+
+/// The tables a statement's `FROM`/`JOIN` clauses name: each table under its alias, and under its own name.
+fn sql_aliases(sql: &str) -> Vec<(String, String)> {
+    let words = sql_words(sql);
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut i = 0;
+    while i < words.len() {
+        let (word, _, end) = &words[i];
+        if (word == "FROM" || word == "JOIN") && *end < sql.len() {
+            if let Some((table, _, _)) = words.get(i + 1) {
+                let table = table.clone();
+                if let Some((alias, _, _)) = words.get(i + 2) {
+                    let alias = if alias == "AS" { words.get(i + 3).map(|w| w.0.clone()) } else { Some(alias.clone()) };
+                    if let Some(alias) = alias.filter(|a| !NOT_AN_ALIAS.contains(&a.as_str())) {
+                        out.push((table.clone(), alias));
+                    }
+                }
+                // a table also answers to its own name, with or without an alias
+                out.push((table.clone(), table));
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+/// The statement `offset` is in (the whole text when it is in none).
+fn statement_around(text: &str, offset: usize) -> String {
+    for s in db::split_statements(text) {
+        if offset >= s.start && offset <= s.start + s.sql.len() {
+            return s.sql;
+        }
+    }
+    text.to_string()
+}
+
+/// The last identifier `text` ends with (after whitespace), if it ends with one.
+fn ends_with_word(text: &str) -> Option<String> {
+    let t = text.trim_end();
+    let cut = t.rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '$')).map_or(0, |p| p + 1);
+    (cut < t.len()).then(|| t[cut..].to_ascii_uppercase())
+}
+
+/// Does `text` end with `alias.` (the word the columns would belong to)?
+fn alias_before_dot(text: &str) -> Option<String> {
+    let t = text.trim_end();
+    t.ends_with('.').then(|| {
+        let head = &t[..t.len() - 1];
+        let cut = head.rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '$')).map_or(0, |p| p + 1);
+        head[cut..].to_ascii_uppercase()
+    }).filter(|w| !w.is_empty())
+}
+
 /// Collect the database files under `dir` (a short look: two levels down, and not into hidden or vendor folders).
 fn collect_databases(dir: &Path, out: &mut Vec<PathBuf>, depth: usize) {
     if depth > 2 || out.len() > 4 {
@@ -323,5 +442,75 @@ fn collect_databases(dir: &Path, out: &mut Vec<PathBuf>, depth: usize) {
         } else if DB_EXTENSIONS.iter().any(|e| path.extension().is_some_and(|x| x.eq_ignore_ascii_case(e))) {
             out.push(path);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::App;
+
+    fn schema() -> DbSchema {
+        DbSchema {
+            tables: vec![
+                DbTable { name: "users".into(), is_view: false, columns: vec![
+                    ide_core::db::DbColumn { name: "id".into(), ty: "INTEGER".into(), notnull: true, pk: true },
+                    ide_core::db::DbColumn { name: "name".into(), ty: "TEXT".into(), notnull: false, pk: false },
+                ] },
+                DbTable { name: "orders".into(), is_view: false, columns: vec![
+                    ide_core::db::DbColumn { name: "user_id".into(), ty: "INTEGER".into(), notnull: false, pk: false },
+                ] },
+            ],
+        }
+    }
+
+    #[test]
+    fn aliases_of_from_and_join() {
+        let named = sql_aliases("SELECT * FROM users u JOIN orders o ON o.user_id = u.id WHERE u.name = 'x'");
+        assert!(named.contains(&("USERS".to_string(), "U".to_string())));
+        assert!(named.contains(&("USERS".to_string(), "USERS".to_string())));
+        assert!(named.contains(&("ORDERS".to_string(), "O".to_string())));
+        // `AS` counts, and a keyword is not an alias
+        assert!(sql_aliases("FROM users AS u2").contains(&("USERS".to_string(), "U2".to_string())));
+        assert!(!sql_aliases("FROM users WHERE").iter().any(|(_, n)| n == "WHERE"));
+    }
+
+    #[test]
+    fn words_after_a_dot_and_before_the_caret() {
+        assert_eq!(alias_before_dot("SELECT u."), Some("U".into()));
+        assert_eq!(alias_before_dot("SELECT name FROM "), None);
+        assert_eq!(ends_with_word("select * from "), Some("FROM".into()));
+        assert_eq!(ends_with_word("select * "), None);
+    }
+
+    #[test]
+    fn the_dot_offers_the_columns_of_the_aliased_table() {
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.sql.schema = Some(schema());
+        let text = "SELECT u. FROM users u";
+        let at = "SELECT u.".len();
+        let offered: Vec<String> = app.sql_completions(text, at).into_iter().map(|(n, _, _)| n).collect();
+        assert_eq!(offered, vec!["id", "name"]);
+        // a table's own name works as its alias
+        let text = "SELECT users. FROM users";
+        let offered: Vec<String> = app.sql_completions(text, "SELECT users.".len()).into_iter().map(|(n, _, _)| n).collect();
+        assert_eq!(offered, vec!["id", "name"]);
+    }
+
+    #[test]
+    fn after_from_the_tables_the_others_after_the_columns() {
+        let mut app = App::new(ide_core::settings::Settings::default());
+        app.sql.schema = Some(schema());
+        // right after FROM: the tables, first
+        let after_from = app.sql_completions("SELECT * FROM ", "SELECT * FROM ".len());
+        assert_eq!(after_from.first().map(|(n, _, s)| (n.as_str(), *s)), Some(("users", 1)));
+        // anywhere else: the tables and the columns of what the statement reads
+        let anywhere = app.sql_completions("SELECT * FROM users WHERE ", 8);
+        let names: Vec<&str> = anywhere.iter().map(|(n, _, _)| n.as_str()).collect();
+        assert!(names.contains(&"orders"));
+        assert!(names.contains(&"name"));
+        assert!(names.contains(&"id"));
+        // what the statement does not read is not among its columns
+        assert!(!names.contains(&"user_id"));
     }
 }

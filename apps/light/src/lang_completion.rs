@@ -100,6 +100,15 @@ impl App {
             return;
         }
         if triggered {
+            // a SQL console answers its dots itself: the columns of the table the alias before the dot names
+            if self.is_sql_doc(self.active)
+                && let Some(text) = self.docs.get(self.active).map(|d| d.ed.text().to_string())
+            {
+                let items: Vec<CItem> = self.sql_completions(&text, s).into_iter().map(|(text, kind, source)| CItem { text, back: 0, kind: kind.to_string(), source }).collect();
+                let prefix = prefix.clone();
+                self.completion = Completion { active: !items.is_empty(), selected: 0, items: items.into_iter().take(MAX_ITEMS).collect(), start: s, prefix };
+                return;
+            }
             // the members it offers once it has answered (the list is made again then)
             let items = self.lsp_completions(self.active, s, "", false).unwrap_or_default();
             self.completion = Completion { active: !items.is_empty(), selected: 0, items: items.into_iter().take(MAX_ITEMS).collect(), start: s, prefix };
@@ -126,6 +135,12 @@ impl App {
             for (w, class) in lang.words() {
                 let kind = kind_of_class(*class);
                 push(w.clone(), kind, if kind == "m" && statement_start { 0 } else { 3 }, &mut items);
+            }
+        }
+        // what the database names: the tables, and the columns of what the statement reads
+        if self.is_sql_doc(self.active) {
+            for (name, kind, source) in self.sql_completions(&text, s) {
+                push(name, kind, source, &mut items);
             }
         }
         // what the project defines: the open files as they are now, the rest from the index
