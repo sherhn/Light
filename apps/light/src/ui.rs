@@ -123,6 +123,7 @@ impl eframe::App for App {
                         LeftTool::Structure => self.draw_structure_panel(ui),
                         LeftTool::Commit => self.draw_commit_panel(ui, &ctx),
                         LeftTool::Tasks => self.draw_tasks_panel(ui),
+                        LeftTool::Database => self.draw_database_panel(ui),
                     }
                 });
             });

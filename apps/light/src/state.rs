@@ -25,6 +25,8 @@ pub enum LeftTool {
     Commit,
     /// The tasks the project's files define (package.json scripts, make targets).
     Tasks,
+    /// The database of the project: its tables, their columns.
+    Database,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

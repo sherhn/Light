@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use ide_core::db::{self, DbEvent, DbSchema, DbTable, DbWorker, ResultSet, Statement};
+use ide_core::db::{self, DbEvent, DbSchema, DbWorker, ResultSet, Statement};
 
 use crate::app::App;
 use crate::doc::Doc;
@@ -42,12 +42,19 @@ pub struct SqlState {
     pub running: usize,
     /// What runs now (named in the Results tab when it answers).
     pub running_key: String,
+    /// The tables whose columns the database tree shows.
+    pub expanded: Vec<String>,
 }
 
 /// The file extensions a project database has.
 const DB_EXTENSIONS: &[&str] = &["db", "sqlite", "sqlite3", "db3"];
 
 impl App {
+    /// Is the SQL engine of the IDE on: its module is installed and enabled?
+    pub fn sql_enabled(&self) -> bool {
+        self.mods.installed.iter().any(|m| m.enabled && m.manifest.builtin == "sql")
+    }
+
     /// What the database offers where a word is being written: the tables after `FROM`/`JOIN`/`INTO`/`UPDATE`/
     /// `TABLE`, the columns of the table an alias names after its dot, and elsewhere every table plus the columns
     /// of the tables the statement reads. `word_start` is where the word begins in `text`.
@@ -57,7 +64,7 @@ impl App {
         // `u.`: the columns of the table `u` names
         if let Some(alias) = alias_before_dot(before) {
             let statement = statement_around(text, word_start);
-            let named = sql_aliases(&statement).into_iter().find(|(table, name)| alias == *name).map(|(table, _)| table);
+            let named = sql_aliases(&statement).into_iter().find(|(_table, name)| alias == *name).map(|(table, _)| table);
             if let Some(table) = named.and_then(|t| schema.table(&t).map(|t| t.to_owned())) {
                 return table.columns.iter().map(|c| (c.name.clone(), "v", 0u8)).collect();
             }
@@ -139,7 +146,7 @@ impl App {
 
     /// Make sure the database is open in its thread. Returns false when the project has none to offer: the caller
     /// asks for a file in that case.
-    fn sql_ensure_worker(&mut self) -> bool {
+    pub fn sql_ensure_worker(&mut self) -> bool {
         if self.sql.worker.is_some() {
             return true;
         }
@@ -330,6 +337,24 @@ impl App {
         self.sql.open_error = None;
         self.sql.running = 0;
         self.sql.running_key.clear();
+        self.sql.expanded.clear();
+    }
+
+    /// Show what a table holds: its first rows, in the Results tab.
+    pub fn sql_show_table(&mut self, name: &str) {
+        if !self.sql_ensure_worker() {
+            self.sql_pick_database();
+            if self.sql.worker.is_none() {
+                self.toast(tr("No database to read the table from"), Sev::Weak);
+                return;
+            }
+        }
+        let sql = format!("SELECT * FROM {} LIMIT 500", db::quote_ident(name));
+        self.sql.running_key = sql.clone();
+        if let Some(w) = &self.sql.worker {
+            self.sql.running += 1;
+            w.exec("console", &sql);
+        }
     }
 }
 

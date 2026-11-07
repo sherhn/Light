@@ -574,6 +574,7 @@ impl App {
             // ---- view
             "view.project" => self.toggle_left(LeftTool::Project),
             "view.structure" => self.toggle_left(LeftTool::Structure),
+            "view.database" => self.toggle_left(LeftTool::Database),
             "view.tasks" => self.toggle_left(LeftTool::Tasks),
             "view.debug" => self.toggle_bottom(BottomTool::Debug),
             "view.services" => {

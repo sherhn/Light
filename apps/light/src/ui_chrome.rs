@@ -435,6 +435,10 @@ impl App {
                     self.toggle_left(tool);
                 }
             }
+            // the database of the project (its SQL consoles run on it)
+            if self.sql_enabled() && self.strip_button(ui, Icon::Database, self.left_tool == Some(LeftTool::Database), tr("Database (Alt+D)"), None) {
+                self.toggle_left(LeftTool::Database);
+            }
             // the modules: a page of its own, with a dot when the open project asks for some that are not on
             let on_page = self.doc().is_some_and(|d| d.page == Some(crate::doc::Page::Modules));
             let badge = (!self.needed_modules.is_empty()).then_some(self.pal.accent);
@@ -857,6 +861,7 @@ fn command_icon(id: &str) -> Option<Icon> {
         "view.project" => Icon::Project,
         "view.commit" | "git.commit" => Icon::Commit,
         "view.structure" | "nav.file_structure" => Icon::List,
+        "view.database" | "sql.run_statement" | "sql.run_file" => Icon::Database,
         "view.git" | "git.local_commit" => Icon::History,
         "view.repl" | "repl.focus" | "repl.eval" | "repl.eval_last" | "repl.load_file" => Icon::Repl,
         "view.run" | "run.run_file" => Icon::Play,

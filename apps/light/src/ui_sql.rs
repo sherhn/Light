@@ -11,6 +11,100 @@ const ROW_H: f32 = 24.0;
 const HEADER_H: f32 = 30.0;
 
 impl App {
+    /// The Database window: the tables of the project's database, their columns; a click on a table shows its rows.
+    pub fn draw_database_panel(&mut self, ui: &mut egui::Ui) {
+        use crate::icons::{Icon, paint as icon};
+        let pal = self.pal;
+        // open the project's database when the window first shows itself
+        if self.sql.worker.is_none() && self.sql.open_error.is_none() {
+            self.sql_ensure_worker();
+            if let Some(w) = &self.sql.worker {
+                w.schema();
+            }
+        }
+        let name = self.sql.db_path.as_deref().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let schema = self.sql.schema.clone();
+
+        // the header: which database, and the button that changes it
+        ui.horizontal(|ui| {
+            let r = ui.allocate_exact_size(Vec2::new(16.0, 16.0), Sense::hover()).0;
+            icon(ui.painter(), r, Icon::Database, pal.accent);
+            let label = if name.is_empty() { tr("No database").to_string() } else { name.clone() };
+            ui.label(egui::RichText::new(label).strong());
+            if self.sql.running > 0 {
+                ui.label(egui::RichText::new("…").weak());
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.small_button(tr("Change…")).clicked() {
+                    self.sql_pick_database();
+                    if let Some(w) = &self.sql.worker {
+                        w.schema();
+                    }
+                }
+            });
+        });
+        if let Some(error) = self.sql.open_error.clone() {
+            ui.add_space(6.0);
+            ui.label(egui::RichText::new(error).color(pal.error).monospace());
+        }
+        ui.add_space(4.0);
+
+        let Some(schema) = schema else {
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new(tr("The SQL consoles of this project run on its SQLite database: the one chosen for it, or the only database file in it.").to_string()).weak());
+            return;
+        };
+        let mut show: Option<String> = None;
+        let mut toggle: Option<String> = None;
+        let expanded = self.sql.expanded.clone();
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            let groups = [
+                (tr("Tables"), false, Icon::Table),
+                (tr("Views"), true, Icon::Eye),
+            ];
+            for (label, views, group_icon) in groups {
+                ui.add_space(6.0);
+                ui.label(egui::RichText::new(format!("{} ({})", label, schema.tables.iter().filter(|t| t.is_view == views).count())).weak().small());
+                for table in schema.tables.iter().filter(|t| t.is_view == views) {
+                    let open = expanded.contains(&table.name);
+                    let row = ui.allocate_exact_size(Vec2::new(ui.available_width(), 24.0), Sense::click()).1;
+                    let arrow = Rect::from_min_size(row.rect.left_top() + Vec2::new(2.0, 4.0), Vec2::splat(16.0));
+                    if ui.interact(arrow, ui.scope_id().with(("db", &table.name)), Sense::click()).clicked() {
+                        toggle = Some(table.name.clone());
+                    }
+                    icon(ui.painter(), arrow, if open { Icon::ChevronDown } else { Icon::ChevronRight }, pal.text_dim);
+                    let mark = Rect::from_min_size(row.rect.left_top() + Vec2::new(22.0, 4.0), Vec2::splat(16.0));
+                    icon(ui.painter(), mark, group_icon, pal.accent);
+                    let label_rect = Rect::from_min_max(egui::pos2(row.rect.min.x + 44.0, row.rect.min.y), egui::pos2(row.rect.max.x, row.rect.max.y));
+                    ui.painter_at(label_rect).text(egui::pos2(label_rect.min.x, row.rect.center().y), Align2::LEFT_CENTER, &table.name, egui::FontId::default(), if row.hovered() { pal.text } else { pal.text_dim });
+                    // the name is the button: the rows of the table, in the Results tab
+                    if row.clicked() {
+                        show = Some(table.name.clone());
+                    }
+                    if open {
+                        for c in &table.columns {
+                            let sub = ui.allocate_exact_size(Vec2::new(ui.available_width(), 22.0), Sense::hover()).1;
+                            let label = if c.pk { format!(" {} {}", c.name, tr("(key)")) } else { format!("  {}", c.name) };
+                            ui.painter().text(egui::pos2(sub.rect.min.x + 44.0, sub.rect.center().y), Align2::LEFT_CENTER, label, egui::FontId::default(), pal.text_dim);
+                            ui.painter().text(egui::pos2(sub.rect.max.x - 8.0, sub.rect.center().y), Align2::RIGHT_CENTER, c.ty.clone(), egui::FontId::proportional(11.0), pal.text_dim);
+                        }
+                    }
+                }
+            }
+        });
+        if let Some(name) = toggle {
+            if let Some(i) = self.sql.expanded.iter().position(|n| *n == name) {
+                self.sql.expanded.remove(i);
+            } else {
+                self.sql.expanded.push(name);
+            }
+        }
+        if let Some(name) = show {
+            self.sql_show_table(&name);
+        }
+    }
+
     /// The Results tab: what ran, what it answered with, as a grid.
     pub fn draw_results(&mut self, ui: &mut egui::Ui, idx: usize) {
         let pal = self.pal;

@@ -1558,6 +1558,7 @@ impl App {
                     Some(LeftTool::Structure) => "structure",
                     Some(LeftTool::Commit) => "commit",
                     Some(LeftTool::Tasks) => "tasks",
+                    Some(LeftTool::Database) => "database",
                     None => "none",
                 };
                 if name != sval {
