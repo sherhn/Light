@@ -52,11 +52,13 @@ pub struct ProjectConfig {
     pub breakpoints: std::collections::BTreeMap<String, Vec<usize>>,
     /// What breakpoints stop on or log: `file:line` -> their condition, hit count and message.
     pub breakpoint_options: std::collections::BTreeMap<String, crate::app_debug::BreakpointOptions>,
+    /// The SQLite database the project's SQL consoles run on: a path relative to the project root.
+    pub sql_database: Option<String>,
 }
 
 impl Default for ProjectConfig {
     fn default() -> Self {
-        ProjectConfig { linux: None, decided: false, modules: vec![], modules_explicit: false, scenarios: vec![], hidden: default_hidden(), breakpoints: Default::default(), breakpoint_options: Default::default() }
+        ProjectConfig { linux: None, decided: false, modules: vec![], modules_explicit: false, scenarios: vec![], hidden: default_hidden(), breakpoints: Default::default(), breakpoint_options: Default::default(), sql_database: None }
     }
 }
 

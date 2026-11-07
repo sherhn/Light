@@ -103,11 +103,17 @@ pub enum Icon {
     StepOut,
     /// Code coverage.
     Coverage,
+    /// A database of the project.
+    Database,
+    /// A table of results.
+    Table,
 }
 
 pub fn glyph(icon: Icon) -> Option<char> {
     Some(match icon {
         Icon::Folder => l::FOLDER,
+        Icon::Database => l::DATABASE,
+        Icon::Table => l::TABLE_2,
         Icon::FolderOpen => l::FOLDER_OPEN,
         Icon::File => l::FILE_TEXT,
         Icon::Lisp => return None,

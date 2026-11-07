@@ -25,6 +25,8 @@ pub enum Page {
     Modules,
     /// A raster image (its file's name is the tab's title, and the file is what it shows).
     Image,
+    /// The grid of the last SQL statement that ran (a page of the IDE like Modules).
+    Results,
 }
 
 impl Page {
@@ -32,6 +34,7 @@ impl Page {
         match self {
             Page::Modules => "Modules",
             Page::Image => "Image",
+            Page::Results => "Results",
         }
     }
 }
@@ -77,6 +80,8 @@ pub struct Doc {
     pub preview: crate::preview::PreviewState,
     /// The picture of an image tab, or the drawing beside the code of an SVG document (made when first shown).
     pub picture: Option<Box<crate::imageview::ImageView>>,
+    /// What the Results tab shows: the sets the last SQL statement came back with.
+    pub results: Option<Box<crate::app_sql::ResultsView>>,
 }
 
 fn mtime(p: &Path) -> Option<SystemTime> {
@@ -121,6 +126,7 @@ impl Doc {
             runnable_cache:None,
             preview: Default::default(),
             picture: None,
+            results: None,
         })
     }
 
@@ -155,6 +161,7 @@ impl Doc {
             runnable_cache:None,
             preview: Default::default(),
             picture: None,
+            results: None,
         }
     }
 
@@ -178,6 +185,14 @@ impl Doc {
     pub fn modules_tab() -> Doc {
         let mut d = Doc::diff_tab();
         d.page = Some(Page::Modules);
+        d
+    }
+
+    /// The Results tab (one for the whole IDE: it shows what ran last).
+    pub fn results_tab() -> Doc {
+        let mut d = Doc::diff_tab();
+        d.page = Some(Page::Results);
+        d.results = Some(Box::default());
         d
     }
 
@@ -205,6 +220,9 @@ impl Doc {
     pub fn name(&self) -> String {
         if self.page == Some(Page::Modules) {
             return tr(Page::Modules.title()).to_string();
+        }
+        if self.page == Some(Page::Results) {
+            return tr(Page::Results.title()).to_string();
         }
         if let Some(t) = self.diff.as_ref().filter(|_| !self.is_picture_tab()) {
             return format!("{} ({})", t.title(), tr("diff"));

@@ -548,6 +548,8 @@ impl App {
             let is_diff = self.docs[i].diff.is_some();
             let (tab_icon, tab_icon_color) = if self.docs[i].is_picture_tab() {
                 (Icon::Preview, pal.accent)
+            } else if self.docs[i].page == Some(crate::doc::Page::Results) {
+                (Icon::Table, pal.accent)
             } else if self.docs[i].page.is_some() {
                 (Icon::Puzzle, pal.accent)
             } else if is_diff {

@@ -507,6 +507,8 @@ impl App {
             // ---- run / REPL
             "run.run_file" => self.run_selected(),
             "run.current_file" => self.run_current_file(),
+            "sql.run_statement" => self.sql_run_statement(),
+            "sql.run_file" => self.sql_run_file(std::path::Path::new("")),
             "run.show_in_browser" => self.show_html_in_browser(),
             "run.load_system" => self.repl_load_system(),
             "run.test_system" => {

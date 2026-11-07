@@ -151,6 +151,8 @@ pub struct App {
     pub tools_banner_dismissed: bool,
     /// The modules (languages and their tools): what is installed, what the registry offers.
     pub mods: crate::modules::ModulesState,
+    /// The SQL console: the database of the project and its schema.
+    pub sql: crate::app_sql::SqlState,
     /// Modules the open project asks for or looks like it needs that are not on yet (the banner offers them).
     pub needed_modules: Vec<String>,
     /// The "this project needs modules" banner was closed.
@@ -257,6 +259,7 @@ impl App {
             env_banner_dismissed: false,
             tools_banner_dismissed: false,
             mods: Default::default(),
+            sql: Default::default(),
             needed_modules: vec![],
             modules_banner_dismissed: false,
             make_targets: vec![],
@@ -439,6 +442,7 @@ impl App {
         self.stop_services();
         self.services = Default::default();
         self.profiler = Default::default();
+        self.sql_reset();
         self.modules_banner_dismissed = false;
         self.tools_banner_dismissed = false;
         // the terminal starts again in the new project's folder
@@ -919,6 +923,7 @@ impl App {
         self.poll_wsl();
         self.poll_modules(ctx);
         self.poll_checks();
+        self.poll_sql();
         self.poll_debug();
         self.poll_services();
         self.poll_lsp(ctx);

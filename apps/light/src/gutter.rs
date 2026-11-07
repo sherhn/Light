@@ -18,6 +18,10 @@ pub enum GutterAction {
     RunTests(PathBuf, Option<ide_core::testing::TestItem>, bool),
     /// Send the request on a line of a `.http` file, with an environment.
     SendRequest(PathBuf, usize, Option<String>),
+    /// Run the SQL statement that starts at this offset of a console file (the active document when empty).
+    RunSql(PathBuf, usize),
+    /// Run every statement of a SQL console file (the active document when empty).
+    RunSqlFile(PathBuf),
     RunFile(PathBuf),
     RunLanguage(PathBuf,ide_core::modules::RunDef),
     RunCode(PathBuf,ide_core::modules::CodeActionDef,String),
@@ -45,6 +49,7 @@ impl App {
     pub fn gutter_icons(&mut self, idx: usize) -> Vec<GutterIcon> {
         let mut icons = self.test_icons(idx);
         icons.extend(self.http_icons(idx));
+        icons.extend(self.sql_icons(idx));
         let specific=!icons.is_empty();
         icons.extend(self.code_run_icons(idx,specific));
         icons.sort_by_key(|icon|icon.line);
@@ -56,6 +61,7 @@ impl App {
     pub fn gutter_actions(&mut self, idx: usize, line: usize) -> Vec<(Icon, String, GutterAction)> {
         let mut actions = self.test_actions(idx, line);
         actions.extend(self.http_actions(idx, line));
+        actions.extend(self.sql_actions(idx, line));
         actions.extend(self.code_run_actions(idx,line));
         actions
     }
@@ -75,6 +81,8 @@ impl App {
         match action {
             GutterAction::RunTests(path, item, coverage) => self.run_tests_with(&path, item.as_ref(), coverage),
             GutterAction::SendRequest(path, line, env) => self.send_request(&path, line, env.as_deref()),
+            GutterAction::RunSql(path, offset) => self.sql_run_at(&path, offset),
+            GutterAction::RunSqlFile(path) => self.sql_run_file(&path),
             GutterAction::RunFile(path)=>{if self.open_file(&path) {self.run_current_file();}},
             GutterAction::RunLanguage(path,def)=>{
                 if self.mods.installed.iter().any(|module|module.enabled&&module.manifest.run.contains(&def)) {self.run_language_command(&def,&path);}

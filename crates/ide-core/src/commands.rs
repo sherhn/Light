@@ -186,6 +186,8 @@ cmds! {
     // ---- Run / REPL
     "run.run_file", "Run Current File", Run, ["Shift+F10"];
     "run.current_file", "Run Current File", Run, ["Ctrl+Shift+F10"];
+    "sql.run_statement", "Run SQL Statement", Run, ["F5"];
+    "sql.run_file", "Run SQL File", Run, [];
     "run.show_in_browser", "Show in browser", Run, [];
     "run.compile_file", "Compile Current File", Run, ["Ctrl+F9"];
     "run.stop", "Stop", Run, ["Ctrl+F2"];
