@@ -522,7 +522,7 @@ impl App {
             Popup::NewProject { mut parent, mut name, mut just_opened, mut modules, template, mut creating, mut location } => {
                 if let Some(root) = location.poll() {
                     let distro = ide_core::wsl::wsl_path(&root).map(|path| path.distro);
-                    let cfg = crate::app_env::ProjectConfig { modules: modules.clone(), decided: distro.is_some(), linux: distro, ..Default::default() };
+                    let cfg = crate::app_env::ProjectConfig { modules: modules.clone(), modules_explicit: true, decided: distro.is_some(), linux: distro, ..Default::default() };
                     if let Err(error) = crate::app_env::save_config(&root, &cfg) {
                         self.toast(i18n::fmt("Cannot save the project settings: {}", &[&error]), Sev::Error);
                     }
@@ -535,7 +535,7 @@ impl App {
                 let (mut ok, mut cancel) = (enter && !creating && !working && !picking, esc && !working && !picking);
                 let data = self.picker_data(ctx);
                 let installed_ids: Vec<String> = self.mods.installed.iter().map(|m| m.manifest.id.clone()).collect();
-                let missing: Vec<String> = modules.iter().filter(|id| !installed_ids.contains(id)).cloned().collect();
+                let mut missing = Vec::new();
                 let pal = self.pal;
                 self.dialog_card(ctx, "new_project", tr("New Project"), 640.0_f32.min((ctx.content_rect().width() - 64.0).max(280.0)), |ui| {
                     if working { ui.disable(); }
@@ -552,9 +552,23 @@ impl App {
                     ui.add_space(6.0);
                     location.draw(ui, &pal, &self.wsl.distros(), &mut parent, creating || working);
                     ui.add_space(14.0);
-                    widgets::caption(ui, &pal, &tr("Modules").to_uppercase());
+                    ui.horizontal(|ui| {
+                        widgets::caption(ui, &pal, &tr("Modules").to_uppercase());
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let clear = ui.add_enabled_ui(!creating && !modules.is_empty(), |ui| {
+                                widgets::compact_button(ui, &pal, tr("Deselect All"), false)
+                            }).inner;
+                            if self.script.is_some() {
+                                ctx.data_mut(|data| data.insert_temp(egui::Id::unique("new_project_clear_modules"), clear.rect));
+                            }
+                            if clear.clicked() {
+                                modules.clear();
+                            }
+                        });
+                    });
                     ui.add_space(6.0);
-                    crate::ui_modules::module_picker(ui, &pal, &data, &mut modules);
+                    ui.add_enabled_ui(!creating, |ui| crate::ui_modules::module_picker(ui, &pal, &data, &mut modules));
+                    missing = modules.iter().filter(|id| !installed_ids.contains(id)).cloned().collect();
                     ui.add_space(14.0);
                     ui.label(RichText::new(tr("The project folder starts empty. Add files with + in Project.")).color(pal.text_dim).size(12.0));
                     ui.add_space(10.0);

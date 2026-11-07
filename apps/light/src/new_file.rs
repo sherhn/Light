@@ -59,7 +59,7 @@ impl crate::app::App {
     /// Legacy projects without choices use their indexed files; never scan disk on the UI thread.
     pub fn new_file_kinds(&self) -> Vec<FileKind> {
         let wanted=if let Some(project)=&self.project {
-            if self.project_cfg.modules.is_empty() {
+            if self.project_cfg.modules.is_empty() && !self.project_cfg.modules_explicit {
                 let (extensions,names)=ide_core::modules::detect::scan_files(project.files.iter().map(std::path::PathBuf::as_path));
                 ide_core::modules::detect::needed_in(&extensions,&names,&self.mods.detectors())
             } else {self.project_cfg.modules.clone()}

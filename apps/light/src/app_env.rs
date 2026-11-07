@@ -41,6 +41,8 @@ pub struct ProjectConfig {
     pub decided: bool,
     /// Modules the project asks for (chosen when it was created or imported): they are offered when missing.
     pub modules: Vec<String>,
+    /// The user can explicitly create a project with no selected modules.
+    pub modules_explicit: bool,
     /// Lists of console commands the project runs with one click.
     pub scenarios: Vec<Scenario>,
     /// What the project tree, Go to File, search and the index leave out (see [`ide_core::workspace::Hidden`]); a
@@ -54,7 +56,7 @@ pub struct ProjectConfig {
 
 impl Default for ProjectConfig {
     fn default() -> Self {
-        ProjectConfig { linux: None, decided: false, modules: vec![], scenarios: vec![], hidden: default_hidden(), breakpoints: Default::default(), breakpoint_options: Default::default() }
+        ProjectConfig { linux: None, decided: false, modules: vec![], modules_explicit: false, scenarios: vec![], hidden: default_hidden(), breakpoints: Default::default(), breakpoint_options: Default::default() }
     }
 }
 

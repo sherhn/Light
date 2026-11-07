@@ -1179,6 +1179,14 @@ impl App {
                     self.fail("new_project_set: the New Project dialog is not open".to_string());
                 }
             }
+            "new_project_clear_modules" => {
+                if let Some(rect) = ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("new_project_clear_modules"))) {
+                    let pos = rect.center();
+                    self.script.as_mut().unwrap().steps.push_front(serde_json::json!({"op": "click", "x": pos.x, "y": pos.y}));
+                } else {
+                    self.fail("New Project module reset button is not visible".into());
+                }
+            }
             "assert_project_creation_error" => {
                 let error = match &self.popup { Popup::NewProject { location, .. } => location.error.as_deref(), _ => None };
                 if !error.is_some_and(|error| error.contains(&sval)) { self.fail(format!("expected project creation error containing {sval:?}, got {error:?}")); }
