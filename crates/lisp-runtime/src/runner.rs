@@ -81,7 +81,7 @@ impl Drop for RunHandle {
 /// UTF-8 as is; anything else is console output in the system's OEM code page.
 /// End a process and everything it started (Windows: `taskkill /T`; elsewhere the caller's `kill` has to do).
 #[cfg(windows)]
-fn kill_tree(pid: u32) {
+pub fn kill_tree(pid: u32) {
     let mut c = Command::new("taskkill");
     c.args(["/PID", &pid.to_string(), "/T", "/F"]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     crate::no_window(&mut c);
@@ -90,7 +90,7 @@ fn kill_tree(pid: u32) {
 }
 
 #[cfg(not(windows))]
-fn kill_tree(_pid: u32) {}
+pub fn kill_tree(_pid: u32) {}
 
 fn decode_chunk(bytes: &[u8]) -> String {
     match std::str::from_utf8(bytes) {

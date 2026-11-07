@@ -228,6 +228,14 @@ impl App {
     pub fn modules_reload(&mut self) {
         let Some(store) = self.mods.store.as_ref() else { return };
         let (installed, mut broken) = store.installed_with_errors();
+        let servers = |modules: &[Installed]| {
+            modules.iter().filter(|module| module.enabled && !module.manifest.lsp.is_empty())
+                .map(|module| (module.manifest.id.clone(), module.manifest.lsp.clone()))
+                .collect::<Vec<_>>()
+        };
+        if servers(&installed) != servers(&self.mods.installed) {
+            self.stop_lsp();
+        }
         let mut langs = LanguageSet::new();
         let mut lisp = false;
         for m in installed.iter().filter(|m| m.enabled) {
@@ -257,6 +265,8 @@ impl App {
         }
         self.apply_languages();
         self.recheck_all();
+        // language servers start again for what the modules now say
+        self.stop_lsp();
         self.refresh_needed_modules();
         self.refresh_make_targets();
     }

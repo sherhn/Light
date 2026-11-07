@@ -211,9 +211,61 @@ pub fn native_command(path: &Path, cwd: &Path, env: &[(String, String)]) -> Opti
     Some(c)
 }
 
+/// Where the shell would find `program` in the folders of `path` (a PATH value): the file itself, or on Windows the
+/// first with an extension of `PATHEXT` (`clangd` is `clangd.exe`, `npm` is `npm.cmd`). A name with a folder in it is
+/// looked at as it is.
+pub fn find_program(program: &str, path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
+    let exts: Vec<String> = if cfg!(windows) {
+        // `cmd` runs a file without an extension of PATHEXT only when it was named with one
+        let named = Path::new(program).extension().map(|_| String::new());
+        let pathext = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into());
+        named.into_iter().chain(pathext.split(';').filter(|e| !e.is_empty()).map(str::to_lowercase)).collect()
+    } else {
+        vec![String::new()]
+    };
+    let usable = |p: &Path| -> bool {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            p.metadata().is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+        }
+        #[cfg(not(unix))]
+        {
+            p.is_file()
+        }
+    };
+    let candidates = |base: &Path| -> Option<PathBuf> { exts.iter().map(|e| PathBuf::from(format!("{}{e}", base.display()))).find(|p| usable(p)) };
+    if program.contains(['/', '\\']) {
+        return candidates(Path::new(program));
+    }
+    std::env::split_paths(path?).filter(|d| !d.as_os_str().is_empty()).find_map(|d| candidates(&d.join(program)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn programs_are_found_on_the_path() {
+        let dir = crate::testutil::TempDir::new("find-program");
+        let name = if cfg!(windows) { "tool.cmd" } else { "tool" };
+        let tool = dir.path().join(name);
+        std::fs::write(&tool, "x").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let path = std::env::join_paths([Path::new("/definitely/not/here"), dir.path()]).unwrap();
+        assert_eq!(find_program("tool", Some(&path)), Some(tool.clone()));
+        assert_eq!(find_program("no-such-tool", Some(&path)), None);
+        assert_eq!(find_program("tool", None), None);
+        // with a folder: that file
+        assert_eq!(find_program(&dir.path().join("tool").to_string_lossy(), None), Some(tool));
+        // the system's own shell is found on the real PATH
+        let shell = if cfg!(windows) { "cmd" } else { "sh" };
+        assert!(find_program(shell, std::env::var_os("PATH").as_deref()).is_some());
+    }
 
     #[test]
     fn parses_comments_prefixes_and_continuations() {

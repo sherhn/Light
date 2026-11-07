@@ -23,6 +23,7 @@ pub mod graph;
 pub mod http;
 pub mod index;
 pub mod localvcs;
+pub mod lsp;
 pub mod paths;
 pub mod profile;
 pub mod modules;
@@ -33,6 +34,7 @@ pub mod transfer;
 pub mod todo;
 pub mod settings;
 pub mod updates;
+pub mod shellenv;
 pub mod workspace;
 pub mod wsl;
 

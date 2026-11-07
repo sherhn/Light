@@ -1482,6 +1482,39 @@ impl Editor {
             ed.anchor = ed.caret;
         });
     }
+
+    /// Make edits - (start, end, new text), in order and not overlapping - in one undo step; the caret and the
+    /// selection move with the text around them (a language server's rename or formatting).
+    pub fn apply_edits(&mut self, edits: &[(usize, usize, String)]) {
+        let map = |pos: usize| -> usize {
+            let mut out = pos as isize;
+            for (s, e, new) in edits {
+                if *e <= pos {
+                    out += new.len() as isize - (e - s) as isize;
+                } else if *s < pos {
+                    // inside what is replaced: as far into the new text as it was into the old
+                    out += (new.len().min(pos - s)) as isize - (pos - s) as isize;
+                }
+            }
+            out.max(0) as usize
+        };
+        let (caret, anchor) = (map(self.caret), map(self.anchor));
+        self.want_col = None;
+        self.transact(EditKind::Other, |ed| {
+            for (s, e, new) in edits.iter().rev() {
+                ed.splice(*s, *e, new);
+            }
+            let fit = |ed: &Editor, mut p: usize| {
+                p = p.min(ed.text.len());
+                while !ed.text.is_char_boundary(p) {
+                    p -= 1;
+                }
+                p
+            };
+            let (c, a) = (fit(ed, caret), fit(ed, anchor));
+            ed.set_caret_raw(c, a);
+        });
+    }
 }
 
 #[cfg(test)]
@@ -2070,5 +2103,25 @@ mod tests {
         let c = e.language_spans().unwrap();
         assert!(!Rc::ptr_eq(&a, &c), "an edit makes new ones");
         assert!(Editor::new("(x)", Dialect::CommonLisp).language_spans().is_none(), "Lisp has its own");
+    }
+
+    #[test]
+    fn edits_of_a_server_are_one_undo_step_and_carry_the_caret() {
+        let mut e = ed("int add(int a);
+int x = ad|d(1);
+");
+        let edits = vec![(4, 7, "sum".to_string()), (24, 27, "total".to_string())];
+        e.apply_edits(&edits);
+        assert_eq!(show(&e), "int sum(int a);
+int x = to|tal(1);
+");
+        e.undo();
+        assert_eq!(e.text(), "int add(int a);
+int x = add(1);
+");
+        // reformatting before the caret moves it by what was added
+        let mut e = ed("int  main(){|}");
+        e.apply_edits(&[(3, 5, " ".to_string()), (11, 11, " ".to_string())]);
+        assert_eq!(show(&e), "int main() {|}");
     }
 }

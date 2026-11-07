@@ -91,6 +91,10 @@ impl App {
             "lisp_locals" => self.repl.debuggers.last().is_some_and(|d| !d.locals.is_empty()),
             "inspector" => matches!(self.popup, Popup::Inspector(_)),
             "debug_console" => self.debug.console.iter().any(|l| l.text.contains(cond["value"].as_str().unwrap_or("\u{0}"))),
+            "lsp_idle" => self.lsp_idle(),
+            "lsp_install_done" => self.lsp.installing.is_none(),
+            // a problem whose message has `value` is shown
+            "problem" => self.all_problems().iter().any(|p| p.message.contains(cond["value"].as_str().unwrap_or(""))),
             "git_ready" => self.git.repo.is_some() && self.git.head.is_some() && self.git.rx.is_none(),
             "git_dirty" => self.git.rx.is_none() && !self.git.changes.is_empty(),
             // the picture of the active tab (a raster image, or the drawing beside the code of an SVG) is on screen
@@ -1557,6 +1561,11 @@ impl App {
                 if self.find_results.hits.len() < min {
                     self.fail(format!("assert_find_results: expected >= {min}, got {}", self.find_results.hits.len()));
                 }
+                if let Some(t) = step["title_contains"].as_str()
+                    && !self.find_results.title.contains(t)
+                {
+                    self.fail(format!("assert_find_results: {t:?} not in the title {:?}", self.find_results.title));
+                }
             }
             "assert_git_changes" => {
                 let want = step["value"].as_u64().unwrap_or(0) as usize;
@@ -1799,6 +1808,45 @@ impl App {
                     }
                 }
             }
+            // the language server the banner offers to install (`none`: no banner)
+            "assert_lsp_offer" => {
+                let got = self.lsp.offer.as_ref().map_or("none".to_string(), |o| o.def.name.clone());
+                if got != sval {
+                    self.fail(format!("assert_lsp_offer: expected {sval}, got {got}"));
+                }
+            }
+            "lsp_install_click" => self.lsp_ask_install(),
+            // the language servers of the settings: `status` is installed, path, missing or looking
+            "assert_lsp_status" => {
+                let (_, rows) = self.lsp_server_rows();
+                let got = rows.iter().find(|r| r.def.name == sval).map(|r| match r.status {
+                    Some(ide_core::lsp::install::Status::Installed) => "installed",
+                    Some(ide_core::lsp::install::Status::OnPath) => "path",
+                    Some(ide_core::lsp::install::Status::Missing) => "missing",
+                    None => "looking",
+                });
+                let want = step["status"].as_str().unwrap_or("");
+                if got != Some(want) {
+                    self.fail(format!("assert_lsp_status: {sval} expected {want}, got {got:?}"));
+                }
+            }
+            "lsp_settings_ask" => self.lsp.settings_confirm = Some(sval.clone()),
+            "lsp_remove" => {
+                let (_, rows) = self.lsp_server_rows();
+                match rows.into_iter().find(|r| r.def.name == sval) {
+                    Some(r) => self.lsp_remove(&r.module, &r.def),
+                    None => self.fail(format!("lsp_remove: no server {sval}")),
+                }
+            }
+            "log_lsp" => println!("[lsp] {}", self.lsp_state()),
+            "lsp_decline" => self.lsp_decline_install(),
+            "assert_lsp_install_failed" => match &self.lsp.install_failed {
+                Some((_, why, _)) if why.contains(&sval) => {}
+                other => {
+                    let got = format!("{other:?}");
+                    self.fail(format!("assert_lsp_install_failed: {sval:?} not in {got}"));
+                }
+            },
             "assert_toast" => {
                 if !self.toasts.iter().any(|t| t.text.contains(&sval)) {
                     let all: Vec<_> = self.toasts.iter().map(|t| t.text.clone()).collect();

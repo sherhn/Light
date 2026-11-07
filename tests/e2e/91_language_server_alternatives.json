@@ -1,0 +1,21 @@
+[
+  {"op": "log", "value": "@fake_clangd @two_servers: a language's first server is not installed, so the next one serves it; a language whose only server is missing says so once"},
+  {"op": "open_project", "path": "${PROJ}"},
+  {"op": "wait", "what": "index"},
+
+  {"op": "log", "value": "nowhere-lsp is not there: the fake clangd, named second, serves zc"},
+  {"op": "open", "path": "${PROJ}/alt/demo.zc"},
+  {"op": "assert_language", "value": "zc"},
+  {"op": "set_text", "value": "int f(void) { return missing; }\n"},
+  {"op": "wait", "what": "lsp_idle", "timeout": 30},
+  {"op": "assert_problem", "value": "use of undeclared identifier 'missing'", "line": 1},
+
+  {"op": "log", "value": "zd has no other server: the user hears why"},
+  {"op": "open", "path": "${PROJ}/alt/only.zd"},
+  {"op": "assert_language", "value": "zd"},
+  {"op": "wait", "what": "lsp_idle", "timeout": 30},
+  {"op": "frames", "value": 3},
+  {"op": "assert_toast", "value": "nowhere-lsp was not found"},
+  {"op": "screenshot", "path": "${SHOTS}/${NAME}_missing.png"},
+  {"op": "quit"}
+]

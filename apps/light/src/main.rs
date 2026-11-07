@@ -39,6 +39,8 @@ mod brand;
 mod app_git;
 mod app_github;
 mod app_local;
+mod app_lsp;
+mod ui_lsp;
 mod app_run;
 mod app_split;
 mod app_terminal;
@@ -137,6 +139,15 @@ fn main() -> eframe::Result {
     if viewer::should_view(&args.paths, args.full_ide, args.script.is_some()) {
         crate::i18n::set(settings.language);
         return viewer::run(args.paths, settings, args.viewer_smoke, started);
+    }
+    // started from the desktop: the folders of the user's login shell, which the desktop's PATH lacks
+    #[cfg(unix)]
+    if !ide_core::shellenv::from_terminal()
+        && let Some(login) = ide_core::shellenv::login_path(&ide_core::shellenv::user_shell(), std::time::Duration::from_secs(5))
+    {
+        let current = std::env::var("PATH").unwrap_or_default();
+        // Startup is still single-threaded (the shell's reader thread has ended or reads nothing but its pipe).
+        unsafe { std::env::set_var("PATH", ide_core::shellenv::merge(&login, &current)) };
     }
     let _installation_guard = match app_updates::protect_startup() {
         Ok(guard) => guard,

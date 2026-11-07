@@ -161,6 +161,7 @@ impl eframe::App for App {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         if !self.exit_now { self.flush_saves(); }
         self.save_settings();
+        self.stop_lsp();
         if let Some(s) = self.repl.session.take() {
             s.kill();
         }
@@ -178,6 +179,7 @@ impl App {
         self.draw_tools_banner(ui);
         self.draw_modules_banner(ui);
         self.draw_merge_banner(ui);
+        self.draw_lsp_banner(ui);
         if self.docs.is_empty() {
             self.split = None;
             self.draw_welcome(ui, ctx);

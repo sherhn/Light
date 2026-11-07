@@ -145,6 +145,69 @@ def run_one(script_path):
                     subprocess.run(["cmd", "/c", "mklink", "/J", str(pkg / "node_modules"), str(pathlib.Path(runners))], capture_output=True, check=True)
                 else:
                     os.symlink(runners, pkg / "node_modules", target_is_directory=True)
+        if "@fake_clangd" in text:
+            # C files, and a fake clangd on PATH (tests/fake_lsp.py) in place of a real one
+            (proj / "csrc").mkdir(exist_ok=True)
+            (proj / "csrc" / "util.h").write_text("#ifndef UTIL_H\n#define UTIL_H\nint add(int a, int b);\n#endif\n", encoding="utf-8")
+            (proj / "csrc" / "util.c").write_text('#include "util.h"\nint add(int a, int b) { return a + b; }\n', encoding="utf-8")
+            (proj / "csrc" / "main.c").write_text('#include "util.h"\nconst char *s = "привет"; int x = add(1, 2);\nint main(void) {\n  return add(x, 3);\n}\n', encoding="utf-8")
+            commands = tmp / "fake-lsp"
+            commands.mkdir()
+            if os.name == "nt":
+                (commands / "clangd.cmd").write_text(f'@echo off\r\n"{sys.executable}" "{ROOT / "tests/fake_lsp.py"}" %*\r\n', encoding="utf-8")
+            else:
+                import shlex
+                wrapper = commands / "clangd"
+                wrapper.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(ROOT / "tests/fake_lsp.py"))} "$@"\n', encoding="utf-8")
+                wrapper.chmod(0o755)
+            # The public catalog can lag the client. Keep these tests usable
+            # with an older snapshot, without modifying that verified registry.
+            manifest = json.loads((ROOT / "registry/modules/c-cpp/module.json").read_text(encoding="utf-8"))
+            if "@modules c-cpp" in text and not manifest.get("lsp"):
+                manifest["lsp"] = [{"languages": ["c", "cpp"], "name": "clangd", "command": "clangd"}]
+                module = tmp / "cfg/modules/c-cpp"
+                module.mkdir(parents=True)
+                (module / "module.json").write_text(json.dumps(manifest), encoding="utf-8")
+        if "@two_servers" in text:
+            # a module whose languages have a server that is not installed first, then (for one of them) the fake one
+            (proj / "alt").mkdir(exist_ok=True)
+            (proj / "alt" / "demo.zc").write_text("int f(void) { return 1; }\n", encoding="utf-8")
+            (proj / "alt" / "only.zd").write_text("int g(void) { return 2; }\n", encoding="utf-8")
+            alt = tmp / "cfg" / "modules" / "alt"
+            alt.mkdir(parents=True)
+            grammar = [{"match": r"\bint\b", "class": "keyword"}]
+            (alt / "module.json").write_text(json.dumps({
+                "id": "alt", "name": "Alternatives", "version": "1.0.0", "category": "Languages", "summary": "two servers",
+                "languages": [{"id": "zc", "name": "ZC", "extensions": ["zc"], "grammar": grammar}, {"id": "zd", "name": "ZD", "extensions": ["zd"], "grammar": grammar}],
+                "lsp": [{"languages": ["zc", "zd"], "name": "nowhere-lsp", "command": "nowhere-lsp-not-installed --stdio", "program": "nowhere-lsp"},
+                        {"languages": ["zc"], "name": "clangd", "command": "clangd"}],
+            }), encoding="utf-8")
+        if "@managed_server" in text:
+            # a module whose servers Light installs: one is installed already (the fake server, in Light's folder of
+            # servers), the other is not, and its download cannot work (nothing listens on that port)
+            (proj / "alt2").mkdir(exist_ok=True)
+            (proj / "alt2" / "demo.zm").write_text("int f(void) { return 1; }\n", encoding="utf-8")
+            (proj / "alt2" / "demo.zn").write_text("int g(void) { return 2; }\n", encoding="utf-8")
+            platforms = ["linux-x64", "linux-arm64", "darwin-x64", "darwin-arm64", "win-x64", "win-arm64"]
+            recipe = lambda name: {"version": "1.0.0", "source": "nowhere", "size": 1000, "archives": {p: {"url": f"https://127.0.0.1:9/{name}.tar.gz", "sha256": "0" * 64, "size": 1000, "bin": ""} for p in platforms}}
+            grammar = [{"match": r"\bint\b", "class": "keyword"}]
+            mng = tmp / "cfg" / "modules" / "mng"
+            mng.mkdir(parents=True)
+            (mng / "module.json").write_text(json.dumps({
+                "id": "mng", "name": "Managed", "version": "1.0.0", "category": "Languages", "summary": "servers Light installs",
+                "languages": [{"id": "zm", "name": "ZM", "extensions": ["zm"], "grammar": grammar}, {"id": "zn", "name": "ZN", "extensions": ["zn"], "grammar": grammar}],
+                "lsp": [{"languages": ["zm"], "name": "fakesrv", "command": "fakesrv", "install": recipe("fakesrv")},
+                        {"languages": ["zn"], "name": "fresh-srv", "command": "fresh-srv", "install": recipe("fresh-srv")}],
+            }), encoding="utf-8")
+            home = tmp / "servers" / "fakesrv-1.0.0"
+            home.mkdir(parents=True)
+            if os.name == "nt":
+                (home / "fakesrv.cmd").write_text(f'@echo off\r\n"{sys.executable}" "{ROOT / "tests/fake_lsp.py"}" %*\r\n', encoding="utf-8")
+            else:
+                import shlex
+                (home / "fakesrv").write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(ROOT / "tests/fake_lsp.py"))} "$@"\n', encoding="utf-8")
+                (home / "fakesrv").chmod(0o755)
+            (home / ".light-installed").write_text("fakesrv 1.0.0", encoding="utf-8")
         if "@docker_module" in text:
             (proj / "Dockerfile").write_text("FROM busybox AS base\nWORKDIR /app\nCMD [\"echo\", \"fixture\"]\n", encoding="utf-8")
             (proj / "compose.yaml").write_text("services:\n  web:\n    image: busybox\n    command: [echo, fixture]\n", encoding="utf-8")
@@ -276,6 +339,16 @@ def run_one(script_path):
 
             shutil.rmtree(proj / ".git", onexc=_unlock)
         env = dict(os.environ, LIGHT_CONFIG_DIR=str(tmp / "cfg"))
+        if "@managed_server" in text:
+            env["LIGHT_SERVERS_DIR"] = str(tmp / "servers")
+        if "@fake_clangd" in text:
+            env["PATH"] = str(tmp / "fake-lsp") + os.pathsep + env.get("PATH", "")
+            env["LIGHT_FAKE_LSP_LOG"] = str(tmp / "fake-lsp.log")
+            if "@fake_clangd_open_only" in text:
+                env["LIGHT_FAKE_LSP_OPEN_ONLY"] = "1"
+        else:
+            # a clangd that happens to be installed must not change what the other scripts see
+            env["LIGHT_LSP"] = "0"
         if "@docker_module" in text:
             import shlex
             commands = tmp / "fake-cli"
@@ -299,6 +372,8 @@ def run_one(script_path):
             preload += ["c-cpp", "assembler", "shell-make"]
         if "@no_modules" in text:
             preload = []
+        if "@fake_clangd" in text and (tmp / "cfg/modules/c-cpp/module.json").is_file():
+            preload = [id for id in preload if id != "c-cpp"]
         env["LIGHT_PRELOAD_MODULES"] = ",".join(dict.fromkeys(preload))
         # the tests never read the real GitHub login (gh / Git credential store) nor call api.github.com
         env["LIGHT_GITHUB_AUTODETECT"] = "0"

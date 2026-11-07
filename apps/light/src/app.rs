@@ -91,6 +91,7 @@ pub struct App {
     pub services: crate::app_docker::ServicesState,
     /// The last CPU profile.
     pub profiler: crate::app_profiler::ProfilerState,
+    pub lsp: crate::app_lsp::LspState,
     /// UI tests: the pointer rests on this offset of the active document, wherever the real pointer is.
     pub fake_hover: Option<usize>,
     pub status: String,
@@ -215,6 +216,7 @@ impl App {
             git_tools: Default::default(),
             services: Default::default(),
             profiler: Default::default(),
+            lsp: Default::default(),
             fake_hover: None,
             status: String::new(),
             editor_focus: true,
@@ -393,6 +395,7 @@ impl App {
     /// search results, the back/forward history, problems, what ran and the terminal.
     fn leave_project(&mut self) {
         self.cancel_scenario();
+        self.stop_lsp();
         if let Some(h) = self.run.handle.take() {
             h.kill();
         }
@@ -727,6 +730,7 @@ impl App {
         self.git.last_refresh = -100.0;
         // the language's own check looks at what was just written
         self.schedule_check(idx);
+        self.lsp_saved(idx);
         if path.as_ref().and_then(|p| p.file_name()).is_some_and(|n| { let n = n.to_string_lossy().to_ascii_lowercase(); n == "makefile" || n == "gnumakefile" || n.ends_with(".mk") }) {
             self.refresh_make_targets();
         }
@@ -911,6 +915,7 @@ impl App {
         self.poll_checks();
         self.poll_debug();
         self.poll_services();
+        self.poll_lsp(ctx);
         self.poll_github();
         self.git_update_bases();
 
@@ -1105,7 +1110,7 @@ impl App {
                         .lines()
                         .filter_map(|l| {
                             let (n, k) = l.split_once('\t')?;
-                            Some(CItem { text: n.to_string(), kind: k.to_string(), source: 0 })
+                            Some(CItem { text: n.to_string(), back: 0, kind: k.to_string(), source: 0 })
                         })
                         .collect();
                     let mut seen: HashSet<String> = live.iter().map(|c| c.text.to_lowercase()).collect();
@@ -1372,6 +1377,12 @@ impl App {
             for (k, m) in markers.into_iter().enumerate() {
                 v.push(ProblemRow { path: d.path.clone(), start: m.start, end: m.end, sev: m.sev, message: m.msg, source: if k < n_language { "syntax" } else { "check" } });
             }
+            // what the language server found in the text as it is now
+            if d.lsp_rev == d.ed.revision() {
+                for m in &d.lsp_markers {
+                    v.push(ProblemRow { path: d.path.clone(), start: m.start, end: m.end, sev: m.sev, message: m.msg.clone(), source: "server" });
+                }
+            }
         }
         v.extend(self.compiler_problems.iter().cloned());
         v
@@ -1575,6 +1586,10 @@ impl App {
             self.toast(tr("Invalid symbol name"), Sev::Error);
             return;
         }
+        // asked for in a language whose server renames (its answer comes later)
+        if self.lsp_rename(old, new) {
+            return;
+        }
         let mut count = 0;
         let mut files = 0;
         let mut paths: Vec<PathBuf> = self.project.as_ref().map(|p| p.files.clone()).unwrap_or_default();
@@ -1645,7 +1660,7 @@ impl App {
         let mut push = |text: String, kind: &str, source: u8, items: &mut Vec<CItem>| {
             let l = text.to_lowercase();
             if l.starts_with(&low) && l != low && seen.insert(l) {
-                items.push(CItem { text, kind: kind.to_string(), source });
+                items.push(CItem { text, back: 0, kind: kind.to_string(), source });
             }
         };
         // definitions in the project
@@ -1701,7 +1716,7 @@ impl App {
         if let Some(d) = self.docs.get_mut(self.active) {
             let caret = d.ed.caret();
             if start <= caret {
-                d.ed.replace_range(start, caret, &item.text);
+                d.ed.replace_range(start.saturating_sub(item.back), caret, &item.text);
                 d.view.scroll_to_caret = true;
             }
         }

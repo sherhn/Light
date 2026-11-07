@@ -351,6 +351,8 @@ pub struct FindBar {
 #[derive(Clone, Debug)]
 pub struct CItem {
     pub text: String,
+    /// Bytes before the word the item replaces too (a server's `.` of `?.member`).
+    pub back: usize,
     pub kind: String,
     pub source: u8,
 }
@@ -381,6 +383,10 @@ pub enum ConfirmKind {
     DownloadDebugger(PathBuf),
     /// Remove a container of Docker (its id).
     RemoveContainer(String),
+    /// A language server's rename that leaves the name in files it does not see (the plan waits in the LSP state).
+    PartialRename,
+    /// Light downloads and installs the language server the banner offers.
+    InstallServer,
 }
 
 /// Messages from the background clone thread.
