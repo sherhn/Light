@@ -85,10 +85,12 @@ def main():
     ap.add_argument("--installers", action="store_true")
     ap.add_argument("--makensis", help="path to the NSIS compiler on Windows")
     ap.add_argument("--git-dir", help="an extracted Portable Git distribution (Windows)")
+    ap.add_argument("--modules-archive", type=pathlib.Path, help="use a local module snapshot")
+    ap.add_argument("--modules-lock", type=pathlib.Path, help="validate the local snapshot against this lock file")
     a = ap.parse_args()
 
     from prepare_modules import prepare
-    prepare()
+    prepare(a.modules_archive, lock_path=a.modules_lock)
 
     if not a.skip_build:
         subprocess.run(["cargo", "build", "--locked", "--release", "-p", "light", "-p", "light-cli"], cwd=ROOT, check=True)

@@ -44,8 +44,13 @@ def validate(data, expected):
         raise ValueError('Snapshot contains files missing from its index')
     return files
 
-def prepare(local=None):
-    lock = json.loads((ROOT / 'modules.lock.json').read_text(encoding='utf-8'))
+def prepare(local=None, *, lock_path=None):
+    if lock_path is not None and local is None:
+        raise ValueError('An alternate lock requires a local module archive')
+    lock = json.loads(Path(lock_path or ROOT / 'modules.lock.json').read_text(encoding='utf-8'))
+    checksum = lock['sha256']
+    if not isinstance(checksum, str) or len(checksum) != 64 or any(ch not in '0123456789abcdef' for ch in checksum):
+        raise ValueError('Invalid module snapshot checksum in lock file')
     cached = ROOT / 'target/module-cache' / (lock['sha256'] + '.zip')
     if local:
         data = Path(local).read_bytes()
@@ -93,5 +98,6 @@ def prepare(local=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', type=Path, help='use a local copy of the exact pinned snapshot')
+    parser.add_argument('--lock', type=Path, help='validate a local snapshot against this lock file')
     options = parser.parse_args()
-    prepare(options.archive)
+    prepare(options.archive, lock_path=options.lock)
