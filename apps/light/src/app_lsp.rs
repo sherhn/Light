@@ -41,11 +41,12 @@ enum Pending {
     Rename { old: String, revs: HashMap<u64, u64> },
     Completion { doc: u64, start: usize, prefix: String, explicit: bool },
     Hover { key: String, doc: u64, name: String, end: usize },
-    Format { doc: u64, rev: u64 },
+    Format { doc: u64, rev: u64, path: Option<PathBuf> },
 }
 
 /// A document the server was told about.
 struct SentDoc {
+    path: PathBuf,
     uri: String,
     /// The revision of the text the server has.
     rev: u64,
@@ -373,12 +374,17 @@ impl App {
             }
             let s = &mut self.lsp.servers[si];
             let Some(session) = s.session.as_mut() else { continue };
-            // documents closed (or now in another language) are closed for the server too
-            let ids: HashSet<u64> = docs.iter().map(|&i| self.docs[i].id).collect();
-            let closed: Vec<u64> = s.docs.keys().filter(|id| !ids.contains(id)).copied().collect();
+            // A renamed tab keeps its document id, but the server knows it by its file URI.
+            let paths: HashMap<_, _> = docs.iter().filter_map(|&i| self.docs[i].path.as_deref().map(|path| (self.docs[i].id, path))).collect();
+            let closed: Vec<u64> = s.docs.iter()
+                .filter_map(|(&id, sent)| (paths.get(&id).copied() != Some(sent.path.as_path())).then_some(id))
+                .collect();
             for id in closed {
                 if let Some(sent) = s.docs.remove(&id) {
                     session.close(&sent.uri);
+                    if self.lsp.completions.as_ref().is_some_and(|c| c.doc == id) {
+                        self.lsp.completions = None;
+                    }
                 }
             }
             for i in docs {
@@ -386,12 +392,12 @@ impl App {
                 let rev = d.ed.revision();
                 match s.docs.get_mut(&d.id) {
                     None => {
-                        let path = d.path.as_deref().unwrap_or(Path::new(""));
+                        let Some(path) = &d.path else { continue };
                         let uri = uri::from_path(&server_path(path, s.target.as_ref()));
                         let lang = d.ed.language().map(|l| l.id().to_string()).unwrap_or_default();
                         session.open(&uri, s.def.language_id(&lang), d.ed.text());
                         let version = session.version(&uri).unwrap_or(1);
-                        s.docs.insert(d.id, SentDoc { uri, rev, versions: vec![(version, rev)], quiet_since: None });
+                        s.docs.insert(d.id, SentDoc { path: path.clone(), uri, rev, versions: vec![(version, rev)], quiet_since: None });
                         self.lsp.opened.push((s.id, d.id));
                     }
                     Some(sent) if sent.rev != rev && now - d.view.last_input_time >= SETTLE => {
@@ -602,7 +608,7 @@ impl App {
         let d = self.docs.get(idx)?;
         let s = self.lsp.servers.iter_mut().find(|s| s.docs.contains_key(&d.id))?;
         let session = s.session.as_mut().filter(|x| x.ready() && need(&x.caps))?;
-        let sent = s.docs.get_mut(&d.id)?;
+        let sent = s.docs.get_mut(&d.id).filter(|sent| d.path.as_ref() == Some(&sent.path))?;
         if sent.rev != d.ed.revision() {
             let before = sent.rev;
             let same = tell(sent, session, d.ed.text(), d.ed.revision());
@@ -647,6 +653,7 @@ impl App {
         let Some(session) = s.session.as_mut() else { return };
         for d in &self.docs {
             if let Some(sent) = s.docs.get_mut(&d.id)
+                && d.path.as_ref() == Some(&sent.path)
                 && sent.rev != d.ed.revision()
             {
                 let before = sent.rev;
@@ -955,7 +962,8 @@ impl App {
         let d = &self.docs[idx];
         let size = d.ed.language().map_or(4, |l| l.indent_size());
         let (doc, rev) = (d.id, d.ed.revision());
-        self.lsp_request(sid, "textDocument/formatting", json!({"textDocument": {"uri": uri}, "options": {"tabSize": size, "insertSpaces": true}}), Pending::Format { doc, rev })
+        let path = d.path.clone();
+        self.lsp_request(sid, "textDocument/formatting", json!({"textDocument": {"uri": uri}, "options": {"tabSize": size, "insertSpaces": true}}), Pending::Format { doc, rev, path })
     }
 
     /// Ask the server what the hover popup says about the name ending at `end`. False when no server can tell.
@@ -1142,10 +1150,10 @@ impl App {
                 let info = info.or_else(|| self.docs.iter().position(|d| d.id == doc).and_then(|i| self.language_hover(i, &name, end)));
                 self.hover_answer(&key, info);
             }
-            Pending::Format { doc, rev } => {
+            Pending::Format { doc, rev, path } => {
                 let Ok(v) = result else { return };
                 let enc = self.lsp.servers.iter().find(|s| s.id == sid).and_then(|s| s.session.as_ref()).map_or(Encoding::Utf16, |x| x.caps.encoding);
-                let Some(d) = self.docs.iter_mut().find(|d| d.id == doc && d.ed.revision() == rev) else { return };
+                let Some(d) = self.docs.iter_mut().find(|d| d.id == doc && d.ed.revision() == rev && d.path == path) else { return };
                 if let Ok(ranges) = proto::edit_ranges(d.ed.text(), &proto::text_edits(&v), enc)
                     && !ranges.is_empty()
                 {

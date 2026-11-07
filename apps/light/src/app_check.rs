@@ -2,7 +2,7 @@
 //! background, in the project's Linux or on Windows like a run command, and shown as problems in the code.
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
@@ -21,6 +21,7 @@ const LIMIT: Duration = Duration::from_secs(20);
 pub struct CheckDone {
     pub doc: u64,
     pub rev: u64,
+    pub path: PathBuf,
     pub problems: Vec<CheckProblem>,
 }
 
@@ -102,7 +103,7 @@ impl App {
                     }
                 }
             }
-            let _ = tx.send(CheckDone { doc: id, rev, problems: check::problems(&re, &output, 200) });
+            let _ = tx.send(CheckDone { doc: id, rev, path, problems: check::problems(&re, &output, 200) });
         });
     }
 
@@ -116,7 +117,7 @@ impl App {
                 self.schedule_check(i);
             }
             let d = &mut self.docs[i];
-            if d.ed.revision() != done.rev {
+            if d.ed.revision() != done.rev || d.path.as_ref() != Some(&done.path) {
                 continue;
             }
             let text_len = d.ed.text().len();

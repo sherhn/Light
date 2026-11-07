@@ -196,11 +196,15 @@ def main():
                 sys.exit(0)
             if method in ("textDocument/didOpen", "textDocument/didChange"):
                 uri = p["textDocument"]["uri"]
+                if method == "textDocument/didOpen":
+                    log("opened", uri)
                 DOCS[uri] = p["textDocument"]["text"] if method.endswith("didOpen") else p["contentChanges"][-1]["text"]
                 VERSIONS[uri] = p["textDocument"].get("version")
                 send(diagnostics(uri))
             elif method == "textDocument/didClose":
-                DOCS.pop(p["textDocument"]["uri"], None)
+                uri = p["textDocument"]["uri"]
+                log("closed", uri.rsplit("/", 1)[-1])
+                DOCS.pop(uri, None)
             continue
         try:
             send({"id": msg["id"], "result": answer(method, p)})

@@ -232,17 +232,24 @@ impl Doc {
 
     pub fn save_as(&mut self, path: &Path) -> io::Result<()> {
         std::fs::write(path, self.ed.text_for_disk())?;
-        self.path = Some(path.to_path_buf());
-        self.ed.set_dialect(Dialect::from_path(path).unwrap_or_default());
+        self.set_path(path.to_path_buf());
         self.ed.mark_saved();
         self.disk_mtime = mtime(path);
         self.conflict = false;
         Ok(())
     }
 
+    pub fn set_path(&mut self, path: PathBuf) {
+        self.ed.set_dialect(Dialect::from_path(&path).unwrap_or_default());
+        self.path = Some(path);
+        self.lsp_rev = u64::MAX;
+        self.check_rev = u64::MAX;
+    }
+
     /// Read the text in `lang` (`None`: Lisp).
     pub fn set_language(&mut self, lang: Option<std::sync::Arc<light_lang::Language>>) {
         self.ed.set_language(lang);
+        self.view.invalidate_syntax();
         self.outline_cache = None;
     }
 

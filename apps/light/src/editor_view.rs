@@ -71,6 +71,11 @@ pub struct ViewState {
 
 
 impl ViewState {
+    pub fn invalidate_syntax(&mut self) {
+        self.spans = None;
+        self.regions = None;
+    }
+
     /// How the character at `offset` was coloured last (comment, string...), if it was drawn.
     pub fn class_at(&self, offset: usize) -> Option<lisp_syntax::highlight::Class> {
         let (_, spans) = self.spans.as_ref()?;

@@ -463,10 +463,17 @@ impl App {
                     let to = path.with_file_name(input.trim());
                     match ide_core::workspace::rename(&path, &to) {
                         Ok(()) => {
-                            for d in self.docs.iter_mut() {
-                                if d.path.as_deref() == Some(path.as_path()) {
-                                    d.path = Some(to.clone());
-                                }
+                            for idx in 0..self.docs.len() {
+                                let d = &self.docs[idx];
+                                let Some(relative) = d.path.as_ref().and_then(|p| p.strip_prefix(&path).ok()) else { continue };
+                                let new_path = if relative.as_os_str().is_empty() { to.clone() } else { to.join(relative) };
+                                let lang = self.language_for(Some(&new_path), d.ed.text().lines().next());
+                                self.docs[idx].set_path(new_path);
+                                self.docs[idx].set_language(lang);
+                                self.schedule_check(idx);
+                            }
+                            if let Some(split) = self.split.as_mut() {
+                                split.view.invalidate_syntax();
                             }
                             self.refresh_project();
                         }

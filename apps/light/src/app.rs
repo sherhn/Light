@@ -688,7 +688,8 @@ impl App {
     /// Save one document; untitled documents ask for a location.
     pub fn save_doc(&mut self, idx: usize) -> bool {
         let Some(d) = self.docs.get_mut(idx) else { return false };
-        if d.path.is_none() {
+        let was_untitled = d.path.is_none();
+        if was_untitled {
             let start = self.project.as_ref().map(|p| p.root.clone());
             let mut dlg = rfd::FileDialog::new().set_file_name(d.name());
             if let Some(s) = start {
@@ -708,6 +709,11 @@ impl App {
             let msg = i18n::fmt("Cannot save {0}: {1}", &[&d.name(), &e]);
             self.toast(msg, Sev::Error);
             return false;
+        }
+        if was_untitled {
+            let d = &self.docs[idx];
+            let lang = self.language_for(d.path.as_deref(), d.ed.text().lines().next());
+            self.docs[idx].set_language(lang);
         }
         let (path, text, dialect) = {
             let d = &self.docs[idx];
