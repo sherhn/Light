@@ -67,6 +67,13 @@ impl eframe::App for App {
         self.update_window_icon(&ctx, frame);
         self.tick(&ctx);
         self.handle_input(&ctx);
+        for (idx, doc) in self.docs.iter_mut().enumerate() {
+            if idx == self.active {
+                doc.finish_moved_edit();
+            } else {
+                doc.editing_line = None;
+            }
+        }
         self.script_step(&ctx);
         crate::file_marks::apply(&ctx,self.settings.file_icon_style);
         self.handle_dropped_files(&ctx);

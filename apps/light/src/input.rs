@@ -190,7 +190,7 @@ impl App {
                     }
                     let now = self.now;
                     if let Some(d) = self.docs.get_mut(self.active) {
-                        d.ed.type_text(&t);
+                        d.edit_input(|ed| ed.type_text(&t));
                         d.view.scroll_to_caret = true;
                         d.view.last_input_time = now;
                         // Lisp names hold `-` and `*`; the names of other languages are letters, digits and `_`
@@ -216,7 +216,7 @@ impl App {
                     if self.editor_active(ctx) => {
                         let now = self.now;
                         if let Some(d) = self.docs.get_mut(self.active) {
-                            d.ed.paste(&text);
+                            d.edit_input(|ed| ed.paste(&text));
                             d.view.scroll_to_caret = true;
                             d.view.last_input_time = now;
                         }
@@ -260,9 +260,12 @@ impl App {
         if let Some(d) = self.docs.get_mut(self.active) {
             let rev = d.ed.revision();
             let before = d.ed.caret();
-            if exec::apply_with(&mut d.ed, id, ExecCtx { page_lines: page }) {
+            if d.edit_input(|ed| exec::apply_with(ed, id, ExecCtx { page_lines: page })) {
                 d.view.scroll_to_caret = true;
                 d.view.last_input_time = now;
+                if id == "edit.newline" {
+                    d.editing_line = None;
+                }
                 if d.ed.revision() != rev
                     && let Some(p) = &d.path
                 {
@@ -324,7 +327,12 @@ impl App {
                     self.request_open_project(std::path::Path::new(&p));
                 }
             }
-            "file.save" | "file.save_all" => self.save_all(),
+            "file.save" | "file.save_all" => {
+                for doc in &mut self.docs {
+                    doc.editing_line = None;
+                }
+                self.save_all();
+            }
             "view.split_right" => self.split_editor(true),
             "view.split_down" => self.split_editor(false),
             "view.unsplit" => self.unsplit(),
@@ -416,7 +424,7 @@ impl App {
             "edit.cut" => {
                 let now = self.now;
                 if let Some(d) = self.docs.get_mut(self.active) {
-                    let t = d.ed.cut();
+                    let t = d.edit_input(|ed| ed.cut());
                     d.view.last_input_time = now;
                     ctx.copy_text(t);
                 }

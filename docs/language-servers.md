@@ -5,6 +5,9 @@ Find Usages, Rename, completion, the hover popup, Reformat Code and the problems
 server; without one, they come from the text as before. This page is the design: what runs where, how a server is
 found or installed, and what is checked.
 
+Light keeps the server up to date while you type. Automatic diagnostics for the edited file appear after you
+leave the line, switch files or save explicitly, including when the changes are still unsaved.
+
 ## Where a server runs
 
 A server runs where the project runs, like its run and check commands:

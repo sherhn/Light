@@ -61,6 +61,8 @@ pub struct Doc {
     /// What the language server found in the text (valid while `lsp_rev` is the revision).
     pub lsp_markers: Vec<Marker>,
     pub lsp_rev: u64,
+    /// Automatic diagnostics wait until the user leaves the line they are editing.
+    pub editing_line: Option<usize>,
     /// HEAD content of the file: None = not loaded, Some(None) = untracked / not in HEAD.
     pub git_base: Option<Option<String>>,
     pub git_marks: Vec<ide_core::diff::Mark>,
@@ -109,6 +111,7 @@ impl Doc {
             check_rev: u64::MAX,
             lsp_markers: vec![],
             lsp_rev: u64::MAX,
+            editing_line: None,
             git_base: None,
             git_marks: vec![],
             git_marks_rev: u64::MAX,
@@ -142,6 +145,7 @@ impl Doc {
             check_rev: u64::MAX,
             lsp_markers: vec![],
             lsp_rev: u64::MAX,
+            editing_line: None,
             git_base: None,
             git_marks: vec![],
             git_marks_rev: u64::MAX,
@@ -255,6 +259,7 @@ impl Doc {
         }
         let text = String::from_utf8(std::fs::read(&p)?).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "file is not valid UTF-8 text"))?;
         self.ed.set_text(&text);
+        self.editing_line = None;
         self.disk_mtime = mtime(&p);
         self.conflict = false;
         self.compiler_markers.clear();
@@ -277,6 +282,22 @@ impl Doc {
         false
     }
 
+    pub fn edit_input<T>(&mut self, edit: impl FnOnce(&mut Editor) -> T) -> T {
+        let before = self.ed.revision();
+        let result = edit(&mut self.ed);
+        if self.ed.revision() != before {
+            self.editing_line = Some(self.ed.line_of(self.ed.caret()));
+        }
+        result
+    }
+
+    /// Clear the hold once the caret leaves the line, even if it later returns.
+    pub fn finish_moved_edit(&mut self) {
+        if self.editing_line.is_some_and(|line| line != self.ed.line_of(self.ed.caret())) {
+            self.editing_line = None;
+        }
+    }
+
     /// What the checks the language asks for find in the text itself: brackets that do not pair up.
     pub fn language_markers(&self) -> Vec<Marker> {
         self.ed
@@ -294,7 +315,9 @@ impl Doc {
 
     /// Syntax problems of the current text plus the compiler's (while still fresh).
     pub fn markers(&self) -> Vec<Marker> {
-        let mut v: Vec<Marker> = if !self.ed.is_lisp() {
+        let mut v: Vec<Marker> = if self.editing_line.is_some() {
+            Vec::new()
+        } else if !self.ed.is_lisp() {
             // the Lisp reader has nothing to say about C or a makefile: the language's own checks do, and its check command
             let mut m = self.language_markers();
             if self.check_rev == self.ed.revision() {
@@ -376,6 +399,25 @@ mod tests {
         d.ed.insert_text_raw("(defun f (");
         let m = d.markers();
         assert!(m.iter().any(|m| m.sev == Sev::Error));
+    }
+
+    #[test]
+    fn automatic_markers_wait_until_the_caret_leaves_the_edited_line() {
+        let mut d = Doc::untitled(1);
+        d.set_language(None);
+        d.ed.set_text("\n");
+        d.edit_input(|ed| ed.insert_text_raw("(unfinished"));
+        d.ed.mark_saved(); // autosave does not finish editing
+        d.finish_moved_edit();
+        assert!(d.markers().is_empty());
+
+        d.ed.set_caret(d.ed.line_start(1), false);
+        d.finish_moved_edit();
+        assert!(d.markers().iter().any(|m| m.sev == Sev::Error));
+
+        d.ed.set_caret(0, false);
+        d.finish_moved_edit();
+        assert!(d.markers().iter().any(|m| m.sev == Sev::Error));
     }
 
     #[test]

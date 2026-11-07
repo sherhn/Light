@@ -1355,7 +1355,7 @@ impl App {
 
     pub fn all_problems(&self) -> Vec<ProblemRow> {
         let mut v = Vec::new();
-        for d in self.docs.iter().filter(|d| d.ed.is_lisp() && d.diff.is_none()) {
+        for d in self.docs.iter().filter(|d| d.ed.is_lisp() && d.diff.is_none() && d.editing_line.is_none()) {
             for diag in &d.ed.parsed().diagnostics {
                 v.push(ProblemRow {
                     path: d.path.clone(),
@@ -1367,7 +1367,7 @@ impl App {
                 });
             }
         }
-        for d in self.docs.iter().filter(|d| !d.ed.is_lisp() && d.diff.is_none()) {
+        for d in self.docs.iter().filter(|d| !d.ed.is_lisp() && d.diff.is_none() && d.editing_line.is_none()) {
             let mut markers = d.language_markers();
             let checked = d.check_rev == d.ed.revision();
             if checked {
@@ -1716,7 +1716,7 @@ impl App {
         if let Some(d) = self.docs.get_mut(self.active) {
             let caret = d.ed.caret();
             if start <= caret {
-                d.ed.replace_range(start.saturating_sub(item.back), caret, &item.text);
+                d.edit_input(|ed| ed.replace_range(start.saturating_sub(item.back), caret, &item.text));
                 d.view.scroll_to_caret = true;
             }
         }
