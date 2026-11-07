@@ -31,6 +31,8 @@ def generate():
     for kind in types:
         kind["extensions"] = [extension for extension in kind["extensions"] if extension not in claimed_extensions]
         claimed_extensions.update(kind["extensions"])
+    # SQL is built into the IDE (its module is seeded from this repository, not the pinned catalog).
+    types.append({"id": "sql", "name": "SQL", "extensions": ["sql"], "files": []})
     # Keep existing Open With text formats and Light run scenarios available.
     types.append({"id": "source", "name": "Source code", "extensions": ["als", "rs", "ts", "tsx", "txt"], "files": []})
     return types

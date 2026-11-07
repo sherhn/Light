@@ -26,6 +26,13 @@ const LISP_MODULE_COVER: &[u8] = include_bytes!("../../../registry/modules/lisp/
 const LISP_MODULE_LICENSE: &[u8] = include_bytes!("../../../registry/modules/lisp/LICENSE");
 const LISP_MODULE_NOTICES: &[u8] = include_bytes!("../../../registry/modules/lisp/THIRD_PARTY_NOTICES.md");
 
+/// The SQL module is built in the same way (its console runs on SQLite, compiled in): its files ship with the program
+/// too, from this repository's own assets rather than the module catalog.
+const SQL_MODULE_JSON: &[u8] = include_bytes!("../assets/modules/sql/module.json");
+const SQL_MODULE_COVER: &[u8] = include_bytes!("../assets/modules/sql/cover.png");
+const SQL_MODULE_LICENSE: &[u8] = include_bytes!("../assets/modules/sql/LICENSE");
+const SQL_MODULE_NOTICES: &[u8] = include_bytes!("../assets/modules/sql/THIRD_PARTY_NOTICES.md");
+
 /// What a module is doing right now.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Busy {
@@ -202,6 +209,13 @@ impl App {
                 self.settings.modules_welcome_done = true;
             }
             let _ = store.save_state(&state);
+        }
+        // the built-in SQL module goes in once, for everyone; a user who removed it does not get it back
+        if !self.settings.sql_module_seeded && store.get("sql").is_none() {
+            match store.install_bytes("sql", &[("module.json", SQL_MODULE_JSON), ("cover.png", SQL_MODULE_COVER), ("LICENSE", SQL_MODULE_LICENSE), ("THIRD_PARTY_NOTICES.md", SQL_MODULE_NOTICES)]) {
+                Ok(_) => self.settings.sql_module_seeded = true,
+                Err(e) => self.toast(i18n::fmt("Cannot set up the SQL module: {}", &[&e]), Sev::Error),
+            }
         }
         // tests and scripts: modules named here are installed before anything else (from the registry, no window)
         if let Ok(list) = std::env::var("LIGHT_PRELOAD_MODULES") {
@@ -598,6 +612,24 @@ mod tests {
         app.poll_modules(&ctx);
         assert!(!app.mods.covers.contains_key("python"));
         assert!(app.mods.covers.contains_key("lisp"));
+    }
+
+    #[test]
+    fn the_builtin_sql_module_installs_and_loads_its_language() {
+        let fixture = Fixture::new();
+        let store = ModuleStore::at(fixture.0.join("modules"));
+        let manifest = store.install_bytes("sql", &[("module.json", SQL_MODULE_JSON), ("cover.png", SQL_MODULE_COVER)]).unwrap();
+        assert_eq!(manifest.builtin, "sql");
+        let installed = store.installed();
+        assert!(installed[0].enabled);
+        let mut langs = LanguageSet::new();
+        for m in installed.iter().filter(|m| m.enabled) {
+            for l in &m.manifest.languages {
+                langs.add(l.clone()).unwrap();
+            }
+        }
+        // the language of the module matches .sql files
+        assert_eq!(langs.for_path(std::path::Path::new("queries/app.sql"), None).id(), "sql");
     }
 
     #[test]

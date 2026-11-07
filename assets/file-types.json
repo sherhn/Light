@@ -251,6 +251,14 @@
     ]
   },
   {
+    "id": "sql",
+    "name": "SQL",
+    "extensions": [
+      "sql"
+    ],
+    "files": []
+  },
+  {
     "id": "source",
     "name": "Source code",
     "extensions": [

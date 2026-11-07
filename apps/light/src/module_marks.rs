@@ -14,6 +14,7 @@ pub fn source(id: &str) -> Option<&'static str> {
         "toml" => include_str!("../assets/module-marks/toml.svg"),
         "yaml" => include_str!("../assets/module-marks/yaml.svg"),
         "dotenv" => include_str!("../assets/module-marks/dotenv.svg"),
+        "sql" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="black" stroke-width="1.8"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 11.5c0 1.66 3.58 3 8 3s8-1.34 8-3"/></g></svg>"#,
         "lisp" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="2.5" d="M5 3h4l7 17h4M12 10L5 21"/></svg>"#,
         "assembler" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="black" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M8 1v4m8-4v4M8 19v4m8-4v4M1 8h4m-4 8h4m14-8h4m-4 8h4"/></g></svg>"#,
         "http" => r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="black" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/><path d="M2 12h20M4 6h16M4 18h16"/></g></svg>"#,

@@ -210,6 +210,8 @@ pub struct Settings {
     pub registry_url: String,
     /// The first-run welcome (choosing modules) has been shown.
     pub modules_welcome_done: bool,
+    /// The built-in SQL module has been installed once (it is not put back after the user removes it).
+    pub sql_module_seeded: bool,
     /// What a Markdown or reStructuredText tab shows: `code`, `split` (code and the rendered document) or `preview`.
     pub markup_preview: String,
     /// Default parent folder for "Get from Version Control"; empty = ~/LightProjects.
@@ -261,6 +263,7 @@ impl Default for Settings {
             linux_tools: LinuxTools::default(),
             registry_url: String::new(),
             modules_welcome_done: false,
+            sql_module_seeded: false,
             markup_preview: "split".into(),
             clone_dir: String::new(),
             github_user: String::new(),

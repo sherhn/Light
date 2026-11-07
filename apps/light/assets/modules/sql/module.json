@@ -1,0 +1,109 @@
+{
+  "id": "sql",
+  "name": "SQL",
+  "version": "1.0.0",
+  "category": "Database",
+  "summary": "SQL consoles: highlighting, statements run on the project's SQLite database, a results grid, the schema tree and completion of table and column names.",
+  "cover": "cover.png",
+  "builtin": "sql",
+  "languages": [
+    {
+      "id": "sql",
+      "name": "SQL",
+      "extensions": ["sql"],
+      "line_comment": "--",
+      "brackets": ["()"],
+      "check": ["brackets"],
+      "indent": { "mode": "keep", "size": 2 },
+      "grammar": [
+        { "match": "--[^\\n]*", "class": "comment" },
+        { "begin": "/\\*", "end": "\\*/", "class": "comment" },
+        { "begin": "'", "end": "(?:''|[^'])*'", "class": "string" },
+        { "begin": "\"", "end": "(?:\"\"|[^\"])*\"", "class": "variable" },
+        { "begin": "`", "end": "(?:``|[^`])*`", "class": "variable" },
+        { "match": "\\[[^\\]\\n]*\\]", "class": "variable" },
+        { "match": "\\?|[:@$][A-Za-z_][A-Za-z0-9_]*", "class": "argument" },
+        {
+          "words": [
+            "SELECT", "FROM", "WHERE", "GROUP", "BY", "HAVING", "ORDER", "LIMIT", "OFFSET",
+            "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "CREATE", "TABLE", "VIEW",
+            "INDEX", "TRIGGER", "UNIQUE", "DROP", "ALTER", "ADD", "RENAME", "TO", "COLUMN",
+            "AND", "OR", "NOT", "NULL", "IS", "IN", "EXISTS", "BETWEEN", "LIKE", "GLOB",
+            "ESCAPE", "AS", "DISTINCT", "ALL", "UNION", "INTERSECT", "EXCEPT", "INNER",
+            "LEFT", "RIGHT", "FULL", "OUTER", "CROSS", "JOIN", "ON", "USING", "NATURAL",
+            "CONSTRAINT", "PRIMARY", "KEY", "FOREIGN", "REFERENCES", "CHECK", "DEFAULT",
+            "COLLATE", "CASE", "WHEN", "THEN", "ELSE", "END", "BEGIN", "COMMIT", "ROLLBACK",
+            "TRANSACTION", "SAVEPOINT", "RELEASE", "AUTOINCREMENT", "WITHOUT", "ROWID",
+            "IF", "REPLACE", "TEMP", "TEMPORARY", "VIRTUAL", "PRAGMA", "EXPLAIN", "QUERY",
+            "PLAN", "ATTACH", "DETACH", "DATABASE", "REINDEX", "ANALYZE", "WITH", "RECURSIVE",
+            "RETURNING", "GENERATED", "ALWAYS", "STORED", "CASCADE", "RESTRICT", "NO",
+            "ACTION", "DEFERRABLE", "INITIALLY", "DEFERRED", "IMMEDIATE", "EXCLUSIVE"
+          ],
+          "class": "keyword",
+          "ignore_case": true
+        },
+        {
+          "words": [
+            "INT", "INTEGER", "TINYINT", "SMALLINT", "MEDIUMINT", "BIGINT", "UNSIGNED",
+            "REAL", "DOUBLE", "PRECISION", "FLOAT", "DECIMAL", "NUMERIC", "BOOLEAN", "BOOL",
+            "DATE", "DATETIME", "TIMESTAMP", "CHAR", "VARCHAR", "NCHAR", "NVARCHAR", "TEXT",
+            "CLOB", "BLOB", "NATIVE", "BINARY", "VARBINARY", "JSON"
+          ],
+          "class": "type",
+          "ignore_case": true
+        },
+        {
+          "words": [
+            "COUNT", "SUM", "AVG", "MIN", "MAX", "TOTAL", "GROUP_CONCAT", "ABS", "ROUND",
+            "RANDOM", "COALESCE", "IFNULL", "IIF", "NULLIF", "SIGN", "MOD", "POWER", "SQRT",
+            "LENGTH", "LOWER", "UPPER", "LTRIM", "RTRIM", "TRIM", "SUBSTR", "SUBSTRING",
+            "REPLACE", "INSTR", "PRINTF", "FORMAT", "HEX", "UNHEX", "UNICODE", "CHAR",
+            "TYPEOF", "LIKELY", "UNLIKELY", "DATE", "TIME", "DATETIME", "JULIANDAY",
+            "STRFTIME", "UNIXEPOCH", "LAST_INSERT_ROWID", "CHANGES", "TOTAL_CHANGES",
+            "SQLITE_VERSION", "ZEROBLOB", "QUOTE", "LOAD_EXTENSION"
+          ],
+          "class": "builtin",
+          "ignore_case": true
+        },
+        { "words": ["TRUE", "FALSE"], "class": "constant", "ignore_case": true },
+        { "match": "\\b\\d+(?:\\.\\d*)?(?:[eE][+-]?\\d+)?\\b|\\b0x[0-9a-fA-F]+\\b", "class": "number" }
+      ],
+      "outline": [
+        {
+          "pattern": "(?mi)^\\s*CREATE\\s+(?:TEMP(?:ORARY)?\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[\"`\\[]?(\\w+)",
+          "kind": "struct",
+          "name": 1
+        },
+        {
+          "pattern": "(?mi)^\\s*CREATE\\s+(?:TEMP(?:ORARY)?\\s+)?VIEW\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[\"`\\[]?(\\w+)",
+          "kind": "type",
+          "name": 1
+        },
+        {
+          "pattern": "(?mi)^\\s*CREATE\\s+(?:UNIQUE\\s+)?INDEX\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[\"`\\[]?(\\w+)",
+          "kind": "variable",
+          "name": 1
+        },
+        {
+          "pattern": "(?mi)^\\s*CREATE\\s+TRIGGER\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[\"`\\[]?(\\w+)",
+          "kind": "function",
+          "name": 1
+        }
+      ]
+    }
+  ],
+  "detect": {
+    "extensions": ["sql"],
+    "files": []
+  },
+  "templates": [
+    {
+      "name": "Console",
+      "description": "A SQL console: run the statement under the caret.",
+      "open": "console.sql",
+      "files": {
+        "console.sql": "-- Light runs the statement under the caret (Ctrl+Enter), or the whole file.\nSELECT 1 AS ok;\n"
+      }
+    }
+  ]
+}
