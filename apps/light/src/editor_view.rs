@@ -59,6 +59,8 @@ pub struct ViewState {
     max_cols: Option<(u64, usize)>,
     pub last_viewport_lines: usize,
     pub last_text_rect: Option<Rect>,
+    pressed_word: Option<(u64, (usize, usize))>,
+    highlighted_word: Option<(u64, (usize, usize))>,
     /// Visible whole-word occurrences: byte range and whether it contains the caret.
     pub word_highlights: Vec<(usize, usize, bool)>,
     /// The (fractional) source line at the top of the view, as of the last frame.
@@ -312,9 +314,13 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
 
     let (sel_s, sel_e) = ed.selection();
     let caret = ed.caret();
+    let revision = ed.revision();
     let word_range = ed.identifier_range_at(caret);
-    let word = (cfg.focused && sel_s == sel_e && word_range.0 < word_range.1)
-        .then(|| &text[word_range.0..word_range.1])
+    if !cfg.focused || sel_s != sel_e || state.highlighted_word != Some((revision, word_range)) {
+        state.highlighted_word = None;
+    }
+    let word = state.highlighted_word
+        .map(|_| &text[word_range.0..word_range.1])
         .filter(|word| word.chars().any(|ch| ch.is_alphabetic() || ch == '_'));
     state.word_highlights.clear();
     let bracket = ed.matching_bracket(caret);
@@ -660,6 +666,10 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
             let (shift, cmd) = ui.input(|i| (i.modifiers.shift, i.modifiers.command));
             out.clicked = true;
             state.last_input_time = now;
+            let clicked_word = ed.identifier_range_at(off);
+            state.pressed_word = (!shift && !cmd && clicked_word != word_range
+                && char_at(p, ed).is_some_and(|ch| (clicked_word.0..clicked_word.1).contains(&ch)))
+                .then_some((revision, clicked_word));
             if cmd && !shift {
                 out.ctrl_click = Some(off);
             } else {
@@ -681,8 +691,18 @@ pub fn show(ui: &mut egui::Ui, ed: &mut Editor, state: &mut ViewState, folds: &m
             && !resp.triple_clicked()
             && let Some(p) = resp.interact_pointer_pos()
         {
+            state.pressed_word = None;
             acts.push(Act::Caret { off: pos_to_offset(p, ed), extend: true });
             ui.scroll_to_rect(Rect::from_center_size(p, Vec2::splat(4.0)), None);
+        }
+        if ui.input(|i| i.pointer.primary_released()) {
+            let word = state.pressed_word.take();
+            if resp.clicked_by(egui::PointerButton::Primary) && !resp.double_clicked() && !resp.triple_clicked()
+                && let Some(word) = word
+            {
+                state.highlighted_word = Some(word);
+                ui.ctx().request_repaint();
+            }
         }
         if let Some(msg) = hover_marker.take() {
             resp.on_hover_ui_at_pointer(|ui| {
