@@ -54,6 +54,40 @@ fn variable_row(ui: &mut egui::Ui, pal: &crate::theme::Palette, depth: usize, na
     response
 }
 
+fn variable_tooltip(response: &egui::Response, name: &str, value: &str, controls_bottom: f32) {
+    let screen = response.ctx.content_rect();
+    let above = response.rect.top() - controls_bottom;
+    let below = screen.bottom() - response.rect.bottom();
+    let (align, room) = if above >= below {
+        (egui::emath::RectAlign::TOP_END, above)
+    } else {
+        (egui::emath::RectAlign::BOTTOM_END, below)
+    };
+    let width = (screen.width() - 32.0).min(580.0);
+    if room < 100.0 {
+        // Leave the controls clickable even when the Debug pane is very short.
+        egui::Tooltip::for_enabled(response).width(width).show(|ui| {
+            ui.add(egui::Label::new(RichText::new(value_preview(value)).monospace()).truncate());
+        });
+        return;
+    }
+    let mut tooltip = egui::Tooltip::for_enabled(response).width(width);
+    tooltip.popup = tooltip.popup.align(align).align_alternatives(&[]);
+    tooltip.show(|ui| {
+        ui.set_width(width);
+        ui.horizontal(|ui| {
+            if ui.button(tr("Copy value")).clicked() {
+                ui.ctx().copy_text(value.to_owned());
+            }
+            ui.add(egui::Label::new(RichText::new(name).strong()).truncate());
+        });
+        egui::ScrollArea::vertical().max_height((room - 68.0).min(300.0)).show(ui, |ui| {
+            let mut text = value;
+            ui.add(egui::TextEdit::multiline(&mut text).font(egui::FontId::monospace(12.5)).desired_width(ui.available_width()));
+        });
+    });
+}
+
 
 /// `0x...` of an address.
 fn hex_address(a: u64) -> String {
@@ -85,7 +119,7 @@ impl App {
         }
         let mut chosen = None;
         let mut rects = Vec::new();
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             for (t, label) in &tabs {
                 let active = *t == self.debug.tab;
@@ -263,7 +297,7 @@ impl App {
         // the buttons, and what the program is doing
         let mut act: Option<&str> = None;
         let mut rects = Vec::new();
-        ui.horizontal(|ui| {
+        let controls = ui.horizontal(|ui| {
             ui.add_space(10.0);
             let paused = status == DebugStatus::Paused;
             let running = status == DebugStatus::Running;
@@ -291,8 +325,10 @@ impl App {
                 // a reason of one word (`step`, `breakpoint`) is said as a pause
                 DebugStatus::Paused => self.debug.stopped.as_ref().map(|s| if s.reason.contains(' ') { s.reason.clone() } else { i18n::fmt("Paused ({})", &[&s.reason]) }).unwrap_or_default(),
             };
-            ui.label(RichText::new(text).color(if status == DebugStatus::Paused { pal.warning } else { pal.text_dim }).size(12.5));
+            ui.add(egui::Label::new(RichText::new(text)
+                .color(if status == DebugStatus::Paused { pal.warning } else { pal.text_dim }).size(12.5)).truncate());
         });
+        let controls_bottom = controls.response.rect.bottom();
         ctx.data_mut(|d| d.insert_temp(egui::Id::unique("debug_button_rects"), rects));
         match act {
             Some("stop") => self.stop_debug(),
@@ -301,16 +337,18 @@ impl App {
         }
         ui.add_space(4.0);
         let avail = ui.available_size();
+        let body_width = (avail.x - 42.0).max(0.0);
+        let body_height = (avail.y - 8.0).max(0.0);
         // the machine code and the memory need room: the middle gets more of it then
         let wide = self.debug.tab != DebugTab::Variables;
-        let col = ((avail.x - 24.0) * if wide { 0.27 } else { 0.33 }).max(160.0);
-        let mid = ((avail.x - 24.0) * if wide { 0.45 } else { 0.33 }).max(160.0);
+        let col = body_width * if wide { 0.27 } else { 0.33 };
+        let mid = body_width * if wide { 0.45 } else { 0.33 };
         let mut frame_click = None;
         let mut expand = None;
         ui.horizontal_top(|ui| {
             ui.add_space(8.0);
             // the call stack
-            ui.allocate_ui_with_layout(Vec2::new(col, avail.y - 8.0), Layout::top_down(Align::Min), |ui| {
+            ui.allocate_ui_with_layout(Vec2::new(col, body_height), Layout::top_down(Align::Min), |ui| {
                 ui.label(RichText::new(tr("Frames")).font(fonts::semibold(12.5)).color(pal.text_dim));
                 egui::ScrollArea::vertical().id_salt("debug_frames").auto_shrink([false, false]).show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
@@ -332,7 +370,7 @@ impl App {
             });
             ui.separator();
             // the variables of the frame, a tree opened a level at a time
-            ui.allocate_ui_with_layout(Vec2::new(mid, avail.y - 8.0), Layout::top_down(Align::Min), |ui| {
+            ui.allocate_ui_with_layout(Vec2::new(mid, body_height), Layout::top_down(Align::Min), |ui| {
                 let tab = self.draw_debug_tabs(ui);
                 if tab == DebugTab::Disassembly {
                     self.draw_disassembly(ui);
@@ -362,15 +400,7 @@ impl App {
                         let resp=variable_row(ui,&pal,depth,&name,&value,(reference!=0).then(||self.debug.expanded.contains(&reference)));
                         ui.ctx().data_mut(|data|data.insert_temp(egui::Id::unique(("debug_variable_row",name.as_str())),resp.rect));
                         if !value.is_empty() {
-                            resp.clone().on_hover_ui(|ui| {
-                                ui.set_max_width(600.0);
-                                ui.label(RichText::new(&name).strong());
-                                if ui.button(tr("Copy value")).clicked(){ui.ctx().copy_text(value.clone());}
-                                egui::ScrollArea::vertical().max_height(300.0).show(ui,|ui| {
-                                    let mut text=value.as_str();
-                                    ui.add(egui::TextEdit::multiline(&mut text).font(egui::FontId::monospace(12.5)).desired_width(580.0));
-                                });
-                            });
+                            variable_tooltip(&resp, &name, &value, controls_bottom);
                             resp.context_menu(|ui| {if ui.button(tr("Copy value")).clicked(){ui.ctx().copy_text(value.clone());ui.close();}});
                         }
                         if reference != 0 && resp.clicked() {
@@ -382,12 +412,12 @@ impl App {
             });
             ui.separator();
             // the console: output, and expressions evaluated where the program is
-            ui.allocate_ui_with_layout(Vec2::new(ui.available_width() - 8.0, avail.y - 8.0), Layout::top_down(Align::Min), |ui| {
+            ui.allocate_ui_with_layout(Vec2::new((ui.available_width() - 8.0).max(0.0), body_height), Layout::top_down(Align::Min), |ui| {
                 ui.label(RichText::new(tr("Console")).font(fonts::semibold(12.5)).color(pal.text_dim));
                 let input_h = 34.0;
                 let mut evaluate = None;
                 let lines = self.debug.console.clone();
-                ui.allocate_ui(Vec2::new(ui.available_width(), (ui.available_height() - input_h).max(40.0)), |ui| {
+                ui.allocate_ui(Vec2::new(ui.available_width(), (ui.available_height() - input_h).max(0.0)), |ui| {
                     let _ = self.draw_log(ui, "debug_console", &lines, true, ">");
                 });
                 let response = ui.add_sized([ui.available_width(), 28.0], egui::TextEdit::singleline(&mut self.debug.input).hint_text(tr("Evaluate an expression (Enter)")).font(egui::FontId::monospace(13.0)));

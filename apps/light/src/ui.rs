@@ -135,13 +135,26 @@ impl eframe::App for App {
         if self.bottom_tool.is_some() {
             let margin = Margin { left: 0, right: gap, top: gap, bottom: gap };
             // Keep the editor and its gutter usable even on a small or scaled desktop.
-            let editor_space = if self.bottom_tool == Some(BottomTool::Profiler) { 140.0 } else { 260.0 };
+            let editor_space = match self.bottom_tool {
+                Some(BottomTool::Profiler) => 140.0,
+                Some(BottomTool::Debug) if ctx.content_rect().height() < 480.0 => 120.0,
+                _ => 260.0,
+            };
             let maximum = (ui.available_height() - editor_space).clamp(120.0, 900.0);
             let minimum = if self.bottom_tool == Some(BottomTool::Profiler) { maximum.min(240.0) } else { 120.0 };
             egui::Panel::bottom("bottom_tool").resizable(true).default_size(280.0_f32.min(maximum)).size_range(minimum..=maximum).show_separator_line(false).frame(none.inner_margin(margin)).show(ui, |ui| {
                 widgets::card_frame(&pal, pal.panel_bg).show(ui, |ui| {
-                    ui.set_min_size(ui.available_size());
-                    self.draw_bottom_panel(ui, &ctx);
+                    if self.bottom_tool == Some(BottomTool::Debug) {
+                        // Keep oversized debugger content from shifting the bottom panel's reported bounds.
+                        let bounds = ui.available_rect_before_wrap();
+                        let mut content = ui.new_child(egui::UiBuilder::new().max_rect(bounds));
+                        content.shrink_clip_rect(bounds);
+                        self.draw_bottom_panel(&mut content, &ctx);
+                        ui.expand_to_include_rect(bounds);
+                    } else {
+                        ui.set_min_size(ui.available_size());
+                        self.draw_bottom_panel(ui, &ctx);
+                    }
                 });
             });
         }
