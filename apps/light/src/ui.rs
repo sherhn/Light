@@ -96,11 +96,15 @@ impl eframe::App for App {
             self.last_title = title;
         }
         if !self.exit_now && ctx.input(|i| i.viewport().close_requested()) {
-            self.flush_saves();
-        }
-        if ctx.input(|i| i.viewport().close_requested()) && self.has_unsaved() && !self.exit_now {
-            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            self.popup = Popup::Confirm { kind: ConfirmKind::Exit, message: crate::i18n::tr("Save changes before exiting?").into() };
+            if self.sql_can_replace_results() {
+                self.flush_saves();
+                if self.has_unsaved() {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                    self.popup = Popup::Confirm { kind: ConfirmKind::Exit, message: crate::i18n::tr("Save changes before exiting?").into() };
+                }
+            } else {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            }
         }
 
         // soft gradient window background; tool windows float above it as rounded cards
@@ -158,7 +162,7 @@ impl eframe::App for App {
         self.draw_resize_handles(&ctx);
 
         // keep animating only when needed
-        let busy = self.repl.starting || !self.repl.busy.is_empty() || self.run.running || self.other_runs.iter().any(|tab| tab.run.running) || self.compile.is_some() || self.repl.session.is_some() || self.sql.running > 0;
+        let busy = self.repl.starting || !self.repl.busy.is_empty() || self.run.running || self.other_runs.iter().any(|tab| tab.run.running) || self.compile.is_some() || self.repl.session.is_some() || self.sql.running() || self.sql.opening();
         if busy {
             ctx.request_repaint_after(std::time::Duration::from_millis(60));
         } else if self.doc().is_some() && self.editor_focus {

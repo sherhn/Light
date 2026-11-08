@@ -63,7 +63,8 @@ fn is_symbol_char(c: char) -> bool {
 impl App {
     /// Is the code editor receiving typing right now?
     pub fn editor_active(&self, ctx: &egui::Context) -> bool {
-        self.editor_focus && !self.popup.is_open() && !ctx.text_edit_focused() && self.doc().is_some_and(|d| d.diff.is_none()) && !self.editor_hidden()
+        self.editor_focus && !self.popup.is_open() && !ctx.text_edit_focused()
+            && self.doc().is_some_and(|d| d.diff.is_none() && d.results.is_none()) && !self.editor_hidden()
     }
 
     /// Double-tap of the Shift key opens Search Everywhere.
@@ -103,7 +104,7 @@ impl App {
         self.detect_double_shift(ctx);
         // Tab / arrows may have moved egui's keyboard focus onto a button; while the editor owns the
         // keyboard that would make Enter/Space press that button, so drop non-text focus.
-        if self.editor_focus && !self.popup.is_open()
+        if self.editor_focus && !self.popup.is_open() && self.doc().is_none_or(|d| d.results.is_none())
             && let Some(id) = ctx.memory(|m| m.focused()) {
                 ctx.memory_mut(|m| m.surrender_focus(id));
             }
@@ -113,6 +114,13 @@ impl App {
         let mut typed_trigger = false;
         let mut moved = false;
         for ev in events {
+            // The active cell's TextEdit handles its text, clipboard and finish keys.
+            if self.doc().and_then(|d| d.results.as_ref()).is_some_and(|v| v.editing.is_some())
+                && !self.popup.is_open()
+                && matches!(&ev, Event::Key { key: Key::Enter | Key::Escape, .. })
+            {
+                continue;
+            }
             match ev {
                 Event::Key { key, pressed: true, modifiers, .. } => {
                     let Some(sc) = shortcut_of(key, modifiers) else { continue };
@@ -198,8 +206,10 @@ impl App {
                     }
                     if !typed_symbol {
                         self.completion.active = false;
-                        // `.` or `->`: the language server has something to offer after it
-                        typed_trigger = self.lsp_triggered(self.active);
+                        // `.` or `->`: the language server has something to offer after it, and a SQL console names
+                        // the columns of the table the alias before the dot stands for
+                        typed_trigger = self.lsp_triggered(self.active)
+                            || (self.is_sql_doc(self.active) && t.chars().all(|c| c == '.'));
                     }
                 }
                 Event::Copy => {
@@ -354,6 +364,9 @@ impl App {
             }
             "file.close_tab" => self.request_close_doc(self.active),
             "file.close_all" => {
+                if !self.sql_can_replace_results() {
+                    return;
+                }
                 self.flush_saves();
                 if self.has_unsaved() {
                     self.popup = Popup::Confirm { kind: ConfirmKind::CloseAll, message: tr("Save changes before closing all files?").into() };
@@ -371,6 +384,7 @@ impl App {
                     self.docs.retain(|x| {
                         i += 1;
                         i - 1 == keep || (x.ed.is_modified() && x.path != path)
+                            || x.results.as_ref().is_some_and(|v| v.pending() > 0 || v.editing.is_some())
                     });
                     self.active = 0;
                     if let Some(p) = path
@@ -408,6 +422,9 @@ impl App {
                 self.popup = Popup::Settings { lisp_path: self.settings.lisp_path.clone(), detected: self.lisp.as_ref().map(|l| l.describe()).unwrap_or_default(), filter: String::new(), page: 0 };
             }
             "app.exit" => {
+                if !self.sql_can_replace_results() {
+                    return;
+                }
                 self.flush_saves();
                 if self.has_unsaved() {
                     self.popup = Popup::Confirm { kind: ConfirmKind::Exit, message: tr("Save changes before exiting?").into() };

@@ -78,8 +78,10 @@ impl App {
         let caret = d.ed.caret();
         let (s, _) = d.ed.identifier_range_at(caret);
         let prefix = d.ed.text()[s..caret].to_string();
-        // `.` or `->` was just typed: what may follow is the language server's to say
-        let triggered = !explicit && prefix.is_empty() && self.lsp_triggered(self.active);
+        // `.` or `->` was just typed: what may follow is the language server's to say (a SQL console says it
+        // itself: the columns of the table the alias before the dot names)
+        let after_dot = self.is_sql_doc(self.active) && d.ed.text()[..caret].ends_with('.');
+        let triggered = !explicit && prefix.is_empty() && (self.lsp_triggered(self.active) || after_dot);
         if (prefix.is_empty() && !explicit && !triggered) || (!explicit && !triggered && prefix.chars().count() < 2) || d.ed.has_selection() {
             self.completion.active = false;
             return;

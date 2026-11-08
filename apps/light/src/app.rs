@@ -344,6 +344,9 @@ impl App {
     }
 
     pub fn open_project(&mut self, path: &Path) {
+        if !self.sql_can_replace_results() {
+            return;
+        }
         if self.project.as_ref().is_some_and(|p| p.root != path) {
             self.flush_saves();
             if self.has_unsaved() {
@@ -454,6 +457,9 @@ impl App {
     }
 
     pub fn close_project(&mut self) {
+        if !self.sql_can_replace_results() {
+            return;
+        }
         self.flush_saves();
         if self.has_unsaved() {
             self.popup = Popup::Confirm { kind: ConfirmKind::CloseProject, message: tr("Save changes before closing the project?").into() };
@@ -876,6 +882,11 @@ impl App {
     }
 
     pub fn request_close_doc(&mut self, idx: usize) {
+        if self.docs.get(idx).is_some_and(|d| d.page == Some(crate::doc::Page::Results))
+            && !self.sql_can_replace_results()
+        {
+            return;
+        }
         if let Some(doc) = self.docs.get_mut(idx) && doc.diff.is_none() && doc.ed.is_modified() {
             doc.sync_with_disk();
         }

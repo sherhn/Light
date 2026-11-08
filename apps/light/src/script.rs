@@ -70,6 +70,7 @@ impl App {
             "idle" => self.repl.busy.is_empty() && !self.run.running && self.compile.is_none() && self.repl.pending.is_empty(),
             "index" => self.project.as_ref().is_none_or(|p| p.index_rx.is_none()),
             "run_done" => !self.run.running && self.run.handle.is_none(),
+            "sql_done" => !self.sql.running() && self.sql.schema.is_some(),
             "compile_done" => self.compile.is_none(),
             "repl_contains" => {
                 let t = cond["value"].as_str().unwrap_or("");
@@ -1417,6 +1418,65 @@ impl App {
             "assert_no_completion" => {
                 if self.completion.active {
                     self.fail("assert_no_completion: popup is active".into());
+                }
+            }
+            "assert_sql_tables" => {
+                let have: Vec<String> = self.sql.schema.as_ref().map(|s| s.table_names().into_iter().map(String::from).collect()).unwrap_or_default();
+                let want: Vec<String> = step["value"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(String::from)).collect();
+                if have != want {
+                    self.fail(format!("assert_sql_tables: {have:?}, expected {want:?}"));
+                }
+            }
+            // the columns of the set the Results tab shows
+            "assert_result_columns" => {
+                let want: Vec<String> = step["value"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(String::from)).collect();
+                match self.docs.iter().find(|d| d.page == Some(crate::doc::Page::Results)).and_then(|d| d.results.as_ref()).and_then(|v| v.sets.get(v.active)).map(|s| s.columns.clone()) {
+                    Some(have) if have == want => {}
+                    Some(have) => self.fail(format!("assert_result_columns: {have:?}, expected {want:?}")),
+                    None => self.fail("assert_result_columns: the Results tab shows nothing".into()),
+                }
+            }
+            // one cell of the set the Results tab shows, by row and column
+            "assert_result_cell" => {
+                let row = step["row"].as_u64().unwrap_or(0) as usize;
+                let col = step["col"].as_u64().unwrap_or(0) as usize;
+                let cell = self.docs.iter().find(|d| d.page == Some(crate::doc::Page::Results)).and_then(|d| d.results.as_ref()).and_then(|v| v.sets.get(v.active)).and_then(|s| s.rows.get(row)).and_then(|r| r.get(col)).map(|v| v.render());
+                if cell.as_deref() != Some(sval.as_str()) {
+                    self.fail(format!("assert_result_cell: [{row}][{col}] is {cell:?}, expected {sval:?}"));
+                }
+            }
+            // click a button of the Results tab by its label ("Save", "Add Row", ...)
+            "results_button" => {
+                let pos = ctx.data(|d| d.get_temp::<Vec<(String, egui::Rect)>>(egui::Id::unique("results_button_rects")))
+                    .and_then(|buttons| buttons.into_iter().find(|(label, _)| label.as_str() == sval.as_str()).map(|(_, rect)| rect.center()));
+                match pos {
+                    Some(pos) => self.script.as_mut().unwrap().steps.push_front(serde_json::json!({"op": "click", "x": pos.x, "y": pos.y})),
+                    None => self.fail(format!("results_button: {sval:?} not found")),
+                }
+            }
+            // open a table of the Database window as a grid (what a click on its row does)
+            "sql_table_open" => {
+                self.sql_show_table(&sval);
+            }
+            // how many changes of the editable grid wait for the save
+            "sql_assert_pending" => {
+                let want = step["value"].as_u64().unwrap_or(0) as usize;
+                let have = self.docs.iter().find(|d| d.page == Some(crate::doc::Page::Results)).and_then(|d| d.results.as_ref()).map(|v| v.pending()).unwrap_or(usize::MAX);
+                if have != want {
+                    self.fail(format!("sql_assert_pending: {have} pending, expected {want}"));
+                }
+            }
+            // click (or double-click) a cell of the editable grid, by row and visible column
+            "results_cell" | "results_cell_double" => {
+                let row = step["row"].as_u64().unwrap_or(0) as usize;
+                let col = step["col"].as_u64().unwrap_or(0) as usize;
+                let double = op == "results_cell_double";
+                let pos = ctx.data(|d| d.get_temp::<Vec<((usize, usize), egui::Rect)>>(egui::Id::unique("results_cell_rects")))
+                    .and_then(|cells| cells.into_iter().find(|((r, c), _)| *r == row && *c == col).map(|(_, rect)| rect.center()));
+                match pos {
+                    Some(pos) if double => self.script.as_mut().unwrap().steps.push_front(serde_json::json!({"op": "double_click", "x": pos.x, "y": pos.y})),
+                    Some(pos) => self.script.as_mut().unwrap().steps.push_front(serde_json::json!({"op": "click", "x": pos.x, "y": pos.y})),
+                    None => self.fail(format!("results_cell: [{row}][{col}] not on screen")),
                 }
             }
             "assert_tabs" => {

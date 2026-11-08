@@ -210,8 +210,9 @@ impl App {
             }
             let _ = store.save_state(&state);
         }
-        // the built-in SQL module goes in once, for everyone; a user who removed it does not get it back
-        if !self.settings.sql_module_seeded && store.get("sql").is_none() {
+        // the built-in SQL module goes in once, for everyone (the preload environment of the tests makes its own
+        // module list and stays without it); a user who removed it does not get it back
+        if !self.settings.sql_module_seeded && store.get("sql").is_none() && std::env::var("LIGHT_PRELOAD_MODULES").is_err() {
             match store.install_bytes("sql", &[("module.json", SQL_MODULE_JSON), ("cover.png", SQL_MODULE_COVER), ("LICENSE", SQL_MODULE_LICENSE), ("THIRD_PARTY_NOTICES.md", SQL_MODULE_NOTICES)]) {
                 Ok(_) => self.settings.sql_module_seeded = true,
                 Err(e) => self.toast(i18n::fmt("Cannot set up the SQL module: {}", &[&e]), Sev::Error),
@@ -226,6 +227,10 @@ impl App {
 
     fn modules_preload(&mut self, list: &str) {
         let Some(store) = self.mods.store.as_ref() else { return };
+        // the built-in SQL module comes with the program (the catalog does not list it)
+        if list.split(',').map(str::trim).any(|id| id == "sql") && store.get("sql").is_none() {
+            let _ = store.install_bytes("sql", &[("module.json", SQL_MODULE_JSON), ("cover.png", SQL_MODULE_COVER), ("LICENSE", SQL_MODULE_LICENSE), ("THIRD_PARTY_NOTICES.md", SQL_MODULE_NOTICES)]);
+        }
         let Ok((index, source)) = fetch_index(&self.registry_sources()) else { return };
         for id in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
             if let Some(e) = index.entry(id) {

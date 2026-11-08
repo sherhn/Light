@@ -8,6 +8,7 @@ Add the languages and tools your project needs.
 ## Features
 
 - Language modules: JavaScript/JSX, JSON/JSONC, TOML, YAML, INI, Environment (.env), Python, C/C++, Lisp, Assembler, HTML, CSS, Markdown, reStructuredText, Shell and Make; Dockerfile and Compose tools; an HTTP client for `.http` files.
+- SQL consoles on built-in SQLite: statements run from the gutter or on F5, results in a grid with a CSV export, table rows edited in place (insert, update, delete, saved as one batch), names complete from the schema, the tables in a Database window. See [SQL](docs/sql.md).
 - Code highlighting, completion, navigation and project search.
 - Integrated Git: merge conflict resolution, blame, file history, stashes, cherry-pick, branch comparison and the interactive rebase; terminal and run scenarios.
 - Code coverage in the gutter, a CPU profiler with a flame graph, and a Services window for running programs and Docker containers.
@@ -38,6 +39,7 @@ Light — открытая модульная IDE на Rust и egui для Windo
 ### Возможности
 
 - Языковые модули: JavaScript/JSX, JSON/JSONC, TOML, YAML, INI, Environment (.env), Python, C/C++, Lisp, Assembler, HTML, CSS, Markdown, reStructuredText, Shell и Make; инструменты Dockerfile и Compose; HTTP-клиент для файлов `.http`.
+- SQL-консоли на встроенном SQLite: операторы запускаются кнопкой рядом со строкой или по F5, результаты — в таблице с экспортом в CSV, строки таблиц правятся прямо в гриде (вставка, изменение, удаление — одной фиксацией), имена подсказываются по схеме, таблицы — в окне «База данных». Подробнее — [SQL](docs/sql.md).
 - Подсветка кода, автодополнение, навигация и поиск по проекту.
 - Встроенный Git: разрешение конфликтов, blame, история файла, stash, cherry-pick, сравнение веток и интерактивный rebase; терминал и сценарии запуска.
 - Покрытие кода у строк, профилировщик с flame graph и окно «Сервисы» для запущенных программ и Docker-контейнеров.

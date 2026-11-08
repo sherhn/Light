@@ -5,12 +5,14 @@
 //! The statements of a file are cut apart here, too: on the `;` that ends each one, with strings, comments and the
 //! `BEGIN … END` bodies of triggers kept whole.
 
+use std::ffi::CString;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use rusqlite::Connection;
+use rusqlite::fallible_iterator::FallibleIterator;
+use rusqlite::{Batch, Connection, TransactionBehavior, params_from_iter};
 use rusqlite::types::ValueRef;
 
 /// A ceiling on what one result set holds, so that a `SELECT` over an unbounded table cannot take all memory.
@@ -72,6 +74,10 @@ impl ResultSet {
 
     /// The rows as CSV, the way spreadsheets read it (`NULL` an empty field, a blob its size).
     pub fn to_csv(&self) -> String {
+        self.to_csv_from(0)
+    }
+
+    pub fn to_csv_from(&self, skip: usize) -> String {
         let mut out = String::new();
         let field = |v: &DbValue, out: &mut String| {
             let text = match v {
@@ -87,7 +93,7 @@ impl ResultSet {
                 out.push_str(&text);
             }
         };
-        for (i, c) in self.columns.iter().enumerate() {
+        for (i, c) in self.columns.iter().skip(skip).enumerate() {
             if i > 0 {
                 out.push(',');
             }
@@ -95,7 +101,7 @@ impl ResultSet {
         }
         out.push('\n');
         for row in &self.rows {
-            for (i, v) in row.iter().enumerate() {
+            for (i, v) in row.iter().skip(skip).enumerate() {
                 if i > 0 {
                     out.push(',');
                 }
@@ -124,6 +130,8 @@ pub struct DbTable {
     pub name: String,
     pub is_view: bool,
     pub columns: Vec<DbColumn>,
+    pub rowid: Option<&'static str>,
+    pub generated: Vec<String>,
 }
 
 impl DbTable {
@@ -156,35 +164,72 @@ pub fn quote_ident(name: &str) -> String {
 
 /// The schema of an open database.
 fn read_schema(conn: &Connection) -> rusqlite::Result<DbSchema> {
-    let mut names: Vec<(String, bool)> = Vec::new();
-    let mut stmt = conn.prepare("SELECT name, type FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'")?;
+    let mut stmt = conn.prepare("SELECT name, type, wr FROM pragma_table_list WHERE schema = 'main' AND substr(name, 1, 7) <> 'sqlite_' AND type <> 'shadow'")?;
     let mut rows = stmt.raw_query();
+    let mut tables = Vec::new();
     while let Some(row) = rows.next()? {
         let name: String = row.get(0)?;
-        let ty: String = row.get(1)?;
-        names.push((name, ty == "view"));
-    }
-    drop(rows);
-    drop(stmt);
-    let mut tables = Vec::new();
-    for (name, is_view) in names {
-        let mut columns = Vec::new();
-        let sql = format!("PRAGMA table_info({})", quote_ident(&name));
-        let mut stmt = conn.prepare(&sql)?;
-        let mut rows = stmt.raw_query();
-        while let Some(row) = rows.next()? {
-            columns.push(DbColumn { name: row.get(1)?, ty: row.get(2)?, notnull: row.get(3)?, pk: row.get(5)? });
+        let kind: String = row.get(1)?;
+        let without_rowid: bool = row.get(2)?;
+        match read_table(conn, name.clone(), &kind, without_rowid) {
+            Ok(table) => tables.push(table),
+            // An unresolved view or virtual table should not hide the rest of the schema.
+            Err(_) if kind == "view" || kind == "virtual" => {
+                tables.push(DbTable { name, is_view: kind == "view", ..Default::default() });
+            }
+            Err(error) => return Err(error),
         }
-        tables.push(DbTable { name, is_view, columns });
     }
     tables.sort_by(|a, b| a.is_view.cmp(&b.is_view).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
     Ok(DbSchema { tables })
+}
+
+fn read_table(conn: &Connection, name: String, kind: &str, without_rowid: bool) -> rusqlite::Result<DbTable> {
+    let mut table = DbTable { name, is_view: kind == "view", ..Default::default() };
+    let mut stmt = conn.prepare("SELECT name, type, \"notnull\", pk, hidden FROM pragma_table_xinfo(?1, 'main')")?;
+    let mut rows = stmt.query([&table.name])?;
+    while let Some(row) = rows.next()? {
+        let hidden: u8 = row.get(4)?;
+        if hidden == 1 {
+            continue; // virtual table columns excluded by SELECT *
+        }
+        let name: String = row.get(0)?;
+        if hidden > 1 {
+            table.generated.push(name.clone());
+        }
+        table.columns.push(DbColumn { name, ty: row.get(1)?, notnull: row.get(2)?, pk: row.get(3)? });
+    }
+    if kind == "table" && !without_rowid {
+        table.rowid = ["rowid", "_rowid_", "oid"].into_iter()
+            .find(|alias| !table.columns.iter().any(|column| column.name.eq_ignore_ascii_case(alias)));
+    }
+    Ok(table)
+}
+
+pub struct GridMutation {
+    pub sql: String,
+    pub values: Vec<DbValue>,
+    /// The row as it was read, including the hidden row identifier. Inserts have no prior row.
+    pub before: Option<Vec<DbValue>>,
+}
+
+impl From<&DbValue> for rusqlite::types::Value {
+    fn from(value: &DbValue) -> Self {
+        match value {
+            DbValue::Null => Self::Null,
+            DbValue::Int(n) => Self::Integer(*n),
+            DbValue::Real(n) => Self::Real(*n),
+            DbValue::Text(s) => Self::Text(s.clone()),
+            DbValue::Blob(bytes) => Self::Blob(bytes.clone()),
+        }
+    }
 }
 
 /// What the console asked the worker to do.
 enum DbCommand {
     /// Run SQL and report under this key (the file and offset it came from).
     Exec { key: String, sql: String },
+    SaveGrid { table: String, rowid: &'static str, query: String, changes: Vec<GridMutation> },
     /// Read the schema again (after the console changed it).
     Schema,
     Stop,
@@ -195,42 +240,78 @@ enum DbCommand {
 pub enum DbEvent {
     Opened { path: PathBuf, schema: DbSchema },
     OpenFailed { path: PathBuf, message: String },
-    Results { key: String, sets: Vec<ResultSet>, ms: u128 },
-    Failed { key: String, message: String },
+    Results { key: String, sets: Vec<ResultSet>, ms: u128, schema: DbSchema },
+    Failed { key: String, message: String, schema: DbSchema },
     Schema(DbSchema),
 }
 
 /// Run the SQL of one string, statement by statement, collecting a result set per `SELECT` and per change.
-fn exec_sql(conn: &mut Connection, sql: &str) -> Result<Vec<ResultSet>, String> {
+fn exec_sql(conn: &Connection, sql: &str) -> Result<Vec<ResultSet>, String> {
     let mut sets = Vec::new();
-    for statement in split_statements(sql) {
-        let mut stmt = conn.prepare(&statement.sql).map_err(|e| e.to_string())?;
+    let mut batch = Batch::new(conn, sql);
+    while let Some(mut stmt) = batch.next().map_err(|e| e.to_string())? {
         if stmt.column_count() == 0 {
             // a change, not a read; the rows it touched is the answer
+            let before = conn.total_changes();
             let affected = stmt.raw_execute().map_err(|e| e.to_string())?;
-            let changed = ResultSet { affected: affected.max(1), ..Default::default() };
+            let affected = if conn.total_changes() == before { 0 } else { affected };
+            let changed = ResultSet { affected, ..Default::default() };
             sets.push(changed);
         } else {
             let columns: Vec<String> = (0..stmt.column_count()).map(|i| stmt.column_name(i).unwrap_or("").to_string()).collect();
             let mut set = ResultSet { columns, ..Default::default() };
             {
                 let mut rows = stmt.raw_query();
-                loop {
-                    let Some(row) = rows.next().map_err(|e| e.to_string())? else { break };
+                while let Some(row) = rows.next().map_err(|e| e.to_string())? {
                     if set.rows.len() == MAX_ROWS {
                         set.truncated = true;
                         break;
                     }
-                    let mut values = Vec::with_capacity(set.columns.len());
-                    for i in 0..set.columns.len() {
-                        values.push(DbValue::of_ref(row.get_ref(i).map_err(|e| e.to_string())?));
-                    }
-                    set.rows.push(values);
+                    set.rows.push(read_values(row).map_err(|e| e.to_string())?);
                 }
             }
             sets.push(set);
         }
     }
+    Ok(sets)
+}
+
+fn read_values(row: &rusqlite::Row<'_>) -> rusqlite::Result<Vec<DbValue>> {
+    (0..row.as_ref().column_count()).map(|i| row.get_ref(i).map(DbValue::of_ref)).collect()
+}
+
+fn save_grid(conn: &mut Connection, name: String, rowid: &str, query: &str, changes: Vec<GridMutation>) -> Result<Vec<ResultSet>, String> {
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate).map_err(|e| e.to_string())?;
+    let (kind, without_rowid) = tx.query_row(
+        "SELECT type, wr FROM pragma_table_list WHERE schema = 'main' AND name = ?1",
+        [&name], |r| Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?)),
+    ).map_err(|e| e.to_string())?;
+    let table = read_table(&tx, name, &kind, without_rowid).map_err(|e| e.to_string())?;
+    if table.rowid != Some(rowid) {
+        return Err("The table has changed since it was opened".into());
+    }
+    {
+        let sql = format!("SELECT {rowid}, * FROM main.{} WHERE {rowid} = ?", quote_ident(&table.name));
+        let mut read = tx.prepare(&sql).map_err(|e| e.to_string())?;
+        for change in changes {
+            let mut values = change.values;
+            if let Some(before) = change.before {
+                let Some(DbValue::Int(id)) = before.first() else { return Err("Invalid grid row identifier".into()) };
+                let mut rows = read.query([id]).map_err(|e| e.to_string())?;
+                let current = rows.next().and_then(|row| row.map(read_values).transpose()).map_err(|e| e.to_string())?;
+                if current.as_ref() != Some(&before) {
+                    return Err("A row has changed since the table was opened".into());
+                }
+                values.push(DbValue::Int(*id));
+            }
+            let count = tx.execute(&change.sql, params_from_iter(values.iter().map(rusqlite::types::Value::from))).map_err(|e| e.to_string())?;
+            if count != 1 {
+                return Err("A row has changed since the table was opened".into());
+            }
+        }
+    }
+    let sets = exec_sql(&tx, query)?;
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(sets)
 }
 
@@ -262,6 +343,12 @@ impl DbWorker {
         }
     }
 
+    pub fn save_grid(&self, table: String, rowid: &'static str, query: String, changes: Vec<GridMutation>) {
+        if let Some(tx) = &self.tx {
+            let _ = tx.send(DbCommand::SaveGrid { table, rowid, query, changes });
+        }
+    }
+
     /// Ask for the schema as it is now.
     pub fn schema(&self) {
         if let Some(tx) = &self.tx {
@@ -279,7 +366,7 @@ impl DbWorker {
         self.events.recv_timeout(timeout).ok()
     }
 
-    /// Stop the thread. Commands still queued are dropped.
+    /// Stop the thread after queued commands have finished.
     pub fn stop(&mut self) {
         if let Some(tx) = self.tx.take() {
             let _ = tx.send(DbCommand::Stop);
@@ -297,41 +384,39 @@ impl Drop for DbWorker {
 }
 
 fn worker(path: PathBuf, rx: Receiver<DbCommand>, ex: Sender<DbEvent>) {
-    let mut conn = match Connection::open(&path) {
-        Ok(c) => c,
+    let open = Connection::open(&path).and_then(|conn| read_schema(&conn).map(|schema| (conn, schema)));
+    let (mut conn, schema) = match open {
+        Ok(opened) => opened,
         Err(e) => {
             let _ = ex.send(DbEvent::OpenFailed { path, message: e.to_string() });
             return;
         }
     };
-    let schema = read_schema(&conn).unwrap_or_default();
     if ex.send(DbEvent::Opened { path: path.clone(), schema }).is_err() {
         return;
     }
     while let Ok(cmd) = rx.recv() {
-        match cmd {
-            DbCommand::Exec { key, sql } => {
-                let started = Instant::now();
-                match exec_sql(&mut conn, &sql) {
-                    Ok(sets) => {
-                        if ex.send(DbEvent::Results { key, sets, ms: started.elapsed().as_millis() }).is_err() {
-                            break;
-                        }
-                    }
-                    Err(message) => {
-                        if ex.send(DbEvent::Failed { key, message }).is_err() {
-                            break;
-                        }
-                    }
-                }
-            }
+        let started = Instant::now();
+        let (key, result) = match cmd {
+            DbCommand::Exec { key, sql } => (key, exec_sql(&conn, &sql)),
+            DbCommand::SaveGrid { table, rowid, query, changes } => ("edit".into(), save_grid(&mut conn, table, rowid, &query, changes)),
             DbCommand::Schema => {
                 let schema = read_schema(&conn).unwrap_or_default();
                 if ex.send(DbEvent::Schema(schema)).is_err() {
                     break;
                 }
+                continue;
             }
             DbCommand::Stop => break,
+        };
+        let ms = started.elapsed().as_millis();
+        let schema = read_schema(&conn).unwrap_or_default();
+        let event = match result {
+            Ok(sets) => DbEvent::Results { key, sets, ms, schema },
+            Err(message) => DbEvent::Failed { key, message, schema },
+        };
+        if ex.send(event).is_err() {
+            break;
         }
     }
 }
@@ -389,33 +474,22 @@ pub fn split_statements(text: &str) -> Vec<Statement> {
     let mut out: Vec<Statement> = Vec::new();
     let mut start = 0;
     let mut i = 0;
-    // inside a BEGIN…END body or a CASE…END expression a `;` does not end the statement
-    let mut depth = 0usize;
-    let mut word = String::new();
-
     while i < b.len() {
         let c = b[i];
-        if c.is_ascii_alphanumeric() || c == b'_' || c == b'$' {
-            word.push(c as char);
-            i += 1;
-            continue;
-        }
-        if !word.is_empty() {
-            match word.to_ascii_uppercase().as_str() {
-                "BEGIN" | "CASE" => depth += 1,
-                "END" if depth > 0 => depth -= 1,
-                _ => {}
-            }
-            word.clear();
-        }
         i = match c {
             b'\'' | b'"' | b'`' => skip_quoted(b, i + 1, c, true),
             b'[' => skip_quoted(b, i + 1, b']', false),
             b'-' if b.get(i + 1) == Some(&b'-') => skip_until(b, i + 2, b'\n'),
             b'/' if b.get(i + 1) == Some(&b'*') => skip_block_comment(b, i + 2),
             _ => {
-                if c == b';' && depth == 0 {
-                    push_statement(&mut out, text, &mut start, i);
+                if c == b';'
+                    && let Ok(sql) = CString::new(&b[start..=i])
+                {
+                    // SQLite recognizes trigger bodies and transaction statements using its own tokenizer.
+                    // The buffer stays alive and NUL-terminated for the duration of the call.
+                    if unsafe { rusqlite::ffi::sqlite3_complete(sql.as_ptr()) } != 0 {
+                        push_statement(&mut out, text, &mut start, i);
+                    }
                 }
                 i + 1
             }
@@ -428,7 +502,7 @@ pub fn split_statements(text: &str) -> Vec<Statement> {
 fn push_statement(out: &mut Vec<Statement>, text: &str, start: &mut usize, end: usize) {
     let sql = &text[*start..end];
     let trimmed = sql.trim();
-    if !trimmed.is_empty() {
+    if !strip_lead_comments(trimmed).trim().is_empty() {
         out.push(Statement { start: *start + (sql.len() - sql.trim_start().len()), sql: trimmed.to_string() });
     }
     *start = end + 1;
@@ -531,6 +605,39 @@ mod tests {
     }
 
     #[test]
+    fn transactions_and_comment_only_statements_follow_sqlite() {
+        let sql = "CREATE TABLE users(name TEXT); BEGIN; INSERT INTO users VALUES ('a'); COMMIT; -- trailing";
+        let statements = split_statements(sql);
+        assert_eq!(statements.len(), 4);
+        assert_eq!(statements[1].sql, "BEGIN");
+        let conn = Connection::open_in_memory().unwrap();
+        assert_eq!(exec_sql(&conn, sql).unwrap().len(), 4);
+        assert!(conn.is_autocommit());
+        let sets = exec_sql(&conn, "UPDATE users SET name = 'b' WHERE 0; SELECT * FROM users").unwrap();
+        assert_eq!(sets[0].affected, 0);
+        assert_eq!(sets[1].rows, vec![vec![DbValue::Text("a".into())]]);
+    }
+
+    #[test]
+    fn unresolved_views_keep_the_rest_of_the_schema_available() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE users(name TEXT); CREATE VIEW missing AS SELECT * FROM nonexistent").unwrap();
+        let schema = read_schema(&conn).unwrap();
+        assert!(schema.table("users").unwrap().rowid.is_some());
+        assert!(schema.table("missing").unwrap().is_view);
+    }
+
+    #[test]
+    fn a_non_sqlite_file_reports_open_failure() {
+        let path = temp_db("not-sqlite");
+        std::fs::write(&path, "This is not a SQLite database. ".repeat(10)).unwrap();
+        let worker = DbWorker::open(&path);
+        assert!(matches!(wait(&worker), DbEvent::OpenFailed { .. }));
+        drop(worker);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn a_title_names_the_statement() {
         let s = Statement { start: 0, sql: "SELECT * FROM users WHERE id = 1".into() };
         assert_eq!(s.title(), "SELECT * FROM users WHERE");
@@ -586,7 +693,7 @@ mod tests {
         assert!(matches!(wait(&worker), DbEvent::Opened { .. }));
         worker.exec("k", "SELECT no_such_table");
         match wait(&worker) {
-            DbEvent::Failed { key, message } => {
+            DbEvent::Failed { key, message, .. } => {
                 assert_eq!(key, "k");
                 assert!(!message.is_empty());
             }
