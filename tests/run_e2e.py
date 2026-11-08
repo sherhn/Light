@@ -451,6 +451,8 @@ def run_one(script_path):
 
 
 def main():
+    # Windows CI can use a legacy stdout code page even though logs are UTF-8.
+    sys.stdout.reconfigure(errors="backslashreplace")
     if not EXE.exists() or not CLI.exists():
         raise SystemExit(f"build first: cargo build{' --release' if PROFILE == 'release' else ''} -p light -p light-cli")
     SHOTS.mkdir(parents=True, exist_ok=True)
