@@ -237,6 +237,13 @@ def collect_package(package):
             except UnicodeDecodeError:
                 continue
             files[path.relative_to(base).as_posix()] = (data, origin)
+    if name in ("libsqlite3-sys", "sqlite-wasm-rs"):
+        # The Rust wrapper's license and the bundled SQLite source have separate notices.
+        header = (base / "sqlite3/sqlite3.h").read_bytes()
+        notice = header.split(b"********", 1)[0].rstrip()
+        if b"disclaims copyright to this source code" not in notice:
+            raise ValueError(f"{name} {version}: SQLite notice changed")
+        files["sqlite3/PUBLIC-DOMAIN-NOTICE.txt"] = (notice + b"\n*/\n", origin)
     if name == "epaint_default_fonts":
         for path in sorted((base / "fonts").glob("*.txt")):
             files["fonts/" + path.name] = (path.read_bytes(), origin)
