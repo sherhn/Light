@@ -1,5 +1,5 @@
-//! Studio colours: neutral charcoal, soft sage accents and restrained syntax colours.
-//! The light palette uses the same hues on a quiet off-white ground.
+//! Studio colours: neutral charcoal and soft sage accents, and the syntax colours of the familiar dark and light
+//! IDE schemes (their Python overlay included) taken one to one.
 
 use std::sync::LazyLock;
 
@@ -248,7 +248,7 @@ impl Palette {
             find_current: c(0x506044),
             indent_guide: Color32::from_rgba_unmultiplied(213, 225, 218, 16),
             whitespace: Color32::from_rgba_unmultiplied(213, 225, 218, 44),
-            error: c(0xE29797),
+            error: c(0xF75464),
             warning: c(0xD6BF8D),
             weak_warning: c(0x9AA49E),
             ok: c(0xB3D6AD),
@@ -256,28 +256,28 @@ impl Palette {
             git_modified: c(0x7FB6E6),
             git_added: c(0x92DA88),
             git_untracked: c(0xE5A574),
-            plain: c(0xD6DDD8),
-            comment: c(0x909E95),
-            string: c(0xB3CEAA),
-            number: c(0xC9B396),
-            keyword_form: c(0xB7A7C9),
-            builtin: c(0xA8C8BC),
-            definition: c(0xA8C4D2),
-            keyword_arg: c(0xC1B3CF),
-            constant: c(0xD2B69A),
-            special_var: c(0xC1B3CF),
-            prefix: c(0xD2B69A),
-            type_name: c(0xABC6C1),
-            preproc: c(0xC8BF9B),
-            heading: c(0xB3D6AD),
-            strong: c(0xEFF3F0),
-            emphasis: c(0xB9CAD2),
-            code: c(0xB0CCC2),
-            link: c(0xA8C4D2),
-            quote: c(0x9AA49E),
-            todo: c(0xA8C4D2),
-            alert: c(0xD6B58F),
-            rainbow: [c(0xD6BF8D), c(0xB7A7C9), c(0xA8C4D2), c(0xB3CEAA), c(0xD2AA95), c(0xABC6C1)],
+            plain: c(0xBCBEC4),
+            comment: c(0x7A7E85),
+            string: c(0x6AAB73),
+            number: c(0x2AACB8),
+            keyword_form: c(0xCF8E6D),
+            builtin: c(0x8888C6),
+            definition: c(0x56A8F5),
+            keyword_arg: c(0xAA4926),
+            constant: c(0xC77DBB),
+            special_var: c(0xB200B2),
+            prefix: c(0xBCBEC4),
+            type_name: c(0xBCBEC4),
+            preproc: c(0xB3AE60),
+            heading: c(0xCF8E6D),
+            strong: c(0xBCBEC4),
+            emphasis: c(0xBCBEC4),
+            code: c(0xBCBEC4),
+            link: c(0x56A8F5),
+            quote: c(0x7A7E85),
+            todo: c(0x8BB33D),
+            alert: c(0x8BB33D),
+            rainbow: [c(0xF2C744), c(0xCE97F8), c(0x6FBBFF), c(0x8FDB63), c(0xFF9E66), c(0x5ADBD0)],
         }
     }
 
@@ -315,7 +315,7 @@ impl Palette {
             find_current: c(0xC8D5AC),
             indent_guide: Color32::from_rgba_unmultiplied(42, 57, 46, 20),
             whitespace: Color32::from_rgba_unmultiplied(42, 57, 46, 55),
-            error: c(0xAC4650),
+            error: c(0xF50000),
             warning: c(0x876621),
             weak_warning: c(0x6F7B72),
             ok: c(0x46674B),
@@ -323,28 +323,28 @@ impl Palette {
             git_modified: c(0x2B6592),
             git_added: c(0x2F7A3A),
             git_untracked: c(0x9B5224),
-            plain: c(0x2D3931),
-            comment: c(0x5F7063),
-            string: c(0x466C40),
-            number: c(0x8A643E),
-            keyword_form: c(0x795789),
-            builtin: c(0x3E6D5E),
-            definition: c(0x3F657B),
-            keyword_arg: c(0x7A608C),
-            constant: c(0x925B38),
-            special_var: c(0x7A608C),
-            prefix: c(0x925B38),
-            type_name: c(0x3C706B),
-            preproc: c(0x7B6D3D),
-            heading: c(0x46674B),
-            strong: c(0x1E2A23),
-            emphasis: c(0x4E6778),
-            code: c(0x3E6D5E),
-            link: c(0x3F657B),
-            quote: c(0x637168),
-            todo: c(0x3F657B),
-            alert: c(0x94612F),
-            rainbow: [c(0x876621), c(0x795789), c(0x3F657B), c(0x466C40), c(0x925B38), c(0x3C706B)],
+            plain: c(0x080808),
+            comment: c(0x8C8C8C),
+            string: c(0x067D17),
+            number: c(0x1750EB),
+            keyword_form: c(0x0033B3),
+            builtin: c(0x000080),
+            definition: c(0x00627A),
+            keyword_arg: c(0x660099),
+            constant: c(0x871094),
+            special_var: c(0xB200B2),
+            prefix: c(0x080808),
+            type_name: c(0x080808),
+            preproc: c(0x9E880D),
+            heading: c(0x0033B3),
+            strong: c(0x080808),
+            emphasis: c(0x080808),
+            code: c(0x080808),
+            link: c(0x006DCC),
+            quote: c(0x8C8C8C),
+            todo: c(0x008DDE),
+            alert: c(0x008DDE),
+            rainbow: [c(0x9A6A00), c(0x8A2FC9), c(0x0F62D0), c(0x0E7D18), c(0xC2410C), c(0x0A7E8C)],
         }
     }
 
@@ -366,15 +366,17 @@ impl Palette {
         palette
     }
 
-    /// Adjust readability while preserving backgrounds, hues and the user's stored color definitions.
+    /// Adjust readability while preserving backgrounds, hues and the user's stored color definitions. Brightening
+    /// nudges the editor text towards white or black only a little: the syntax colours are vivid, and washing them
+    /// out would make them pale, not readable. The chrome text stays on the stronger mix it always had.
     pub fn with_contrast(mut self, percent: u16) -> Palette {
         let amount = percent.clamp(75, 300) as f32 / 100.0;
         if amount == 1.0 { return self }
-        fn foreground(color: Color32, background: Color32, amount: f32) -> Color32 {
+        fn foreground(color: Color32, background: Color32, amount: f32, chrome: bool) -> Color32 {
             let [r, g, b, a] = color.to_srgba_unmultiplied();
             let bright = 0.2126 * background.r() as f32 + 0.7152 * background.g() as f32 + 0.0722 * background.b() as f32;
             let pole = if bright < 128.0 { Color32::WHITE } else { Color32::BLACK };
-            let (target, weight) = if amount > 1.0 { (pole, (1.0 - 1.0 / amount) * 0.65) } else { (background, (1.0 - amount) * 0.65) };
+            let (target, weight) = if amount > 1.0 { (pole, (1.0 - 1.0 / amount) * if chrome { 0.65 } else { 0.25 }) } else { (background, (1.0 - amount) * 0.65) };
             let mix = |value: u8, target: u8| (value as f32 + (target as f32 - value as f32) * weight).round() as u8;
             Color32::from_rgba_unmultiplied(mix(r, target.r()), mix(g, target.g()), mix(b, target.b()), a)
         }
@@ -382,10 +384,10 @@ impl Palette {
             let editor = matches!(slot.group, "Syntax" | "Messages and status" | "Rainbow brackets") || matches!(slot.key, "caret" | "line_number" | "line_number_active" | "todo" | "alert");
             let chrome = matches!(slot.key, "text" | "text_dim" | "accent" | "blue");
             if (editor || chrome) && let Some(color) = self.color(slot.key) {
-                self.set_color(slot.key, foreground(color, if editor { self.editor_bg } else { self.window_bg }, amount));
+                self.set_color(slot.key, foreground(color, if editor { self.editor_bg } else { self.window_bg }, amount, chrome));
             }
         }
-        self.text_on_accent = foreground(self.text_on_accent, self.accent, amount);
+        self.text_on_accent = foreground(self.text_on_accent, self.accent, amount, true);
         for key in ["hover", "selected", "tab_active_bg", "current_line", "selection", "match_bracket", "indent_guide", "whitespace"] {
             let [r,g,b,a] = self.color(key).unwrap().to_srgba_unmultiplied();
             self.set_color(key, Color32::from_rgba_unmultiplied(r,g,b,(a as f32 * amount).round().min(255.0) as u8));
@@ -523,7 +525,9 @@ mod tests {
     #[test]
     fn contrast_increases_readability_in_both_palettes_and_keeps_selection_legible() {
         for base in [Palette::dark(), Palette::light()] {
-            assert!(contrast(base.comment, base.editor_bg) >= 4.5);
+            // the familiar light IDE scheme itself reads comments at 3.2:1 on white: this bar only asks that
+            // comments stay clearly secondary and yet readable
+            assert!(contrast(base.comment, base.editor_bg) >= 3.0);
             assert!(contrast(base.line_number, base.gutter_bg) >= 3.5);
             let low = base.with_contrast(75); let high = base.with_contrast(150);
             for key in ["plain", "text_dim", "comment", "keyword_form", "string", "line_number"] {
@@ -553,6 +557,45 @@ mod tests {
             assert_eq!(hidden.border,Color32::TRANSPARENT);
             assert_eq!(hidden.plain,palette.plain);
             assert_ne!(palette.keyword_form,palette.string);
+        }
+    }
+    #[test]
+    fn syntax_colors_match_the_familiar_ide_schemes() {
+        // the well-known "Dark" and "Light" editor schemes of the popular IDEs (their Python overlay included),
+        // taken one to one
+        let d = Palette::dark();
+        assert_eq!(d.plain, c(0xBCBEC4));
+        assert_eq!(d.comment, c(0x7A7E85));
+        assert_eq!(d.string, c(0x6AAB73));
+        assert_eq!(d.number, c(0x2AACB8));
+        assert_eq!(d.keyword_form, c(0xCF8E6D));
+        assert_eq!(d.keyword_arg, c(0xAA4926));
+        assert_eq!(d.builtin, c(0x8888C6));
+        assert_eq!(d.definition, c(0x56A8F5));
+        assert_eq!(d.constant, c(0xC77DBB));
+        assert_eq!(d.special_var, c(0xB200B2));
+        assert_eq!(d.preproc, c(0xB3AE60));
+        assert_eq!(d.todo, c(0x8BB33D));
+        assert_eq!(d.error, c(0xF75464));
+        let l = Palette::light();
+        assert_eq!(l.plain, c(0x080808));
+        assert_eq!(l.comment, c(0x8C8C8C));
+        assert_eq!(l.string, c(0x067D17));
+        assert_eq!(l.number, c(0x1750EB));
+        assert_eq!(l.keyword_form, c(0x0033B3));
+        assert_eq!(l.keyword_arg, c(0x660099));
+        assert_eq!(l.builtin, c(0x000080));
+        assert_eq!(l.definition, c(0x00627A));
+        assert_eq!(l.constant, c(0x871094));
+        assert_eq!(l.special_var, c(0xB200B2));
+        assert_eq!(l.preproc, c(0x9E880D));
+        assert_eq!(l.todo, c(0x008DDE));
+        assert_eq!(l.error, c(0xF50000));
+        // the six colours of the brackets stay distinct from one another
+        for (i, a) in d.rainbow.iter().enumerate() {
+            for b in d.rainbow.iter().skip(i + 1) {
+                assert_ne!(a, b);
+            }
         }
     }
     #[test]
