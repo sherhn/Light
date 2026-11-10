@@ -390,7 +390,7 @@ pub const INSTALL_SBCL_SCRIPT: &str = "set -e
 echo '@@light stage prepare'
 if command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update
+  apt-get update || echo 'The package lists were not all updated (see the errors above); installing SBCL from what is available.' >&2
   echo '@@light stage install'
   apt-get install -y sbcl
 elif command -v dnf >/dev/null 2>&1; then
@@ -559,7 +559,9 @@ pub fn check_tools(distro: &str, groups: &[ToolGroup]) -> Result<Vec<(String, bo
 /// Shell script installing the developer tools (run as root): on Debian and Ubuntu every package of `groups`
 /// (packages this release of the distribution does not have are skipped, not fatal); with the other package managers
 /// a C toolchain with 32-bit support, nasm, a debugger, git and QEMU (when `groups` has a group that is not the user's
-/// own), and the packages of the groups the user added, one by one (one that cannot be installed is skipped).
+/// own), and the packages of the groups the user added, one by one (one that cannot be installed is skipped). A
+/// repository that cannot be updated (a third-party one this release does not have, say) does not stop the install:
+/// the tools come from the repositories that did update, and only nothing found at all is an error.
 pub fn install_tools_script(groups: &[ToolGroup]) -> String {
     let mut packages: Vec<&str> = Vec::new();
     for p in groups.iter().flat_map(|g| g.package_list()) {
@@ -596,13 +598,17 @@ pub fn install_tools_script(groups: &[ToolGroup]) -> String {
 echo '@@light stage prepare'
 if command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update
+  apt-get update || echo 'The package lists were not all updated (see the errors above); installing from what is available.' >&2
   echo '@@light stage install'
   have=''
   for p in {apt}; do
     if apt-cache show \"$p\" >/dev/null 2>&1; then have=\"$have $p\"; else echo \"Skipped (this distribution has no $p)\"; fi
   done
   if [ -n \"$have\" ]; then apt-get install -y $have; fi
+  if [ -z \"$have\" ] && [ -n \"{apt}\" ]; then
+    echo 'None of the chosen packages could be found: check the package names and the repository errors above, then try again.' >&2
+    exit 1
+  fi
 elif command -v dnf >/dev/null 2>&1; then
 {dnf}elif command -v zypper >/dev/null 2>&1; then
 {zypper}elif command -v pacman >/dev/null 2>&1; then
@@ -1046,6 +1052,20 @@ mod tests {
         assert!(!verify.contains("\nmake --version") && !verify.contains("\ngcc --version"));
         // and with nothing chosen from apt nothing is asked of apt-get
         assert!(s.contains("if [ -n \"$have\" ]; then apt-get install -y $have; fi"));
+    }
+
+    #[test]
+    fn a_broken_repository_does_not_stop_the_apt_install() {
+        // a third-party repository without a Release file makes `apt-get update` fail, which with `set -e` used to
+        // stop the whole install; now the tools come from the repositories that did update
+        for script in [INSTALL_SBCL_SCRIPT.to_string(), install_tools_script(&module_groups())] {
+            assert!(script.contains("apt-get update || echo"), "{script}");
+            assert!(!script.contains("apt-get update\n"), "{script}");
+        }
+        // and when not one package could be found (the lists broken or the names wrong) it is an honest failure
+        let s = install_tools_script(&[ToolGroup::new("Debugging", &["gdb"], "gdb")]);
+        assert!(s.contains("if [ -z \"$have\" ] && [ -n \"gdb\" ]; then"), "{s}");
+        assert!(s.contains("None of the chosen packages could be found"), "{s}");
     }
 
     #[test]
