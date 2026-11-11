@@ -17,7 +17,7 @@ pub struct WslPath {
 
 fn strip_prefix_ci<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
     // by bytes: a path with non-ASCII (`E:\Видео`) has no char boundary at the prefix's byte 8
-    (s.as_bytes().len() >= prefix.len() && s.as_bytes()[..prefix.len()].eq_ignore_ascii_case(prefix.as_bytes()))
+    (s.len() >= prefix.len() && s.as_bytes()[..prefix.len()].eq_ignore_ascii_case(prefix.as_bytes()))
         .then(|| &s[prefix.len()..])
 }
 
