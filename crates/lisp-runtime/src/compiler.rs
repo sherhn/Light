@@ -65,12 +65,21 @@ pub fn parse_compiler_output(text: &str) -> Vec<Problem> {
         }
     }
 
+    // Reader diagnostics gather their text over several lines: some SBCL builds (2.6.9 built on
+    // Linux among them) put blank lines inside one - `;   ` or `; ` comment lines, or even a truly
+    // empty line right after the `caught ERROR:` header. Such a problem stays open until a header
+    // or the end of the output closes it, so its text and its source position are not lost.
+    fn open_reader_error(p: &Problem) -> bool {
+        let text = p.message.trim();
+        p.severity == Severity::Error && (text.is_empty() || text.starts_with("READ error during COMPILE-FILE:"))
+    }
+
     for raw in text.lines() {
         // SBCL ends a message block with a bare "; "; blank lines inside a message are ";   ".
         let block_end = raw == ";" || raw == "; ";
         let line = raw.trim_end();
         if !line.starts_with(';') {
-            if line.trim().is_empty() && !cur.as_ref().is_some_and(|p| p.severity == Severity::Error && p.message.starts_with("READ error during COMPILE-FILE:")) {
+            if line.trim().is_empty() && !cur.as_ref().is_some_and(open_reader_error) {
                 flush(&mut cur, &mut out);
             }
             continue;
@@ -146,9 +155,7 @@ pub fn parse_compiler_output(text: &str) -> Vec<Problem> {
         }
         if let Some(p) = cur.as_mut() {
             if trimmed.is_empty() {
-                // Reader diagnostics contain blank comment lines between the title,
-                // condition and source position. SBCL 2.6.10 can print these as `; `.
-                let reader_error = p.severity == Severity::Error && p.message.starts_with("READ error during COMPILE-FILE:");
+                let reader_error = open_reader_error(p);
                 if block_end && !p.message.trim().is_empty() && !reader_error {
                     flush(&mut cur, &mut out);
                 } else {
@@ -367,6 +374,24 @@ mod tests {
 ;   caught 1 STYLE-WARNING condition
 "#;
 
+    /// SBCL 2.6.9 built on Linux: an empty line (written here as nothing between two newlines)
+    /// follows the `caught ERROR:` header, and `;·` ones separate the condition from the position.
+    const LINUX_BUILT_READ_ERROR: &str = r#"; compiling file "/tmp/light-compile-10877/broken.lisp" (written 11 NOV 2026 07:28:49 PM):
+;
+; caught ERROR:
+
+;   READ error during COMPILE-FILE:
+;·
+;     end of file on #<SB-INT:FORM-TRACKING-STREAM for "file /tmp/light-compile-10877/broken.lisp" {1200CC6C83}>
+;·
+;     (in form starting at line: 3, column: 0, position: 17)
+;
+; compilation unit aborted
+;   caught 1 fatal ERROR condition
+;   caught 1 ERROR condition
+; compilation aborted after 0:00:00.002
+"#;
+
 
     /// The editor strips trailing blanks from this source file, but SBCL's output has them:
     /// a bare `; ` ends a message block and `;   ` is a blank line inside a message (written `;·` here).
@@ -409,6 +434,18 @@ mod tests {
             assert_eq!((error.line, error.column), (Some(9), Some(0)), "{problems:#?}");
             assert!(error.message.contains("end of file"));
         }
+    }
+
+    #[test]
+    fn reader_error_survives_an_empty_line_right_after_the_caught_header() {
+        let ps = parse_compiler_output(&sbcl_text(LINUX_BUILT_READ_ERROR));
+        assert_eq!(ps.len(), 1, "{ps:#?}");
+        let err = &ps[0];
+        assert_eq!(err.severity, Severity::Error);
+        assert_eq!((err.line, err.column), (Some(3), Some(0)), "{ps:#?}");
+        assert!(err.message.starts_with("READ error during COMPILE-FILE:"), "{:#?}", err.message);
+        assert!(err.message.contains("end of file on"));
+        assert!(err.message.contains("(in form starting at line: 3, column: 0, position: 17)"));
     }
 
     #[test]
