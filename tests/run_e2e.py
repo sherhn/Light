@@ -90,6 +90,11 @@ def run_one(script_path):
         proj = make_fixture(tmp)
         if "@path_completion" in script_path.read_text(encoding="utf-8"):
             (proj / "My Projects").mkdir()
+        if "@cyrillic_folder" in script_path.read_text(encoding="utf-8"):
+            # a non-ASCII folder name: the explorer of the project must list and show it (the address
+            # bytes of such a name once crashed the Open Project dialog, see wsl.rs strip_prefix_ci)
+            (proj / "Музыка").mkdir()
+            (proj / "Музыка" / "читай.txt").write_text("привет\n", encoding="utf-8")
         if "@file_icons" in script_path.read_text(encoding="utf-8"):
             icons = proj / "icons"
             icons.mkdir()

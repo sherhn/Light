@@ -16,7 +16,9 @@ pub struct WslPath {
 }
 
 fn strip_prefix_ci<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
-    (s.len() >= prefix.len() && s[..prefix.len()].eq_ignore_ascii_case(prefix)).then(|| &s[prefix.len()..])
+    // by bytes: a path with non-ASCII (`E:\Видео`) has no char boundary at the prefix's byte 8
+    (s.as_bytes().len() >= prefix.len() && s.as_bytes()[..prefix.len()].eq_ignore_ascii_case(prefix.as_bytes()))
+        .then(|| &s[prefix.len()..])
 }
 
 /// `\\wsl.localhost\Ubuntu\home\me` (also `\\wsl$\...` and the `\\?\UNC\...` form) -> Ubuntu, `/home/me`.
@@ -99,6 +101,10 @@ mod tests {
         assert_eq!(wsl_path(Path::new(r"\\WSL.LOCALHOST\Ubuntu")).unwrap().linux, "/");
         assert_eq!(wsl_path(Path::new(r"C:\Users\me\proj")), None);
         assert_eq!(wsl_path(Path::new(r"\\server\share\x")), None);
+        // a non-ASCII name whose bytes straddle a prefix's length used to panic in the middle of the letter
+        assert_eq!(wsl_path(Path::new(r"E:\Видео")), None);
+        assert_eq!(wsl_path(Path::new(r"E:\скачать до 7 июля")), None);
+        assert_eq!(wsl_path(Path::new(r"\\wsl.localhost\Ubuntu\домашнее")) .unwrap().linux, "/домашнее");
         assert_eq!(windows_path("Ubuntu", "/home/me/x"), std::path::PathBuf::from(r"\\wsl.localhost\Ubuntu\home\me\x"));
     }
 

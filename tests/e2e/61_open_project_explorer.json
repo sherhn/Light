@@ -1,5 +1,5 @@
 [
-  {"op": "log", "value": "Open Project starts on this computer, in the folder around the open project"},
+  {"op": "log", "value": "Open Project starts on this computer, in the folder around the open project @cyrillic_folder"},
   {"op": "open_project", "path": "${PROJ}"},
   {"op": "wait", "what": "index"},
   {"op": "command", "value": "file.open_project"},
@@ -15,6 +15,11 @@
   {"op": "key", "value": "Backspace"},
   {"op": "wait", "what": "project_browser_idle", "timeout": 20},
   {"op": "assert_project_browser", "contains": ["demo"]},
+
+  {"op": "log", "value": "a folder with a non-ASCII name is listed and shown (its bytes once crashed the dialog)"},
+  {"op": "project_browser", "go": "${PROJ}/Музыка"},
+  {"op": "wait", "what": "project_browser_idle", "timeout": 20},
+  {"op": "assert_project_browser", "current": "Музыка", "contains": ["читай.txt"]},
   {"op": "key", "value": "Escape"},
   {"op": "assert_popup", "value": "none"},
 
