@@ -534,6 +534,8 @@ pub const RU: &[(&str, &str)] = &[
     ("running...", "выполняется..."),
     ("Nothing has been run yet. Press Shift+F10 to run the selected configuration.", "Пока ничего не запускалось. Нажмите Shift+F10, чтобы запустить выбранную конфигурацию."),
     ("No problems found in open files", "В открытых файлах проблем не найдено"),
+    ("Scanning files", "Сканирование файлов"),
+    ("Indexing files", "Индексирование файлов"),
     ("Searching the project...", "Поиск по проекту..."),
     ("No results. Ctrl+Shift+F searches the project, Alt+F7 finds usages.", "Ничего не найдено. Ctrl+Shift+F — поиск по проекту, Alt+F7 — поиск использований."),
     ("{0}   {1} match(es)", "{0}   совпадений: {1}"),

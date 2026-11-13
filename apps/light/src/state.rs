@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
+use std::sync::{Arc, Mutex};
 
 use eframe::egui::Pos2;
 
@@ -149,6 +150,56 @@ impl Default for GitState {
             last_fetch: f64::NEG_INFINITY,
             told_behind: 0,
         }
+    }
+}
+
+/// What one background job reports to the status bar while it runs.
+#[derive(Clone)]
+pub struct Progress {
+    /// Localized caption, e.g. "Indexing files".
+    pub title: String,
+    /// How far the job has got (`None`: the total is unknown, the bar then slides).
+    pub fraction: Option<f32>,
+}
+
+/// A job's state shared with the worker thread that does the work.
+pub type SharedProgress = Arc<Mutex<Progress>>;
+
+/// The background jobs the status bar shows a progress bar for (as in JetBrains IDEs).
+#[derive(Default)]
+pub struct ProgressState {
+    jobs: Vec<(&'static str, SharedProgress)>,
+}
+
+impl ProgressState {
+    /// Begin the job `key` (replacing a leftover one with the same key): the handle goes to the worker thread.
+    pub fn begin(&mut self, key: &'static str, title: String) -> SharedProgress {
+        let shared = Arc::new(Mutex::new(Progress { title, fraction: None }));
+        self.jobs.retain(|(k, _)| *k != key);
+        self.jobs.push((key, shared.clone()));
+        shared
+    }
+
+    /// The job `key` has finished (or was abandoned).
+    pub fn end(&mut self, key: &str) {
+        self.jobs.retain(|(k, _)| *k != key);
+    }
+
+    /// Whether any job is running (the status bar animates while it is).
+    pub fn is_empty(&self) -> bool {
+        self.jobs.is_empty()
+    }
+
+    /// A copy of every running job (the worker threads own the originals).
+    pub fn snapshot(&self) -> Vec<Progress> {
+        self.jobs.iter().filter_map(|(_, job)| job.lock().ok().map(|p| p.clone())).collect()
+    }
+}
+
+/// Let a worker thread update the state of its job (a poisoned lock is simply skipped).
+pub fn report_progress(job: &SharedProgress, f: impl FnOnce(&mut Progress)) {
+    if let Ok(mut p) = job.lock() {
+        f(&mut p);
     }
 }
 
@@ -536,4 +587,29 @@ pub struct Toast {
     pub text: String,
     pub sev: Sev,
     pub until: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn progress_jobs_come_and_go() {
+        let mut progress = ProgressState::default();
+        progress.begin("index", "Indexing files".into());
+        progress.begin("find", "Find 'x'".into());
+        assert_eq!(progress.snapshot().len(), 2);
+        // beginning the same key again replaces the leftover job
+        let again = progress.begin("index", "Scanning files".into());
+        report_progress(&again, |p| p.fraction = Some(0.5));
+        let jobs = progress.snapshot();
+        assert_eq!(jobs.len(), 2);
+        assert_eq!(jobs.iter().find(|j| j.title == "Scanning files").map(|j| j.fraction), Some(Some(0.5)));
+        progress.end("find");
+        let jobs = progress.snapshot();
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].title, "Scanning files");
+        progress.end("index");
+        assert!(progress.is_empty());
+    }
 }

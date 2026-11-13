@@ -27,12 +27,20 @@ pub use crate::app_run::RunConfig;
 pub const AUTOSAVE_DELAY: f64 = 1.0;
 
 /// Read the project's files and their Lisp definitions in the background, leaving out what it hides.
-fn read_project_files(root: &Path, hidden: &workspace::Hidden) -> mpsc::Receiver<(ProjectIndex, Vec<PathBuf>)> {
+/// The job the status bar shows a progress bar for: the walk is indeterminate, the parse reports `done/total`.
+fn read_project_files(root: &Path, hidden: &workspace::Hidden, job: SharedProgress) -> mpsc::Receiver<(ProjectIndex, Vec<PathBuf>)> {
     let (tx, rx) = mpsc::channel();
     let (root, hidden) = (root.to_path_buf(), hidden.clone());
     std::thread::spawn(move || {
         let files = workspace::list_project_files(&root, &hidden, 50_000);
-        let idx = ProjectIndex::build_from(files.iter().cloned());
+        // the walk is over: the parse of every file is what takes the time, and it has a known total
+        report_progress(&job, |p| {
+            p.title = tr("Indexing files").to_string();
+            p.fraction = Some(0.0);
+        });
+        let total = files.len() as f32;
+        let report = |done: usize| report_progress(&job, |p| p.fraction = Some(done as f32 / total.max(1.0)));
+        let idx = ProjectIndex::build_from_with(files.iter().cloned(), Some(&report));
         let _ = tx.send((idx, files));
     });
     rx
@@ -165,6 +173,8 @@ pub struct App {
     /// Longest frame seen so far (ms) and the worst offender's frame number, for freeze diagnostics.
     pub max_frame_ms: f32,
     pub find_rx: Option<mpsc::Receiver<(String, Vec<search::FileHit>)>>,
+    /// The background jobs the status bar shows a progress bar for (indexing, search).
+    pub progress: ProgressState,
     pub frame_no: u64,
     /// Double-Shift detection: (shift currently down, another key was used meanwhile, time of the last clean tap).
     pub shift_tap: (bool, bool, f64),
@@ -267,6 +277,7 @@ impl App {
             script: None,
             max_frame_ms: 0.0,
             find_rx: None,
+            progress: ProgressState::default(),
             frame_no: 0,
             shift_tap: (false, false, -10.0),
             settings,
@@ -372,7 +383,8 @@ impl App {
         }
         let name = root.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| root.to_string_lossy().into_owned());
         let hidden = workspace::Hidden::new(&root, &crate::app_env::load_config(&root).hidden);
-        let rx = read_project_files(&root, &hidden);
+        let job = self.progress.begin("index", tr("Scanning files").to_string());
+        let rx = read_project_files(&root, &hidden, job);
         let mut expanded = HashSet::new();
         expanded.insert(root.clone());
         if let Some(session) = &session {
@@ -472,6 +484,7 @@ impl App {
         self.save_settings();
         self.leave_project();
         self.project = None;
+        self.progress.end("index");
         self.load_project_env();
         self.docs.clear();
         self.active = 0;
@@ -480,17 +493,34 @@ impl App {
     }
 
     pub fn poll_index(&mut self) {
+        let mut indexed = false;
+        let mut finished = false;
         if let Some(p) = self.project.as_mut()
             && let Some(rx) = &p.index_rx
-            && let Ok((idx, files)) = rx.try_recv()
         {
-            p.index = idx;
-            p.files_rel = files.iter().map(|f| workspace::relative(&p.root, f)).collect();
-            p.files = files;
-            p.files_gen += 1;
-            p.index_rx = None;
-            p.tree_ver += 1;
+            match rx.try_recv() {
+                Ok((idx, files)) => {
+                    p.index = idx;
+                    p.files_rel = files.iter().map(|f| workspace::relative(&p.root, f)).collect();
+                    p.files = files;
+                    p.files_gen += 1;
+                    p.index_rx = None;
+                    p.tree_ver += 1;
+                    indexed = true;
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    // the worker died: stop polling it (the tree lists its folders on demand anyway)
+                    p.index_rx = None;
+                }
+                Err(_) => {}
+            }
+            finished = indexed || p.index_rx.is_none();
+        }
+        if indexed {
             self.refresh_needed_modules();
+        }
+        if finished {
+            self.progress.end("index");
         }
     }
 
@@ -513,7 +543,8 @@ impl App {
             p.ignore.reset();
             p.branch = workspace::git_branch(&root);
             if p.index_rx.is_none() {
-                p.index_rx = Some(read_project_files(&root, &p.hidden));
+                let job = self.progress.begin("index", tr("Scanning files").to_string());
+                p.index_rx = Some(read_project_files(&root, &p.hidden, job));
             }
         }
     }
@@ -923,11 +954,19 @@ impl App {
         self.poll_repl();
         self.poll_run();
         self.poll_compile();
-        if let Some(rx) = &self.find_rx
-            && let Ok((title, hits)) = rx.try_recv()
-        {
-            self.find_results = FindResults { title, hits };
-            self.find_rx = None;
+        if let Some(rx) = &self.find_rx {
+            match rx.try_recv() {
+                Ok((title, hits)) => {
+                    self.find_results = FindResults { title, hits };
+                    self.find_rx = None;
+                    self.progress.end("find");
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.find_rx = None; // the search died: stop waiting for it
+                    self.progress.end("find");
+                }
+                Err(_) => {}
+            }
         }
         self.git_poll();
         self.poll_terminal();
@@ -1594,6 +1633,7 @@ impl App {
         let title = i18n::fmt("Find '{}'", &[&query]);
         self.find_results = FindResults { title: i18n::fmt("{} - searching...", &[&title]), hits: vec![] };
         self.find_rx = Some(rx);
+        self.progress.begin("find", title.clone());
         let hidden = self.project.as_ref().map(|p| p.hidden.clone()).unwrap_or_default();
         std::thread::spawn(move || {
             let hits = search::find_in_project(&root, &hidden, &q, opts, 3000);

@@ -175,7 +175,7 @@ impl eframe::App for App {
         self.draw_resize_handles(&ctx);
 
         // keep animating only when needed
-        let busy = self.repl.starting || !self.repl.busy.is_empty() || self.run.running || self.other_runs.iter().any(|tab| tab.run.running) || self.compile.is_some() || self.repl.session.is_some() || self.sql.running() || self.sql.opening();
+        let busy = self.repl.starting || !self.repl.busy.is_empty() || self.run.running || self.other_runs.iter().any(|tab| tab.run.running) || self.compile.is_some() || self.repl.session.is_some() || self.sql.running() || self.sql.opening() || !self.progress.is_empty();
         if busy {
             ctx.request_repaint_after(std::time::Duration::from_millis(60));
         } else if self.doc().is_some() && self.editor_focus {

@@ -38,9 +38,17 @@ impl ProjectIndex {
 
     /// The index of these files (the project's, without what it hides).
     pub fn build_from(files: impl IntoIterator<Item = PathBuf>) -> ProjectIndex {
+        ProjectIndex::build_from_with(files, None)
+    }
+
+    /// [`Self::build_from`] reporting how many files have been indexed so far.
+    pub fn build_from_with(files: impl IntoIterator<Item = PathBuf>, progress: Option<&dyn Fn(usize)>) -> ProjectIndex {
         let mut idx = ProjectIndex::default();
-        for p in files {
+        for (done, p) in files.into_iter().enumerate() {
             idx.update_file_from_disk(&p);
+            if let Some(report) = progress {
+                report(done + 1);
+            }
         }
         idx
     }

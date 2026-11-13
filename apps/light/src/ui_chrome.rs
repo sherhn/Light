@@ -785,6 +785,11 @@ impl App {
                 }
                 // where the project is built and run, with a menu to switch it
                 self.draw_env_chip(ui);
+                // the background jobs (indexing, search), as in JetBrains IDEs: a caption and a thin bar
+                for job in self.progress.snapshot() {
+                    widgets::progress_bar_opt(ui, &pal, job.fraction, 120.0);
+                    ui.label(small(job.title));
+                }
             });
         });
     }
